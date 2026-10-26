@@ -1,0 +1,133 @@
+[
+  {
+    "id": "writing",
+    "name": "Writing",
+    "timer": {
+      "minutes": 45,
+      "onEnd": "silent"
+    },
+    "sites": [
+      {
+        "recipeId": "reddit",
+        "level": "tamed",
+        "toggles": {
+          "grayscale": true
+        }
+      },
+      {
+        "recipeId": "youtube",
+        "level": "tamed",
+        "toggles": {
+          "grayscale": true
+        },
+        "paths": [
+          {
+            "path": "/shorts",
+            "level": "redirected"
+          }
+        ]
+      },
+      {
+        "recipeId": "x",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "instagram",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "tiktok",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "facebook",
+        "level": "redirected"
+      }
+    ]
+  },
+  {
+    "id": "deep-work",
+    "name": "Deep Work",
+    "timer": {
+      "minutes": 50
+    },
+    "sites": [
+      {
+        "recipeId": "reddit",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "youtube",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "x",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "instagram",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "tiktok",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "facebook",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "linkedin",
+        "level": "redirected"
+      },
+      {
+        "recipeId": "pinterest",
+        "level": "redirected"
+      }
+    ],
+    "redirect": {
+      "destinations": ["gate", "quote", "stuck"],
+      "gate": {
+        "wait": {
+          "mode": "escalating",
+          "startSeconds": 5,
+          "stepSeconds": 5,
+          "maxSeconds": 60
+        }
+      }
+    }
+  },
+  {
+    "id": "wind-down",
+    "name": "Wind Down",
+    "timer": {
+      "minutes": 0
+    },
+    "sites": [
+      {
+        "recipeId": "reddit",
+        "level": "tamed"
+      },
+      {
+        "recipeId": "youtube",
+        "level": "tamed",
+        "paths": [
+          {
+            "path": "/shorts",
+            "level": "redirected"
+          }
+        ]
+      },
+      {
+        "recipeId": "instagram",
+        "level": "tamed",
+        "paths": [
+          {
+            "path": "/reels",
+            "level": "redirected"
+          }
+        ]
+      }
+    ]
+  }
+]

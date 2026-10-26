@@ -67,8 +67,8 @@ describe('recipe previews in settings', () => {
     expect((await regions('Reddit')).hidePromoted).toContain('hidden');
     const index = await toggleSwitch('Reddit', 'Hide promoted posts');
     await (await page.$$(`${row('Reddit')} [role=switch]`))[index]!.click();
-    await wait(150);
-    expect((await regions('Reddit')).hidePromoted).not.toContain('hidden');
+    // Waits for the change to be saved and drawn, which can take a while on a slow CI runner.
+    await expect.poll(async () => (await regions('Reddit')).hidePromoted).not.toContain('hidden');
   });
 
   it('turns the drawing gray with grayscale', async () => {
