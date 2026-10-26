@@ -10,3 +10,6 @@ apps/desktop/src-tauri/
 
 # Prose is written by hand; Prettier would reflow its tables and lists.
 *.md
+
+# Written by ts-rs from the desktop app's Rust types (see apps/desktop/src-tauri/.cargo/config.toml).
+packages/core/src/generated/

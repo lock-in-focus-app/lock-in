@@ -1,5 +1,13 @@
 // Shared types, schemas, and logic for Lock In (profiles, recipes, sessions, rewards).
 export type * from './types';
+// Types shared with the desktop app, generated from its Rust code.
+export type * from './generated/ActiveSession';
+export type * from './generated/EndReason';
+export type * from './generated/ProfileSummary';
+export type * from './generated/SessionRecord';
+export type * from './generated/Snapshot';
+export type * from './generated/TimerEnd';
+export type * from './generated/TimerSettings';
 export { matchesPattern, matchPatternToRegex, parseHttpUrl } from './match';
 export { buildRecipeCss, cssForPage, findRecipe, isSafeSelector, pagePathAttribute, resolveToggles } from './recipe';
 export {
@@ -53,3 +61,4 @@ export {
 } from './settings';
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';
+export { formatClock, timerStatus, type TimerStatus } from './timer';

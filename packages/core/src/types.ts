@@ -1,3 +1,5 @@
+import type { TimerSettings } from './generated/TimerSettings';
+
 /**
  * How a site behaves during a session: left alone, tamed with its recipe, redirected
  * to a page you can get through with a pass, or restricted with no way through.
@@ -67,6 +69,8 @@ export interface Profile {
   id: string;
   name: string;
   sites: SiteRule[];
+  /** The quiet timer, run by the desktop app. Missing fields fall back to its defaults. */
+  timer?: Partial<TimerSettings>;
   /** How redirected sites behave. Missing fields fall back to the defaults. */
   redirect?: {
     destinations?: RedirectDestination[];
@@ -133,6 +137,8 @@ export interface Session {
   profileId: string;
   /** Epoch milliseconds. */
   startedAt: number;
+  /** The quiet timer, copied from the profile when the desktop app starts or picks up the session. */
+  timer?: TimerSettings;
   /** Toggles changed for this session only. They don't touch the profile unless saved. */
   overrides?: ToggleOverrides;
   /** Redirected sites the user chose to continue to, keyed by recipe id. Each value is when the pass ends (epoch ms). */
