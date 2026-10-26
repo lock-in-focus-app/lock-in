@@ -1,0 +1,48 @@
+# Rules for the Rust dependencies, checked by cargo-deny in CI (.github/workflows/desktop.yml).
+# Locally: `cargo install cargo-deny --locked`, then `cargo deny check` in this folder.
+
+[graph]
+# Only the platforms the app is built for, so crates for other systems don't count.
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+  "aarch64-pc-windows-msvc",
+]
+
+[advisories]
+# Any known security problem fails the check. Crates that are no longer maintained only fail it
+# when this app uses them directly: Tauri's Linux side pulls in some (the GTK 3 bindings) that
+# can't be swapped out from here.
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+# Licenses that can be shipped inside an AGPL-3.0 app. Anything else fails, to be looked at.
+allow = [
+  "0BSD",
+  "AGPL-3.0-only",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "CC0-1.0",
+  "ISC",
+  "MIT",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Zlib",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Tauri's dependencies need several versions of some crates; that's normal and not worth failing on.
+multiple-versions = "allow"
+wildcards = "deny"
+
+[sources]
+# Crates only from crates.io, never from a git repo or another registry.
+unknown-registry = "deny"
+unknown-git = "deny"
