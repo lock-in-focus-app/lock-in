@@ -16,6 +16,8 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Usually about 2 minutes. GitHub's default limit is 6 hours, which a hung step would use up.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
