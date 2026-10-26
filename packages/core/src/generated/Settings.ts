@@ -7,4 +7,9 @@ export type Settings = {
 /**
  * Emergency passes for ending a Hard session early, per 7 days.
  */
-passesPerWeek: number, };
+passesPerWeek: number, 
+/**
+ * Minutes without keyboard or mouse input before a session ends by itself. The time away
+ * isn't counted. 0 turns this off.
+ */
+idleMinutes: number, };

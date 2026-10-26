@@ -175,6 +175,22 @@ impl Engine {
         Ok(record)
     }
 
+    /// Ends the session for being idle, if it's still the one with this id. Only the time up
+    /// to the last input counts. Strictness doesn't apply: there's no one there to keep in.
+    pub fn end_idle_session(&mut self, session_id: &str, last_input: i64, now: i64) -> Result<Option<SessionRecord>> {
+        let Some(session) = self.session().filter(|s| s.id == session_id) else {
+            return Ok(None);
+        };
+        let record = SessionRecord::idle(session, &self.profile_name(&session.profile_id), last_input, now);
+        let synced = Synced {
+            value: None,
+            updated_at: now,
+        };
+        self.store.end_session(&record, ACTIVE_SESSION, &synced)?;
+        self.session = synced;
+        Ok(Some(record))
+    }
+
     /// Changes the app-wide settings. While a Hard session is running, passes per week can
     /// only go down, or it would be an easy way out.
     pub fn set_settings(&mut self, settings: Settings, now: i64) -> Result<()> {
@@ -559,19 +575,49 @@ mod tests {
     #[test]
     fn passes_per_week_only_go_down_during_a_hard_session() {
         let mut engine = hard_engine();
-        engine.set_settings(Settings { passes_per_week: 99 }, 0).unwrap();
+        engine
+            .set_settings(
+                Settings {
+                    passes_per_week: 99,
+                    ..Settings::default()
+                },
+                0,
+            )
+            .unwrap();
         assert_eq!(
             engine.snapshot(0).settings.passes_per_week,
             crate::settings::MAX_PASSES_PER_WEEK
         );
 
         engine.start_session("deep-work", 0).unwrap();
-        engine.set_settings(Settings { passes_per_week: 1 }, MIN).unwrap();
+        engine
+            .set_settings(
+                Settings {
+                    passes_per_week: 1,
+                    ..Settings::default()
+                },
+                MIN,
+            )
+            .unwrap();
         assert!(matches!(
-            engine.set_settings(Settings { passes_per_week: 5 }, MIN),
+            engine.set_settings(
+                Settings {
+                    passes_per_week: 5,
+                    ..Settings::default()
+                },
+                MIN
+            ),
             Err(Error::Locked)
         ));
-        engine.set_settings(Settings { passes_per_week: 5 }, 60 * MIN).unwrap();
+        engine
+            .set_settings(
+                Settings {
+                    passes_per_week: 5,
+                    ..Settings::default()
+                },
+                60 * MIN,
+            )
+            .unwrap();
     }
 
     #[test]
@@ -616,6 +662,18 @@ mod tests {
         let timer = session.value.as_ref().unwrap().timer.as_ref().unwrap();
         assert_eq!((timer.minutes, timer.strictness), (50, Strictness::Hard));
         assert_eq!(session.updated_at, 2_001);
+    }
+
+    #[test]
+    fn ends_idle_sessions_without_the_time_away() {
+        let mut engine = hard_engine();
+        let id = engine.start_session("deep-work", 0).unwrap().id.clone();
+        assert_eq!(engine.end_idle_session("other", 5 * MIN, 20 * MIN).unwrap(), None);
+
+        let record = engine.end_idle_session(&id, 5 * MIN, 20 * MIN).unwrap().unwrap();
+        assert_eq!((record.focused_ms, record.idle_tail_ms), (5 * MIN, 15 * MIN));
+        assert_eq!(engine.session(), None);
+        assert_eq!(engine.session_log().unwrap(), vec![record]);
     }
 
     #[test]

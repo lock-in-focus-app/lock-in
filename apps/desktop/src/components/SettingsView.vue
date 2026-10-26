@@ -28,6 +28,22 @@ function save(patch: Partial<Settings>) {
       {{ passesLeft }} left right now. During a Hard session this can only go down.
     </p>
 
+    <div class="row">
+      <span>End a session after</span>
+      <NumberField
+        label="Minutes away before a session ends"
+        unit="min away"
+        :min="0"
+        :max="120"
+        :model-value="settings.idleMinutes"
+        @update:model-value="save({ idleMinutes: $event })"
+      />
+    </div>
+    <p class="help">
+      With no keyboard or mouse input for this long, a session ends by itself, and the time away isn't counted. 0 turns
+      this off.
+    </p>
+
     <button class="done" type="button" @click="emit('close')">Done</button>
   </section>
 </template>

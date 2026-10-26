@@ -66,6 +66,8 @@ pub enum EndReason {
     Stopped,
     /// The user ended a Hard session early with an emergency pass.
     EmergencyPass,
+    /// There was no keyboard or mouse input for a while.
+    Idle,
 }
 
 impl EndReason {
@@ -73,6 +75,7 @@ impl EndReason {
         match self {
             EndReason::Stopped => "stopped",
             EndReason::EmergencyPass => "emergencyPass",
+            EndReason::Idle => "idle",
         }
     }
 
@@ -80,6 +83,7 @@ impl EndReason {
         match value {
             "stopped" => Some(EndReason::Stopped),
             "emergencyPass" => Some(EndReason::EmergencyPass),
+            "idle" => Some(EndReason::Idle),
             _ => None,
         }
     }
@@ -104,17 +108,34 @@ pub struct SessionRecord {
     pub focused_ms: i64,
     /// Time spent after the timer was done.
     pub overtime_ms: i64,
-    /// Idle time at the end that doesn't count. Always 0 until idle detection lands.
+    /// Time away at the end, after the last keyboard or mouse input, which doesn't count
+    /// towards focus or overtime. Only sessions that end for being idle have one.
     pub idle_tail_ms: i64,
     pub end_reason: EndReason,
 }
 
 impl SessionRecord {
     pub fn new(session: &Session, profile_name: &str, ended_at: i64, end_reason: EndReason) -> Self {
+        Self::counted_until(session, profile_name, ended_at, ended_at, end_reason)
+    }
+
+    /// A session that ended for being idle: only the time up to the last input counts.
+    pub fn idle(session: &Session, profile_name: &str, last_input: i64, ended_at: i64) -> Self {
+        Self::counted_until(session, profile_name, last_input, ended_at, EndReason::Idle)
+    }
+
+    fn counted_until(
+        session: &Session,
+        profile_name: &str,
+        counted: i64,
+        ended_at: i64,
+        end_reason: EndReason,
+    ) -> Self {
         let ended_at = ended_at.max(session.started_at);
+        let counted = counted.clamp(session.started_at, ended_at);
         let timer_minutes = session.timer.as_ref().map(|t| t.minutes).filter(|&m| m > 0);
         let done_at = session.timer.as_ref().and_then(|t| t.done_at(session.started_at));
-        let split = done_at.map_or(ended_at, |done| done.min(ended_at));
+        let split = done_at.map_or(counted, |done| done.min(counted));
         Self {
             id: session.id.clone(),
             profile_id: session.profile_id.clone(),
@@ -123,8 +144,8 @@ impl SessionRecord {
             ended_at,
             timer_minutes,
             focused_ms: split - session.started_at,
-            overtime_ms: ended_at - split,
-            idle_tail_ms: 0,
+            overtime_ms: counted - split,
+            idle_tail_ms: ended_at - counted,
             end_reason,
         }
     }
@@ -229,6 +250,26 @@ mod tests {
 
         let early = SessionRecord::new(&session(Some(25)), "Writing", 1_000_000 + 10 * MIN, EndReason::Stopped);
         assert_eq!((early.focused_ms, early.overtime_ms), (10 * MIN, 0));
+    }
+
+    #[test]
+    fn leaves_out_the_idle_tail() {
+        let start = 1_000_000;
+        // A 25-minute timer, last input at 40 minutes, ended for being idle at 55.
+        let record = SessionRecord::idle(&session(Some(25)), "Writing", start + 40 * MIN, start + 55 * MIN);
+        assert_eq!(record.end_reason, EndReason::Idle);
+        assert_eq!(record.ended_at, start + 55 * MIN);
+        assert_eq!(
+            (record.focused_ms, record.overtime_ms, record.idle_tail_ms),
+            (25 * MIN, 15 * MIN, 15 * MIN)
+        );
+
+        // Away before the timer was done: no overtime, and focus stops at the last input.
+        let early = SessionRecord::idle(&session(Some(25)), "Writing", start + 10 * MIN, start + 25 * MIN);
+        assert_eq!(
+            (early.focused_ms, early.overtime_ms, early.idle_tail_ms),
+            (10 * MIN, 0, 15 * MIN)
+        );
     }
 
     #[test]

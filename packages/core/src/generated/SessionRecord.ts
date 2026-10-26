@@ -27,6 +27,7 @@ focusedMs: number,
  */
 overtimeMs: number, 
 /**
- * Idle time at the end that doesn't count. Always 0 until idle detection lands.
+ * Time away at the end, after the last keyboard or mouse input, which doesn't count
+ * towards focus or overtime. Only sessions that end for being idle have one.
  */
 idleTailMs: number, endReason: EndReason, };
