@@ -48,7 +48,11 @@ export function withProfileToggle(
 }
 
 /** Replaces how a profile handles redirected sites. */
-export function withRedirectSettings(profiles: readonly Profile[], profileId: string, settings: RedirectSettings): Profile[] {
+export function withRedirectSettings(
+  profiles: readonly Profile[],
+  profileId: string,
+  settings: RedirectSettings,
+): Profile[] {
   return profiles.map((profile) => (profile.id === profileId ? { ...profile, redirect: settings } : profile));
 }
 
@@ -75,7 +79,8 @@ export function withSessionOverridesSaved(
 /** Replaces one site's session overrides, dropping empty maps so the session stays tidy. */
 function withRecipeOverrides(session: Session, recipeId: string, recipeOverrides: Record<string, boolean>): Session {
   const { [recipeId]: _old, ...otherRecipes } = session.overrides ?? {};
-  const overrides = Object.keys(recipeOverrides).length > 0 ? { ...otherRecipes, [recipeId]: recipeOverrides } : otherRecipes;
+  const overrides =
+    Object.keys(recipeOverrides).length > 0 ? { ...otherRecipes, [recipeId]: recipeOverrides } : otherRecipes;
 
   const { overrides: _previous, ...rest } = session;
   return Object.keys(overrides).length > 0 ? { ...rest, overrides } : rest;
@@ -123,7 +128,12 @@ export function withProfileMoved(profiles: readonly Profile[], profileId: string
 }
 
 /** Sets how a profile treats a site. Toggles are kept, so switching back to tamed restores them. */
-export function withSiteLevel(profiles: readonly Profile[], profileId: string, recipeId: string, level: SiteLevel): Profile[] {
+export function withSiteLevel(
+  profiles: readonly Profile[],
+  profileId: string,
+  recipeId: string,
+  level: SiteLevel,
+): Profile[] {
   return profiles.map((profile) => {
     if (profile.id !== profileId) return profile;
     const exists = profile.sites.some((site) => site.recipeId === recipeId);
@@ -165,7 +175,12 @@ export function withPathRules(
 }
 
 /** Removes a page rule, so the page follows the site's level again. */
-export function withPathRuleRemoved(profiles: readonly Profile[], profileId: string, recipeId: string, path: string): Profile[] {
+export function withPathRuleRemoved(
+  profiles: readonly Profile[],
+  profileId: string,
+  recipeId: string,
+  path: string,
+): Profile[] {
   return withSite(profiles, profileId, recipeId, (site) => {
     const { paths: _previous, ...rest } = site;
     const paths = (site.paths ?? []).filter((rule) => !samePath(rule.path, path));

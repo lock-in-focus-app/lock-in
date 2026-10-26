@@ -32,7 +32,16 @@ export function siteAccess(options: {
 }): Access {
   const { session, profiles, recipeId, path, now } = options;
   if (!session) return 'open';
-  return accessFor(levelFor(profiles.find((p) => p.id === session.profileId), recipeId, path), session, recipeId, now);
+  return accessFor(
+    levelFor(
+      profiles.find((p) => p.id === session.profileId),
+      recipeId,
+      path,
+    ),
+    session,
+    recipeId,
+    now,
+  );
 }
 
 function accessFor(level: SiteLevel, session: Session, recipeId: string, now: number): Access {
@@ -124,7 +133,11 @@ export function withGateVisitContinued(visits: readonly GateVisit[], visitId: st
 }
 
 /** Records the one-tap answer to "why are you here?", or clears it. */
-export function withGateVisitWhy(visits: readonly GateVisit[], visitId: string, why: WhyReason | undefined): GateVisit[] {
+export function withGateVisitWhy(
+  visits: readonly GateVisit[],
+  visitId: string,
+  why: WhyReason | undefined,
+): GateVisit[] {
   return visits.map((visit) => {
     if (visit.id !== visitId) return visit;
     const { why: _previous, ...rest } = visit;

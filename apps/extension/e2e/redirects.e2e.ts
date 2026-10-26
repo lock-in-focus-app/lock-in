@@ -22,7 +22,8 @@ describe('redirects and the intention gate', () => {
   const gate = (target: string) => redirectPage(t, target);
 
   const gateText = () => tab.$eval('main', (main) => (main as HTMLElement).innerText);
-  const continueButton = () => tab.$eval('button.continue', (b) => ({ disabled: b.disabled, label: b.textContent!.trim() }));
+  const continueButton = () =>
+    tab.$eval('button.continue', (b) => ({ disabled: b.disabled, label: b.textContent!.trim() }));
 
   beforeAll(async () => {
     t = await launch();
@@ -65,7 +66,10 @@ describe('redirects and the intention gate', () => {
   });
 
   it('holds Continue behind a countdown', async () => {
-    expect(await continueButton()).toMatchObject({ disabled: true, label: expect.stringMatching(/^Continue in \d+s$/) });
+    expect(await continueButton()).toMatchObject({
+      disabled: true,
+      label: expect.stringMatching(/^Continue in \d+s$/),
+    });
   });
 
   it('continues to the site with a pass once the countdown ends', async () => {
@@ -81,9 +85,13 @@ describe('redirects and the intention gate', () => {
     expect(await visibility(tab, ['feed'])).toEqual({ feed: true, grayscale: false });
 
     const storage = await stored(await openPopup(t, tab));
-    expect(storage.activeSession.passes.reddit).toBeGreaterThan(Date.now() + 4 * 60_000);
+    expect(storage.activeSession?.passes?.reddit).toBeGreaterThan(Date.now() + 4 * 60_000);
     expect(storage.gateVisits).toHaveLength(2);
-    expect(storage.gateVisits[1]).toMatchObject({ recipeId: 'reddit', continued: true, intention: 'Check the camping thread' });
+    expect(storage.gateVisits?.[1]).toMatchObject({
+      recipeId: 'reddit',
+      continued: true,
+      intention: 'Check the camping thread',
+    });
   });
 
   it('shows the pass in the popup', async () => {

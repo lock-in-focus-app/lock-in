@@ -48,9 +48,11 @@ pnpm dev:extension
 Other useful commands:
 
 ```bash
-pnpm test        # unit tests
-pnpm test:e2e    # browser tests for the extension (see apps/extension/README.md)
+pnpm test          # unit tests
+pnpm test:e2e      # browser tests for the extension (see apps/extension/README.md)
 pnpm typecheck
+pnpm lint          # ESLint
+pnpm format        # Prettier (pnpm format:check only reports)
 pnpm build
 ```
 
@@ -59,6 +61,8 @@ The desktop app also needs the [Rust toolchain](https://rustup.rs) and the [Taur
 ## Contributing
 
 Recipes break when sites change their HTML, so fixes to the selectors in `packages/recipes` are especially welcome. Each recipe is plain JSON, and `pnpm test` checks that every selector is safe to inject.
+
+Before opening a pull request, run `pnpm format`, `pnpm lint` and `pnpm test`; CI checks all three.
 
 ## License
 

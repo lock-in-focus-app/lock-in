@@ -34,17 +34,21 @@ const elapsed = computed(() => {
 });
 
 function describe(profile: Profile): string {
-  return profile.sites
-    .map((site) => {
-      const recipe = recipes.find((r) => r.id === site.recipeId);
-      const name = recipe?.name ?? site.recipeId;
-      const pages = site.paths?.length ? ` · ${site.paths.length} page rule${site.paths.length === 1 ? '' : 's'}` : '';
-      if (site.level === 'tamed' && site.toggles?.grayscale) return `${name} tamed · grayscale${pages}`;
-      if (site.level === 'allowed') return pages ? `${name}${pages}` : '';
-      return `${name} ${site.level}${pages}`;
-    })
-    .filter(Boolean)
-    .join(', ') || 'Everything allowed';
+  return (
+    profile.sites
+      .map((site) => {
+        const recipe = recipes.find((r) => r.id === site.recipeId);
+        const name = recipe?.name ?? site.recipeId;
+        const pages = site.paths?.length
+          ? ` · ${site.paths.length} page rule${site.paths.length === 1 ? '' : 's'}`
+          : '';
+        if (site.level === 'tamed' && site.toggles?.grayscale) return `${name} tamed · grayscale${pages}`;
+        if (site.level === 'allowed') return pages ? `${name}${pages}` : '';
+        return `${name} ${site.level}${pages}`;
+      })
+      .filter(Boolean)
+      .join(', ') || 'Everything allowed'
+  );
 }
 
 function openSettings() {
@@ -158,7 +162,9 @@ ul {
   padding: 10px 12px;
   text-align: left;
   background: var(--sky-raised);
-  transition: background 150ms, transform 150ms;
+  transition:
+    background 150ms,
+    transform 150ms;
 }
 
 .profile:hover {

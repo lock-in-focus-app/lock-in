@@ -50,7 +50,10 @@ legend {
   background: var(--sky-raised);
   color: var(--dim);
   font-size: 13px;
-  transition: background 150ms, color 150ms, transform 300ms var(--spring);
+  transition:
+    background 150ms,
+    color 150ms,
+    transform 300ms var(--spring);
 }
 
 .chip:hover {

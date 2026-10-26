@@ -6,12 +6,15 @@ describe('settings page', () => {
   let t: TestBrowser;
   let page: Page;
 
-  const deepWork = async () =>
-    (await stored(page)).profiles.find((p: { id: string }) => p.id === 'deep-work').redirect;
+  const deepWork = async () => (await stored(page)).profiles!.find((p) => p.id === 'deep-work')!.redirect!;
   const clickDestination = (label: string) =>
     page.$$eval(
       '.destinations label',
-      (labels, wanted) => labels.find((l) => l.querySelector('.name')!.textContent === wanted)!.querySelector('input')!.click(),
+      (labels, wanted) =>
+        labels
+          .find((l) => l.querySelector('.name')!.textContent === wanted)!
+          .querySelector('input')!
+          .click(),
       label,
     );
 
@@ -20,7 +23,9 @@ describe('settings page', () => {
     page = await t.browser.newPage();
     await page.goto(`chrome-extension://${t.extensionId}/options.html`);
     await page.waitForSelector('[role=tab]');
-    await page.$$eval('[role=tab]', (tabs) => (tabs.find((tab) => tab.textContent!.trim() === 'Deep Work') as HTMLElement).click());
+    await page.$$eval('[role=tab]', (tabs) =>
+      (tabs.find((tab) => tab.textContent!.trim() === 'Deep Work') as HTMLElement).click(),
+    );
     await wait(100);
   });
   afterAll(() => t?.close());
@@ -59,7 +64,11 @@ describe('settings page', () => {
     await wait(150);
 
     const { gate } = await deepWork();
-    expect(gate).toMatchObject({ requireReason: true, onPassExpiry: 'redirect', wait: { mode: 'fixed', seconds: 300 } });
+    expect(gate).toMatchObject({
+      requireReason: true,
+      onPassExpiry: 'redirect',
+      wait: { mode: 'fixed', seconds: 300 },
+    });
     expect(await page.$eval('input[aria-label="Wait in seconds"]', (input) => input.value)).toBe('300');
   });
 

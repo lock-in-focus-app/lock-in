@@ -55,7 +55,13 @@ onMounted(async () => {
 
   const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
   const profile = profileList.find((p) => p.id === session?.profileId);
-  const access = siteAccess({ session, profiles: profileList, recipeId: recipe.id, path: target.pathname, now: Date.now() });
+  const access = siteAccess({
+    session,
+    profiles: profileList,
+    recipeId: recipe.id,
+    path: target.pathname,
+    now: Date.now(),
+  });
 
   if (!profile || access === 'open') {
     // The session ended or a pass started since this tab was sent here. Make sure the
@@ -108,7 +114,9 @@ function ordinal(n: number): string {
 
 <template>
   <main>
-    <p class="brand"><span class="star" aria-hidden="true">✦</span> Lock In<template v-if="profileName"> · {{ profileName }}</template></p>
+    <p class="brand">
+      <span class="star" aria-hidden="true">✦</span> Lock In<template v-if="profileName"> · {{ profileName }}</template>
+    </p>
 
     <template v-if="ready && settings">
       <p class="badge">{{ badge }}</p>
@@ -126,16 +134,31 @@ function ordinal(n: number): string {
       </IntentionGate>
       <QuoteCard v-else-if="destination === 'quote'" @back="backToFocus" />
       <LinkCard v-else-if="destination === 'link' && link" :link="link" />
-      <BlockedCard v-else-if="destination === 'blocked'" :site-name="siteName" :profile-name="profileName" @back="backToFocus" />
+      <BlockedCard
+        v-else-if="destination === 'blocked'"
+        :site-name="siteName"
+        :profile-name="profileName"
+        @back="backToFocus"
+      />
       <StuckPage v-else @back="backToFocus" />
 
       <footer>
         <WhyTap v-if="visitId" v-model="why" />
         <div class="more">
-          <button v-if="why === 'stuck' && destination !== 'stuck'" type="button" class="quiet" @click="destination = 'stuck'">
+          <button
+            v-if="why === 'stuck' && destination !== 'stuck'"
+            type="button"
+            class="quiet"
+            @click="destination = 'stuck'"
+          >
             Stuck? Try a 2-minute unstick
           </button>
-          <button v-if="destination !== 'gate' && destination !== 'blocked'" type="button" class="quiet still-need" @click="destination = 'gate'">
+          <button
+            v-if="destination !== 'gate' && destination !== 'blocked'"
+            type="button"
+            class="quiet still-need"
+            @click="destination = 'gate'"
+          >
             Still need {{ siteName }}?
           </button>
         </div>

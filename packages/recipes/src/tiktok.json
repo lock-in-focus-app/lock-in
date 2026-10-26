@@ -20,11 +20,7 @@
     {
       "id": "hideExplore",
       "label": "Hide Explore",
-      "selectors": [
-        "a[href=\"/explore\"]",
-        "[data-e2e=\"nav-explore\"]",
-        "html[data-lock-in-path^=\"/explore\"] main"
-      ],
+      "selectors": ["a[href=\"/explore\"]", "[data-e2e=\"nav-explore\"]", "html[data-lock-in-path^=\"/explore\"] main"],
       "default": true
     },
     {

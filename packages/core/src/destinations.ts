@@ -12,7 +12,11 @@ export function pickDestination(settings: RedirectSettings, random: Random = Mat
 }
 
 /** A random quote, favoring the user's own. */
-export function pickQuote(bundled: readonly Quote[], own: readonly OwnQuote[], random: Random = Math.random): Quote | undefined {
+export function pickQuote(
+  bundled: readonly Quote[],
+  own: readonly OwnQuote[],
+  random: Random = Math.random,
+): Quote | undefined {
   const weighted = [...bundled, ...own.flatMap((quote) => Array<Quote>(ownQuoteWeight).fill(quote))];
   return pick(weighted, random);
 }

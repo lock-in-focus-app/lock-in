@@ -15,9 +15,7 @@
     "*://*.pinterest.com.mx/*",
     "*://*.pinterest.jp/*"
   ],
-  "pages": [
-    { "label": "Explore", "paths": ["/today", "/ideas"] }
-  ],
+  "pages": [{ "label": "Explore", "paths": ["/today", "/ideas"] }],
   "source": "Search suggestion and Explore selectors adapted from Declutter Pinterest (MIT), https://greasyfork.org/scripts/512469-declutter-pinterest",
   "toggles": [
     {

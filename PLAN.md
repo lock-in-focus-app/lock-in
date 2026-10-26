@@ -267,7 +267,8 @@ lock-in/
 
 **Phase 0: Setup** (you scaffold)
 - ✅ pnpm monorepo, AGPL-3.0 license, shared types in `packages/core`, unit tests, in-repo browser tests, CI on every push.
-- Lint/format and JSON schemas for recipes and profiles (still to do; schemas matter once import/export lands).
+- ✅ Lint (ESLint with typescript-eslint and eslint-plugin-vue) and format (Prettier), checked in CI.
+- JSON schemas for recipes and profiles (still to do; they matter once import/export lands).
 
 **Phase 1: Extension MVP** *(replaces your manual SocialFocus toggling first)*
 - ✅ Standalone: sessions run from the extension popup, with no desktop app needed (the app plugs in later via Native Messaging).

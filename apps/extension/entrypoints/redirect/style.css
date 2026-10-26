@@ -2,7 +2,10 @@
 .primary,
 .secondary {
   padding: 12px;
-  transition: background 150ms, filter 150ms, transform 150ms;
+  transition:
+    background 150ms,
+    filter 150ms,
+    transform 150ms;
 }
 
 .primary {

@@ -55,7 +55,9 @@ describe('redirectRules', () => {
   it('leaves out sites with a running pass', () => {
     const passed = { ...session, passes: { reddit: now + minute } };
     expect(blocks(redirectRules({ session: passed, profiles, recipes, now }), 'https://reddit.com/')).toBe(false);
-    expect(blocks(redirectRules({ session: passed, profiles, recipes, now: now + minute }), 'https://reddit.com/')).toBe(true);
+    expect(
+      blocks(redirectRules({ session: passed, profiles, recipes, now: now + minute }), 'https://reddit.com/'),
+    ).toBe(true);
   });
 
   describe('with page rules', () => {
@@ -72,7 +74,14 @@ describe('redirectRules', () => {
               { path: '/r/writing/comments', level: 'restricted' },
             ],
           },
-          { recipeId: 'x', level: 'tamed', paths: [{ path: '/', level: 'redirected' }, { path: '/explore', level: 'redirected' }] },
+          {
+            recipeId: 'x',
+            level: 'tamed',
+            paths: [
+              { path: '/', level: 'redirected' },
+              { path: '/explore', level: 'redirected' },
+            ],
+          },
         ],
       },
     ];
@@ -197,7 +206,10 @@ describe('checkOpenPage', () => {
 
   it('waits until a running pass ends', () => {
     const passed = { ...session, passes: { reddit: now + minute } };
-    expect(checkOpenPage({ url, session: passed, profiles, recipes, now })).toEqual({ action: 'none', recheckAt: now + minute });
+    expect(checkOpenPage({ url, session: passed, profiles, recipes, now })).toEqual({
+      action: 'none',
+      recheckAt: now + minute,
+    });
   });
 
   it('leaves other pages alone', () => {
@@ -213,7 +225,9 @@ describe('restricted sites', () => {
 
   it('stay shut even with a pass', () => {
     expect(siteAccess({ session: passed, profiles: restricted, recipeId: 'reddit', now })).toBe('restricted');
-    expect(redirectRules({ session: passed, profiles: restricted, recipes, now })).toMatchObject([{ action: 'redirect' }]);
+    expect(redirectRules({ session: passed, profiles: restricted, recipes, now })).toMatchObject([
+      { action: 'redirect' },
+    ]);
   });
 
   it('open up when the session ends', () => {
@@ -222,7 +236,9 @@ describe('restricted sites', () => {
 
   it('cover tabs that were already open, whatever the pass setting', () => {
     const nothing: Profile[] = [{ ...restricted[0]!, redirect: { gate: { onPassExpiry: 'nothing' } } }];
-    expect(checkOpenPage({ url: 'https://reddit.com/', session: passed, profiles: nothing, recipes, now })).toMatchObject({
+    expect(
+      checkOpenPage({ url: 'https://reddit.com/', session: passed, profiles: nothing, recipes, now }),
+    ).toMatchObject({
       action: 'block',
       recipe: { id: 'reddit' },
     });

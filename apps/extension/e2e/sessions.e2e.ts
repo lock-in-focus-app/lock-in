@@ -49,7 +49,7 @@ describe('sessions', () => {
     expect(await page()).toEqual({ feed: true, suggested: true, ad: true, keep: true, grayscale: false });
   });
 
-  it('uses each profile\'s own toggles', async () => {
+  it("uses each profile's own toggles", async () => {
     const [, , windDown] = await popup.$$('button.profile');
     await windDown!.click();
     await wait(300);

@@ -18,8 +18,8 @@ const showsToggles = (recipeId: string) => {
   <h2>Sites</h2>
   <p class="help">
     Tamed hides the distracting parts. Redirected sends you to a Lock In page you can get through for a few minutes.
-    Restricted has no way through until the session ends. Page rules give part of a site its own level, like
-    redirecting YouTube Shorts while the rest of YouTube is tamed.
+    Restricted has no way through until the session ends. Page rules give part of a site its own level, like redirecting
+    YouTube Shorts while the rest of YouTube is tamed.
   </p>
   <ul class="list sites">
     <li v-for="recipe in recipes" :key="recipe.id">

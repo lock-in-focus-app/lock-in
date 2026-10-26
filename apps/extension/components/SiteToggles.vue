@@ -28,15 +28,15 @@ const profile = computed(() =>
 const rule = computed(() => findRule(profile.value, props.recipe.id));
 const pageRule = computed(() => findPathRule(rule.value?.paths, props.path));
 // Toggles show whenever this page, or the site as a whole, is tamed.
-const showsToggles = computed(() => (pageRule.value?.level ?? rule.value?.level) === 'tamed' || rule.value?.level === 'tamed');
+const showsToggles = computed(
+  () => (pageRule.value?.level ?? rule.value?.level) === 'tamed' || rule.value?.level === 'tamed',
+);
 const values = computed(() => resolveToggles(props.recipe, rule.value, props.session?.overrides?.[props.recipe.id]));
 const passMinutesLeft = computed(() => {
   const until = props.session?.passes?.[props.recipe.id] ?? 0;
   return until > Date.now() ? Math.ceil((until - Date.now()) / 60_000) : 0;
 });
-const hasSessionChanges = computed(
-  () => Object.keys(props.session?.overrides?.[props.recipe.id] ?? {}).length > 0,
-);
+const hasSessionChanges = computed(() => Object.keys(props.session?.overrides?.[props.recipe.id] ?? {}).length > 0);
 
 function set(toggleId: string, value: boolean) {
   if (props.session) {
@@ -74,11 +74,12 @@ function set(toggleId: string, value: boolean) {
 
     <template v-if="session && !pageRule">
       <p v-if="rule?.level === 'redirected'" class="note">
-        {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile' }}<template v-if="passMinutesLeft">
-          · pass ends in {{ passMinutesLeft }} min</template>.
+        {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile'
+        }}<template v-if="passMinutesLeft"> · pass ends in {{ passMinutesLeft }} min</template>.
       </p>
       <p v-else-if="rule?.level === 'restricted'" class="note">
-        {{ recipe.name }} is restricted in {{ profile?.name ?? 'this profile' }}, with no way through until the session ends.
+        {{ recipe.name }} is restricted in {{ profile?.name ?? 'this profile' }}, with no way through until the session
+        ends.
       </p>
       <p v-else-if="rule?.level !== 'tamed'" class="note">
         {{ recipe.name }} isn't tamed in {{ profile?.name ?? 'this profile' }}.

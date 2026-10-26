@@ -1,0 +1,12 @@
+# Generated or vendored
+pnpm-lock.yaml
+**/dist/
+**/.output/
+**/.wxt/
+**/.nuxt/
+**/.nitro/
+**/.data/
+apps/desktop/src-tauri/
+
+# Prose is written by hand; Prettier would reflow its tables and lists.
+*.md

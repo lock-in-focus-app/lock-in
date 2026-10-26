@@ -1,10 +1,12 @@
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch, openPopup, stored, text, urls, visibility, wait, type TestBrowser } from './harness';
+import { launch, openPopup, stored, text, urls, visibility, wait, type TestBrowser, type Stored } from './harness';
 
 const switches = (popup: Page) =>
   popup.$$eval('[role=switch]', (els) =>
-    Object.fromEntries(els.map((el) => [el.querySelector('.label')!.textContent, el.getAttribute('aria-checked') === 'true'])),
+    Object.fromEntries(
+      els.map((el) => [el.querySelector('.label')!.textContent, el.getAttribute('aria-checked') === 'true']),
+    ),
   );
 
 const flip = (popup: Page, label: string) =>
@@ -14,7 +16,7 @@ const flip = (popup: Page, label: string) =>
     label,
   );
 
-const writing = (storage: Record<string, any>) => storage.profiles.find((p: { id: string }) => p.id === 'writing').sites[0];
+const writing = (storage: Stored) => storage.profiles!.find((p) => p.id === 'writing')!.sites[0]!;
 
 // One browser for the whole file; each test picks up where the last one left off.
 describe('popup toggles', () => {
@@ -44,7 +46,7 @@ describe('popup toggles', () => {
     it('edits the profile without touching the page', async () => {
       await flip(popup, 'Hide promoted posts');
       await wait(200);
-      expect(writing(await stored(popup)).toggles.hidePromoted).toBe(false);
+      expect(writing(await stored(popup)).toggles?.hidePromoted).toBe(false);
       expect(await page()).toEqual({ feed: true, ad: true, grayscale: false });
     });
 
@@ -76,14 +78,14 @@ describe('popup toggles', () => {
       expect(await text(popup)).toContain('Save to Writing');
 
       const storage = await stored(popup);
-      expect(writing(storage).toggles.grayscale).toBe(true);
-      expect(storage.activeSession.overrides).toEqual({ reddit: { grayscale: false } });
+      expect(writing(storage).toggles?.grayscale).toBe(true);
+      expect(storage.activeSession?.overrides).toEqual({ reddit: { grayscale: false } });
     });
 
     it('forgets the change when it is flipped back', async () => {
       await flip(popup, 'Grayscale');
       await wait(200);
-      expect((await stored(popup)).activeSession.overrides).toBeUndefined();
+      expect((await stored(popup)).activeSession?.overrides).toBeUndefined();
     });
 
     it('saves session changes to the profile', async () => {
@@ -93,8 +95,8 @@ describe('popup toggles', () => {
       await wait(200);
 
       const storage = await stored(popup);
-      expect(writing(storage).toggles.hideTrending).toBe(false);
-      expect(storage.activeSession.overrides).toBeUndefined();
+      expect(writing(storage).toggles?.hideTrending).toBe(false);
+      expect(storage.activeSession?.overrides).toBeUndefined();
       expect(await text(popup)).not.toContain('Changed for this session');
     });
   });

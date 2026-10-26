@@ -44,7 +44,7 @@ describe('redirect destinations', () => {
       await clickButton('Bored');
       await wait(200);
       const { gateVisits } = await stored(control);
-      expect(gateVisits.at(-1)).toMatchObject({ recipeId: 'reddit', destination: 'quote', why: 'bored' });
+      expect(gateVisits?.at(-1)).toMatchObject({ recipeId: 'reddit', destination: 'quote', why: 'bored' });
     });
 
     it('offers the unstick page when the answer is "stuck"', async () => {
@@ -52,7 +52,7 @@ describe('redirect destinations', () => {
       await wait(100);
       await clickButton('Stuck? Try a 2-minute unstick');
       expect(await pageText()).toContain('A 2-minute unstick');
-      expect((await stored(control)).gateVisits.at(-1).why).toBe('stuck');
+      expect((await stored(control)).gateVisits?.at(-1)?.why).toBe('stuck');
     });
 
     it('can still go through the gate', async () => {
@@ -80,7 +80,10 @@ describe('redirect destinations', () => {
 
   describe('your links', () => {
     beforeAll(() =>
-      visitWith({ destinations: ['link'], links: [{ id: 'l', title: 'My draft', url: 'https://docs.example.com/draft' }] }),
+      visitWith({
+        destinations: ['link'],
+        links: [{ id: 'l', title: 'My draft', url: 'https://docs.example.com/draft' }],
+      }),
     );
 
     it('offers one of the saved links', async () => {
@@ -101,7 +104,9 @@ describe('redirect destinations', () => {
     it('can make the wait longer with each try', async () => {
       const escalating = { mode: 'escalating', startSeconds: 20, stepSeconds: 20, maxSeconds: 50 } as const;
       await visitWith({ destinations: ['gate'], gate: { wait: escalating } });
-      const attempt = (await stored(control)).gateVisits.filter((v: { recipeId: string }) => v.recipeId === 'reddit').length;
+      const attempt = (await stored(control)).gateVisits!.filter(
+        (v: { recipeId: string }) => v.recipeId === 'reddit',
+      ).length;
       const expected = Math.min(50, 20 + 20 * (attempt - 1));
       expect(await continueLabel()).toMatch(new RegExp(`^Continue in (${expected}|${expected - 1})s$`));
 

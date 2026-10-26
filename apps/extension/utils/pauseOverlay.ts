@@ -109,7 +109,11 @@ export function showPauseOverlay(options: PauseOverlayOptions): () => void {
   return () => host.remove();
 }
 
-function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text = ''): HTMLElementTagNameMap[K] {
+function element<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className: string,
+  text = '',
+): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   if (className) el.className = className;
   el.textContent = text;

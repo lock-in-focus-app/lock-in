@@ -86,7 +86,10 @@ describe('built-in recipes', () => {
     });
 
     await pushPath('/explore/tabs/for-you');
-    expect(await visibility(tab, ['timeline', 'explore-tabs'])).toMatchObject({ timeline: false, 'explore-tabs': false });
+    expect(await visibility(tab, ['timeline', 'explore-tabs'])).toMatchObject({
+      timeline: false,
+      'explore-tabs': false,
+    });
 
     await pushPath('/someone/status/1');
     expect(await visibility(tab, ['timeline', 'explore-tabs'])).toMatchObject({ timeline: true, 'explore-tabs': true });

@@ -108,7 +108,12 @@ export async function setSiteLevel(profileId: string, recipeId: string, level: S
 }
 
 /** Adds page rules to a site, or changes the level of ones it has. Invalid paths are skipped. */
-export async function setPageLevel(profileId: string, recipeId: string, paths: string[], level: SiteLevel): Promise<void> {
+export async function setPageLevel(
+  profileId: string,
+  recipeId: string,
+  paths: string[],
+  level: SiteLevel,
+): Promise<void> {
   await profiles.setValue(withPathRules(await profiles.getValue(), profileId, recipeId, paths, level));
 }
 

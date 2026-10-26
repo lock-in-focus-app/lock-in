@@ -58,7 +58,9 @@ const nextStep = computed(() => answers.value[1]?.trim());
   <template v-else>
     <h1>Ready when you are</h1>
     <p class="body">
-      <template v-if="nextStep">Your next step: <strong>{{ nextStep }}</strong></template>
+      <template v-if="nextStep"
+        >Your next step: <strong>{{ nextStep }}</strong></template
+      >
       <template v-else>Pick the smallest piece of the task and start there.</template>
     </p>
     <button type="button" class="primary" @click="emit('back')">Back to focus</button>

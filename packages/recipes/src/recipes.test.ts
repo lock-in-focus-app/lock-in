@@ -15,7 +15,9 @@ describe.each(recipes)('$name recipe', (recipe) => {
 
   it('only matches the page path on <html>, where the extension keeps it', () => {
     const selectors = recipe.toggles.flatMap((toggle) => toggle.selectors ?? []);
-    const misplaced = selectors.filter((selector) => selector.includes(pagePathAttribute) && !selector.startsWith('html'));
+    const misplaced = selectors.filter(
+      (selector) => selector.includes(pagePathAttribute) && !selector.startsWith('html'),
+    );
     expect(misplaced).toEqual([]);
   });
 

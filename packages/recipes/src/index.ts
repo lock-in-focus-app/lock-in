@@ -9,4 +9,13 @@ import x from './x.json';
 import youtube from './youtube.json';
 
 /** Built-in site recipes. Each lives in its own JSON file so it's easy to edit and share. */
-export const recipes: SiteRecipe[] = [reddit, youtube, x, instagram, tiktok, facebook, linkedin, pinterest] as SiteRecipe[];
+export const recipes: SiteRecipe[] = [
+  reddit,
+  youtube,
+  x,
+  instagram,
+  tiktok,
+  facebook,
+  linkedin,
+  pinterest,
+] as SiteRecipe[];

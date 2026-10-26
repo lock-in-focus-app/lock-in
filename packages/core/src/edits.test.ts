@@ -147,10 +147,13 @@ describe('managing profiles', () => {
   });
 
   it('adds a rule for a site the profile did not mention', () => {
-    expect(withSiteLevel(profiles, 'focus', 'x', 'restricted')[0]!.sites.at(-1)).toEqual({ recipeId: 'x', level: 'restricted' });
+    expect(withSiteLevel(profiles, 'focus', 'x', 'restricted')[0]!.sites.at(-1)).toEqual({
+      recipeId: 'x',
+      level: 'restricted',
+    });
   });
 
-  it('resets starter profiles and keeps the user\'s own', () => {
+  it("resets starter profiles and keeps the user's own", () => {
     const starters: Profile[] = [
       { id: 'focus', name: 'Focus', sites: [] },
       { id: 'fresh', name: 'Fresh', sites: [] },
@@ -185,7 +188,11 @@ describe('page rules', () => {
 
   it('adds an Allowed rule for a site the profile did not mention', () => {
     const edited = withPathRules(profiles, 'focus', 'x', ['/explore'], 'redirected');
-    expect(edited[0]!.sites.at(-1)).toEqual({ recipeId: 'x', level: 'allowed', paths: [{ path: '/explore', level: 'redirected' }] });
+    expect(edited[0]!.sites.at(-1)).toEqual({
+      recipeId: 'x',
+      level: 'allowed',
+      paths: [{ path: '/explore', level: 'redirected' }],
+    });
   });
 
   it('removes a path, dropping the list once it is empty', () => {
@@ -197,6 +204,8 @@ describe('page rules', () => {
 
   it('keeps page rules when the site level changes', () => {
     const added = withPathRules(profiles, 'focus', 'example', ['/shorts'], 'redirected');
-    expect(paths(withSiteLevel(added, 'focus', 'example', 'allowed'))).toEqual([{ path: '/shorts', level: 'redirected' }]);
+    expect(paths(withSiteLevel(added, 'focus', 'example', 'allowed'))).toEqual([
+      { path: '/shorts', level: 'redirected' },
+    ]);
   });
 });

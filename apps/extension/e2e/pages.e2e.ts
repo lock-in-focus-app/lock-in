@@ -1,7 +1,18 @@
 import type { Profile } from '@lock-in/core';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { controlPage, launch, redirectPage, setStored, startSession, stored, urls, visibility, wait, type TestBrowser } from './harness';
+import {
+  controlPage,
+  launch,
+  redirectPage,
+  setStored,
+  startSession,
+  stored,
+  urls,
+  visibility,
+  wait,
+  type TestBrowser,
+} from './harness';
 
 const pagesProfile: Profile = {
   id: 'pages',
@@ -49,7 +60,9 @@ describe('page rules', () => {
     it('redirects a page inside a tamed site', async () => {
       await tab.goto(youtube('/shorts/abc'));
       expect(tab.url()).toBe(redirectPage(t, youtube('/shorts/abc')));
-      expect(await tab.$eval('main', (main) => (main as HTMLElement).innerText)).toContain('What did you come here for?');
+      expect(await tab.$eval('main', (main) => (main as HTMLElement).innerText)).toContain(
+        'What did you come here for?',
+      );
     });
 
     it('tames the rest of the site', async () => {
@@ -116,9 +129,12 @@ describe('page rules in settings', () => {
   const youtubeRow = 'li:has([aria-label="YouTube level"])';
   const redditRow = 'li:has([aria-label="Reddit level"])';
   const xRow = 'li:has([aria-label="X level"])';
-  const buttonsIn = (row: string) => page.$$eval(`${row} button`, (buttons) => buttons.map((b) => b.textContent!.trim()));
+  const buttonsIn = (row: string) =>
+    page.$$eval(`${row} button`, (buttons) => buttons.map((b) => b.textContent!.trim()));
   const writing = async (recipeId: string) =>
-    ((await stored(page)).profiles as Profile[]).find((p) => p.id === 'writing')!.sites.find((s) => s.recipeId === recipeId);
+    ((await stored(page)).profiles as Profile[])
+      .find((p) => p.id === 'writing')!
+      .sites.find((s) => s.recipeId === recipeId);
   const buttonIn = (row: string, label: string) =>
     page.$$eval(
       `${row} button`,
@@ -137,9 +153,9 @@ describe('page rules in settings', () => {
 
   it("shows a site's page rules with their levels", async () => {
     expect(await page.$eval(`${youtubeRow} .rules code`, (code) => code.textContent)).toBe('/shorts');
-    expect(await page.$eval('[aria-label="YouTube /shorts level"] [aria-checked=true]', (b) => b.textContent!.trim())).toBe(
-      'Redirected',
-    );
+    expect(
+      await page.$eval('[aria-label="YouTube /shorts level"] [aria-checked=true]', (b) => b.textContent!.trim()),
+    ).toBe('Redirected');
   });
 
   it('adds suggested pages in one click', async () => {
@@ -183,7 +199,9 @@ describe('page rules in settings', () => {
 
   it('changes and removes page rules', async () => {
     await page.$eval('[aria-label="YouTube /feed/trending level"]', (group) =>
-      ([...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Restricted') as HTMLElement).click(),
+      (
+        [...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Restricted') as HTMLElement
+      ).click(),
     );
     await wait(150);
     expect((await writing('youtube'))?.paths?.[1]).toEqual({ path: '/feed/trending', level: 'restricted' });

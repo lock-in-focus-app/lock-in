@@ -106,7 +106,11 @@ async function reset() {
           >
             Move later
           </button>
-          <button type="button" class="text-button" @click="duplicateProfile(profile.id).then((id) => select(id, true))">
+          <button
+            type="button"
+            class="text-button"
+            @click="duplicateProfile(profile.id).then((id) => select(id, true))"
+          >
             Duplicate
           </button>
           <button
@@ -139,7 +143,9 @@ async function reset() {
     <footer>
       <template v-if="!confirmingReset">
         <button type="button" class="text-button reset" @click="confirmingReset = true">Reset starter profiles</button>
-        <p class="help small">Puts Writing, Deep Work and Wind Down back the way they shipped. Your own profiles are kept.</p>
+        <p class="help small">
+          Puts Writing, Deep Work and Wind Down back the way they shipped. Your own profiles are kept.
+        </p>
       </template>
       <div v-else class="actions confirm" role="alert">
         <span>Reset the starter profiles? Changes you made to them will be lost.</span>
@@ -196,7 +202,9 @@ h1 {
   background: none;
   color: var(--dim);
   white-space: nowrap;
-  transition: background 150ms, color 150ms;
+  transition:
+    background 150ms,
+    color 150ms;
 }
 
 .tabs button[aria-selected='true'] {

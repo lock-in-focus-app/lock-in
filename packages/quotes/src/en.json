@@ -2,13 +2,22 @@
   { "text": "It is not that we have a short time to live, but that we waste a lot of it.", "author": "Seneca" },
   { "text": "While we are postponing, life speeds by.", "author": "Seneca" },
   { "text": "Hold every hour in your grasp.", "author": "Seneca" },
-  { "text": "The impediment to action advances action. What stands in the way becomes the way.", "author": "Marcus Aurelius" },
+  {
+    "text": "The impediment to action advances action. What stands in the way becomes the way.",
+    "author": "Marcus Aurelius"
+  },
   { "text": "Waste no more time arguing what a good man should be. Be one.", "author": "Marcus Aurelius" },
   { "text": "Our life is frittered away by detail. Simplify, simplify.", "author": "Henry David Thoreau" },
-  { "text": "It is not enough to be busy; so are the ants. The question is: What are we busy about?", "author": "Henry David Thoreau" },
+  {
+    "text": "It is not enough to be busy; so are the ants. The question is: What are we busy about?",
+    "author": "Henry David Thoreau"
+  },
   { "text": "Nothing is so fatiguing as the eternal hanging on of an uncompleted task.", "author": "William James" },
   { "text": "Lost time is never found again.", "author": "Benjamin Franklin" },
-  { "text": "Dost thou love life? Then do not squander time, for that's the stuff life is made of.", "author": "Benjamin Franklin" },
+  {
+    "text": "Dost thou love life? Then do not squander time, for that's the stuff life is made of.",
+    "author": "Benjamin Franklin"
+  },
   { "text": "You may delay, but time will not.", "author": "Benjamin Franklin" },
   { "text": "Do the thing, and you shall have the power.", "author": "Ralph Waldo Emerson" },
   { "text": "Nothing can bring you peace but yourself.", "author": "Ralph Waldo Emerson" },

@@ -1,4 +1,12 @@
-import { checkOpenPage, cssForPage, findRecipe, pagePathAttribute, siteAccess, type Profile, type Session } from '@lock-in/core';
+import {
+  checkOpenPage,
+  cssForPage,
+  findRecipe,
+  pagePathAttribute,
+  siteAccess,
+  type Profile,
+  type Session,
+} from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 
 export default defineContentScript({

@@ -4,7 +4,10 @@ import { defaultRedirectSettings } from './settings';
 import type { RedirectSettings } from './types';
 
 // A "random" source that returns each value in turn.
-const sequence = (...values: number[]) => () => values.shift() ?? 0;
+const sequence =
+  (...values: number[]) =>
+  () =>
+    values.shift() ?? 0;
 
 describe('pickDestination', () => {
   const settings = (patch: Partial<RedirectSettings>): RedirectSettings => ({ ...defaultRedirectSettings, ...patch });
@@ -28,7 +31,7 @@ describe('pickQuote', () => {
   const bundled = [{ text: 'A' }, { text: 'B' }];
   const own = [{ id: 'o', text: 'Mine' }];
 
-  it('weights the user\'s own quotes three times', () => {
+  it("weights the user's own quotes three times", () => {
     // Two bundled quotes plus three copies of the user's one.
     expect(pickQuote(bundled, own, sequence(0))?.text).toBe('A');
     expect(pickQuote(bundled, own, sequence(0.39))?.text).toBe('B');

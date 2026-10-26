@@ -1,7 +1,17 @@
 import { starterProfiles, type Profile } from '@lock-in/core';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { controlPage, launch, redirectPage, setStored, startSession, stored, urls, wait, type TestBrowser } from './harness';
+import {
+  controlPage,
+  launch,
+  redirectPage,
+  setStored,
+  startSession,
+  stored,
+  urls,
+  wait,
+  type TestBrowser,
+} from './harness';
 
 describe('restricted sites', () => {
   let t: TestBrowser;
@@ -16,7 +26,9 @@ describe('restricted sites', () => {
     const list: Profile[] = (await stored(control)).profiles ?? starterProfiles;
     await setStored(control, {
       profiles: list.map((p) =>
-        p.id === 'deep-work' ? { ...p, sites: p.sites.map((s) => (s.recipeId === 'reddit' ? { ...s, level: 'restricted' } : s)) } : p,
+        p.id === 'deep-work'
+          ? { ...p, sites: p.sites.map((s) => (s.recipeId === 'reddit' ? { ...s, level: 'restricted' } : s)) }
+          : p,
       ),
     });
     tab = await t.browser.newPage();
@@ -28,7 +40,10 @@ describe('restricted sites', () => {
   it('covers open tabs with no way through', async () => {
     const overlay = await tab.evaluate(() => {
       const root = document.querySelector('lock-in-pause')?.shadowRoot;
-      return { text: root?.textContent, buttons: [...(root?.querySelectorAll('button') ?? [])].map((b) => b.textContent) };
+      return {
+        text: root?.textContent,
+        buttons: [...(root?.querySelectorAll('button') ?? [])].map((b) => b.textContent),
+      };
     });
     expect(overlay.text).toContain('Reddit is off for now');
     expect(overlay.buttons).toEqual(['Close tab']);
@@ -43,7 +58,7 @@ describe('restricted sites', () => {
     expect(text).toContain('First try at Reddit today');
     expect(text).not.toContain('Still need Reddit?');
     expect(await tab.$('button.continue')).toBeNull();
-    expect((await stored(control)).gateVisits.at(-1)).toMatchObject({ recipeId: 'reddit', destination: 'blocked' });
+    expect((await stored(control)).gateVisits?.at(-1)).toMatchObject({ recipeId: 'reddit', destination: 'blocked' });
   });
 
   it('ignores passes', async () => {

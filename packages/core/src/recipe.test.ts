@@ -95,7 +95,12 @@ describe('cssForPage', () => {
   });
 
   it('tames a matching site in a tamed profile', () => {
-    const css = cssForPage({ url: page, session, profiles: [profileWith('tamed', { grayscale: true })], recipes: [recipe] });
+    const css = cssForPage({
+      url: page,
+      session,
+      profiles: [profileWith('tamed', { grayscale: true })],
+      recipes: [recipe],
+    });
     expect(css).toContain('#feed');
     expect(css).toContain('grayscale(1)');
   });
@@ -109,7 +114,9 @@ describe('cssForPage', () => {
 
   it('leaves allowed sites and unmatched pages alone', () => {
     expect(cssForPage({ url: page, session, profiles: [profileWith('allowed')], recipes: [recipe] })).toBe('');
-    expect(cssForPage({ url: 'https://other.org/', session, profiles: [profileWith('tamed')], recipes: [recipe] })).toBe('');
+    expect(
+      cssForPage({ url: 'https://other.org/', session, profiles: [profileWith('tamed')], recipes: [recipe] }),
+    ).toBe('');
   });
 
   it('returns nothing when the session profile no longer exists', () => {

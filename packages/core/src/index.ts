@@ -34,7 +34,21 @@ export {
   type OpenPageCheck,
   type RedirectRule,
 } from './redirect';
-export { findPathRule, levelFor, maxPathLength, maxPathRules, normalizePath, pathMatches, pathRegexSource } from './paths';
-export { defaultRedirectSettings, defaultWaits, redirectDestinations, redirectSettingsFor, waitSecondsFor } from './settings';
+export {
+  findPathRule,
+  levelFor,
+  maxPathLength,
+  maxPathRules,
+  normalizePath,
+  pathMatches,
+  pathRegexSource,
+} from './paths';
+export {
+  defaultRedirectSettings,
+  defaultWaits,
+  redirectDestinations,
+  redirectSettingsFor,
+  waitSecondsFor,
+} from './settings';
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';

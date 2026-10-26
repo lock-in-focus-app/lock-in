@@ -25,9 +25,7 @@ describe('redirectSettingsFor', () => {
   });
 
   it('clamps numbers into range', () => {
-    const settings = redirectSettingsFor(
-      profile({ gate: { passMinutes: 999, wait: { mode: 'fixed', seconds: -5 } } }),
-    );
+    const settings = redirectSettingsFor(profile({ gate: { passMinutes: 999, wait: { mode: 'fixed', seconds: -5 } } }));
     expect(settings.gate.passMinutes).toBe(120);
     expect(settings.gate.wait).toEqual({ mode: 'fixed', seconds: 0 });
   });

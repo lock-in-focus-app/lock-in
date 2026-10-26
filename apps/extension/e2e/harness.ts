@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { starterProfiles, type Profile } from '@lock-in/core';
+import { starterProfiles, type GateVisit, type OwnQuote, type Profile, type Session } from '@lock-in/core';
 import puppeteer, { type Browser, type Extension, type Page } from 'puppeteer';
 
 // Browser tests load the real extension build into Chrome for Testing and point it at
@@ -89,8 +89,16 @@ export async function openPopup({ browser, extension }: TestBrowser, tab: Page):
   return popup;
 }
 
+/** What the extension keeps in local storage. Keys are missing until something is saved. */
+export interface Stored {
+  activeSession?: Session | null;
+  profiles?: Profile[];
+  gateVisits?: GateVisit[];
+  ownQuotes?: OwnQuote[];
+}
+
 /** Everything in the extension's local storage, read from one of its pages. */
-export function stored(extensionPage: Page): Promise<Record<string, any>> {
+export function stored(extensionPage: Page): Promise<Stored> {
   return extensionPage.evaluate(() =>
     (globalThis as unknown as { chrome: typeof browser }).chrome.storage.local.get(null),
   );
@@ -114,7 +122,11 @@ export async function controlPage({ browser, extensionId }: TestBrowser): Promis
 }
 
 /** Replaces a profile's redirect settings. */
-export async function setProfileRedirect(extensionPage: Page, profileId: string, redirect: Profile['redirect']): Promise<void> {
+export async function setProfileRedirect(
+  extensionPage: Page,
+  profileId: string,
+  redirect: Profile['redirect'],
+): Promise<void> {
   const list: Profile[] = (await stored(extensionPage)).profiles ?? starterProfiles;
   await setStored(extensionPage, { profiles: list.map((p) => (p.id === profileId ? { ...p, redirect } : p)) });
 }

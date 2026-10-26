@@ -8,7 +8,11 @@ describe('profile editor', () => {
 
   const tabs = () => page.$$eval('[role=tab]', (els) => els.map((el) => el.textContent!.trim()));
   const selectTab = (name: string) =>
-    page.$$eval('[role=tab]', (els, wanted) => (els.find((el) => el.textContent!.trim() === wanted) as HTMLElement).click(), name);
+    page.$$eval(
+      '[role=tab]',
+      (els, wanted) => (els.find((el) => el.textContent!.trim() === wanted) as HTMLElement).click(),
+      name,
+    );
   const clickButton = (label: string) =>
     page.$$eval(
       'button',
@@ -16,14 +20,27 @@ describe('profile editor', () => {
       label,
     );
   const buttonDisabled = (label: string) =>
-    page.$$eval('button', (buttons, wanted) => (buttons.find((b) => b.textContent!.trim() === wanted) as HTMLButtonElement).disabled, label);
+    page.$$eval(
+      'button',
+      (buttons, wanted) => (buttons.find((b) => b.textContent!.trim() === wanted) as HTMLButtonElement).disabled,
+      label,
+    );
   const setLevel = (site: string, level: string) =>
-    page.$eval(`[role=radiogroup][aria-label="${site} level"]`, (group, wanted) => {
-      ([...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === wanted) as HTMLElement).click();
-    }, level);
+    page.$eval(
+      `[role=radiogroup][aria-label="${site} level"]`,
+      (group, wanted) => {
+        ([...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === wanted) as HTMLElement).click();
+      },
+      level,
+    );
   const levelOf = (site: string) =>
     page.$eval(`[role=radiogroup][aria-label="${site} level"] [aria-checked=true]`, (b) => b.textContent!.trim());
-  const savedProfiles = async () => (await stored(page)).profiles as { id: string; name: string; sites: { recipeId: string; level: string; toggles?: Record<string, boolean> }[] }[];
+  const savedProfiles = async () =>
+    (await stored(page)).profiles as {
+      id: string;
+      name: string;
+      sites: { recipeId: string; level: string; toggles?: Record<string, boolean> }[];
+    }[];
   const rename = async (name: string) => {
     await page.click('input[aria-label="Profile name"]', { count: 3 });
     await page.type('input[aria-label="Profile name"]', name);
@@ -55,12 +72,18 @@ describe('profile editor', () => {
   it('changes site levels, keeping toggles for later', async () => {
     await setLevel('Reddit', 'Restricted');
     await wait(150);
-    expect((await savedProfiles())[0]!.sites[0]).toEqual({ recipeId: 'reddit', level: 'restricted', toggles: { grayscale: true } });
+    expect((await savedProfiles())[0]!.sites[0]).toEqual({
+      recipeId: 'reddit',
+      level: 'restricted',
+      toggles: { grayscale: true },
+    });
     expect(await page.$('li:has([aria-label="Reddit level"]) .toggles')).toBeNull();
 
     await setLevel('Reddit', 'Tamed');
     await wait(150);
-    expect(await page.$$eval('li:has([aria-label="Reddit level"]) .toggles [role=switch]', (els) => els.length)).toBe(5);
+    expect(await page.$$eval('li:has([aria-label="Reddit level"]) .toggles [role=switch]', (els) => els.length)).toBe(
+      5,
+    );
   });
 
   it('creates a profile and selects its name for editing', async () => {
@@ -109,7 +132,9 @@ describe('profile editor', () => {
     await wait(150);
     expect(await buttonDisabled('Delete')).toBe(true);
     expect(await page.$eval('main', (m) => (m as HTMLElement).innerText)).toContain('Deep Work is running now');
-    await control.evaluate(() => (globalThis as unknown as { chrome: typeof browser }).chrome.storage.local.set({ activeSession: null }));
+    await control.evaluate(() =>
+      (globalThis as unknown as { chrome: typeof browser }).chrome.storage.local.set({ activeSession: null }),
+    );
     await control.close();
   });
 
@@ -120,7 +145,11 @@ describe('profile editor', () => {
     await page.click('.confirm-reset');
     await wait(200);
     expect(await tabs()).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading']);
-    expect((await savedProfiles())[0]!.sites[0]).toEqual({ recipeId: 'reddit', level: 'tamed', toggles: { grayscale: true } });
+    expect((await savedProfiles())[0]!.sites[0]).toEqual({
+      recipeId: 'reddit',
+      level: 'tamed',
+      toggles: { grayscale: true },
+    });
   });
 
   it('changes levels from the popup between sessions', async () => {
@@ -128,7 +157,9 @@ describe('profile editor', () => {
     await reddit.goto(urls.reddit);
     const popup = await openPopup(t, reddit);
     await popup.$eval('[role=radiogroup][aria-label="Reddit level"]', (group) =>
-      ([...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Redirected') as HTMLElement).click(),
+      (
+        [...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Redirected') as HTMLElement
+      ).click(),
     );
     await wait(150);
     expect((await savedProfiles())[0]!.sites[0]!.level).toBe('redirected');

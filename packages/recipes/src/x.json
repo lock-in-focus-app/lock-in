@@ -2,9 +2,7 @@
   "id": "x",
   "name": "X",
   "matches": ["*://*.x.com/*", "*://*.twitter.com/*"],
-  "pages": [
-    { "label": "Explore", "paths": ["/explore"] }
-  ],
+  "pages": [{ "label": "Explore", "paths": ["/explore"] }],
   "source": "Timeline, sidebar and promoted-post selectors adapted from Control Panel for Twitter by Jonny Buchanan (MIT), https://github.com/insin/control-panel-for-twitter, News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator, and UBlock-Filters-for-Social-Media by Bevíz László (MIT), https://github.com/BevizLaszlo/UBlock-Filters-for-Social-Media",
   "toggles": [
     {
@@ -43,9 +41,7 @@
     {
       "id": "hidePromoted",
       "label": "Hide promoted posts",
-      "selectors": [
-        "[data-testid=\"cellInnerDiv\"]:has([data-testid=\"placementTracking\"] [data-testid=\"tweet\"])"
-      ],
+      "selectors": ["[data-testid=\"cellInnerDiv\"]:has([data-testid=\"placementTracking\"] [data-testid=\"tweet\"])"],
       "default": true
     },
     {

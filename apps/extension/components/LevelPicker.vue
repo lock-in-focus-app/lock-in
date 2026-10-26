@@ -17,7 +17,11 @@ const levels = computed(() => [
     label: 'Tamed',
     detail: props.canTame ? 'The distracting parts are hidden.' : `Nothing to hide on ${props.siteName} yet.`,
   },
-  { id: 'redirected' as const, label: 'Redirected', detail: 'Sent to a Lock In page you can get through for a few minutes.' },
+  {
+    id: 'redirected' as const,
+    label: 'Redirected',
+    detail: 'Sent to a Lock In page you can get through for a few minutes.',
+  },
   { id: 'restricted' as const, label: 'Restricted', detail: 'Blocked, with no way through until the session ends.' },
 ]);
 const index = computed(() => levels.value.findIndex((l) => l.id === level.value));

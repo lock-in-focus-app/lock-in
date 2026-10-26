@@ -4,8 +4,17 @@
   <head>
     <title>Fake X</title>
     <style>
-      body { font: 16px sans-serif; background: #fff; }
-      body * { display: block; margin: 8px; padding: 12px; background: #1d9bf0; color: #fff; }
+      body {
+        font: 16px sans-serif;
+        background: #fff;
+      }
+      body * {
+        display: block;
+        margin: 8px;
+        padding: 12px;
+        background: #1d9bf0;
+        color: #fff;
+      }
     </style>
   </head>
   <body>
@@ -19,7 +28,9 @@
               <div aria-label="Timeline" id="timeline">
                 <div data-testid="cellInnerDiv"><article data-testid="tweet" id="post">A post</article></div>
                 <div data-testid="cellInnerDiv" id="promoted">
-                  <div data-testid="placementTracking"><article data-testid="tweet">Promoted post (hidden)</article></div>
+                  <div data-testid="placementTracking">
+                    <article data-testid="tweet">Promoted post (hidden)</article>
+                  </div>
                 </div>
               </div>
             </section>

@@ -31,7 +31,9 @@ const limits = {
  */
 export function redirectSettingsFor(profile: Profile | undefined): RedirectSettings {
   const saved = profile?.redirect;
-  const destinations = redirectDestinations.filter((d) => (saved?.destinations ?? defaultRedirectSettings.destinations).includes(d));
+  const destinations = redirectDestinations.filter((d) =>
+    (saved?.destinations ?? defaultRedirectSettings.destinations).includes(d),
+  );
   return {
     destinations: destinations.length > 0 ? destinations : ['gate'],
     gate: resolveGate(saved?.gate),
@@ -73,5 +75,7 @@ function resolveWait(saved: GateWait | undefined): GateWait {
 }
 
 function clamp(value: number | undefined, [min, max]: readonly [number, number], fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, Math.round(value))) : fallback;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, Math.round(value)))
+    : fallback;
 }

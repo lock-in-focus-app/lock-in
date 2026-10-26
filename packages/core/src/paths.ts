@@ -51,7 +51,10 @@ export function pathMatches(path: string, pathname: string): boolean {
 export function findPathRule(rules: readonly PathRule[] | undefined, pathname: string): PathRule | undefined {
   return (rules ?? [])
     .filter((rule) => pathMatches(rule.path, pathname))
-    .reduce<PathRule | undefined>((best, rule) => (!best || rule.path.length > best.path.length ? rule : best), undefined);
+    .reduce<PathRule | undefined>(
+      (best, rule) => (!best || rule.path.length > best.path.length ? rule : best),
+      undefined,
+    );
 }
 
 /** How a profile treats one page of a site: the page rule that covers it, else the site's level. */

@@ -21,11 +21,19 @@ async function addQuote() {
         <span class="name">{{ quote.text }}</span>
         <span v-if="quote.author" class="detail">{{ quote.author }}</span>
       </span>
-      <button type="button" class="text-button" aria-label="Remove quote" @click="removeOwnQuote(quote.id)">Remove</button>
+      <button type="button" class="text-button" aria-label="Remove quote" @click="removeOwnQuote(quote.id)">
+        Remove
+      </button>
     </li>
   </ul>
   <form class="add quotes" @submit.prevent="addQuote">
-    <input v-model="quoteText" class="wide" aria-label="Quote" placeholder="A quote that gets you back to work" maxlength="280" />
+    <input
+      v-model="quoteText"
+      class="wide"
+      aria-label="Quote"
+      placeholder="A quote that gets you back to work"
+      maxlength="280"
+    />
     <input v-model="quoteAuthor" aria-label="Author" placeholder="Author (optional)" />
     <button type="submit" :disabled="!quoteText.trim()">Add quote</button>
   </form>
