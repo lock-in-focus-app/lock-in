@@ -16,6 +16,8 @@ Or build and load it by hand:
 1. `pnpm --filter @lock-in/extension build`
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick `apps/extension/.output/chrome-mv3`.
 
+The icon is drawn in `icon/icon.svg` (48px and up) and `icon/icon-small.svg` (the 16 and 32px toolbar sizes). After changing either, run `pnpm --filter @lock-in/extension icons` to render the PNGs in `public/icon/`.
+
 ## Test
 
 ```bash

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Lock In's star on a clear night sky. Used for 48px and up; 16px of padding per side
+       follows the Chrome Web Store's guidance for 128px icons. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2342" />
+      <stop offset="1" stop-color="#0b1020" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f5c86b" stop-opacity="0.45" />
+      <stop offset="1" stop-color="#f5c86b" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect x="16" y="16" width="96" height="96" rx="22" fill="url(#sky)" />
+  <circle cx="64" cy="64" r="34" fill="url(#glow)" />
+  <circle cx="36" cy="38" r="1.6" fill="#f3f0e6" opacity="0.7" />
+  <circle cx="92" cy="34" r="1.2" fill="#f3f0e6" opacity="0.5" />
+  <circle cx="90" cy="92" r="1.4" fill="#f3f0e6" opacity="0.6" />
+  <circle cx="40" cy="90" r="1" fill="#f3f0e6" opacity="0.4" />
+  <path d="M64 30 Q67.5 60.5 98 64 Q67.5 67.5 64 98 Q60.5 67.5 30 64 Q60.5 60.5 64 30 Z" fill="#f5c86b" />
+</svg>
