@@ -28,13 +28,14 @@ Existing focus apps each get part of the way there:
 
 ## 1. Core idea: "Tame, don't just block"
 
-Each site has one of three levels, set per session profile:
+Each site has one of four levels, set per session profile:
 
 | Level | What happens | Example |
 |---|---|---|
 | **Allowed** | Normal | Google Docs, Wikipedia |
 | **Tamed** | The site works, but feeds, recommendations and Shorts are hidden; can be grayscale | Reddit threads and search work, the home feed is gone |
 | **Redirected** | Sent to a redirect destination (§3) | x.com → intention gate |
+| **Restricted** | Blocked outright: no countdown, no pass, no way through until the session ends | Reddit during an exam-prep session |
 
 Paths can override their site (e.g. `reddit.com/r/writing` allowed, `/r/all` redirected).
 

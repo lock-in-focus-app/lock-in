@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { findRule, resolveToggles, type Profile, type Session, type SiteRecipe } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
+import LevelPicker from './LevelPicker.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
 
 const props = defineProps<{
@@ -52,32 +53,44 @@ function set(toggleId: string, value: boolean) {
       </select>
     </label>
 
-    <p v-if="rule?.level === 'redirected'" class="note">
-      {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile' }}<template v-if="passMinutesLeft">
-        · pass ends in {{ passMinutesLeft }} min</template>.
-    </p>
+    <!-- Levels can be changed between sessions. Mid-session loosening waits for strictness levels. -->
+    <LevelPicker
+      v-if="!session && profile"
+      class="levels"
+      :site-name="recipe.name"
+      :can-tame="recipe.toggles.length > 0"
+      :model-value="rule?.level ?? 'allowed'"
+      @update:model-value="setSiteLevel(profile.id, recipe.id, $event)"
+    />
 
-    <p v-else-if="rule?.level !== 'tamed'" class="note">
-      {{ recipe.name }} isn't tamed in {{ profile?.name ?? 'this profile' }}.
-    </p>
-
-    <template v-else>
-      <ToggleSwitch
-        v-for="toggle in recipe.toggles"
-        :key="toggle.id"
-        :label="toggle.label"
-        :model-value="values[toggle.id] ?? false"
-        @update:model-value="set(toggle.id, $event)"
-      />
-
-      <p v-if="session && hasSessionChanges" class="footer">
-        <span>Changed for this session</span>
-        <button type="button" class="save" @click="saveSessionChanges(recipe.id)">Save to {{ profile?.name }}</button>
+    <template v-if="session">
+      <p v-if="rule?.level === 'redirected'" class="note">
+        {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile' }}<template v-if="passMinutesLeft">
+          · pass ends in {{ passMinutesLeft }} min</template>.
       </p>
-      <p v-else-if="!session" class="footer">
-        <span>Applies whenever {{ profile?.name }} is running</span>
+      <p v-else-if="rule?.level === 'restricted'" class="note">
+        {{ recipe.name }} is restricted in {{ profile?.name ?? 'this profile' }}, with no way through until the session ends.
+      </p>
+      <p v-else-if="rule?.level !== 'tamed'" class="note">
+        {{ recipe.name }} isn't tamed in {{ profile?.name ?? 'this profile' }}.
       </p>
     </template>
+
+    <ToggleSwitch
+      v-for="toggle in rule?.level === 'tamed' ? recipe.toggles : []"
+      :key="toggle.id"
+      :label="toggle.label"
+      :model-value="values[toggle.id] ?? false"
+      @update:model-value="set(toggle.id, $event)"
+    />
+
+    <p v-if="session && hasSessionChanges" class="footer">
+      <span>Changed for this session</span>
+      <button type="button" class="save" @click="saveSessionChanges(recipe.id)">Save to {{ profile?.name }}</button>
+    </p>
+    <p v-else-if="!session" class="footer">
+      <span>Applies whenever {{ profile?.name }} is running</span>
+    </p>
   </section>
 </template>
 
@@ -110,6 +123,11 @@ select {
   border: 1px solid var(--sky-hover);
   border-radius: 6px;
   padding: 2px 6px;
+}
+
+.levels {
+  margin: 6px 0 4px;
+  background: var(--sky-raised);
 }
 
 .note {

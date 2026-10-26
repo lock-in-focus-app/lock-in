@@ -1,6 +1,14 @@
 import {
   findRule,
   redirectSettingsFor,
+  starterProfiles,
+  withNewProfile,
+  withProfileDuplicated,
+  withProfileMoved,
+  withProfileRemoved,
+  withProfileRenamed,
+  withSiteLevel,
+  withStarterProfilesReset,
   withGateVisit,
   withGateVisitContinued,
   withGateVisitWhy,
@@ -11,6 +19,7 @@ import {
   withSessionToggle,
   type RedirectDestination,
   type RedirectSettings,
+  type SiteLevel,
   type SiteRecipe,
   type WhyReason,
 } from '@lock-in/core';
@@ -62,13 +71,52 @@ export async function saveSessionChanges(recipeId: string): Promise<void> {
   ]);
 }
 
+/** Adds an empty profile and returns its id. */
+export async function createProfile(name = 'New profile'): Promise<string> {
+  const id = crypto.randomUUID();
+  await profiles.setValue(withNewProfile(await profiles.getValue(), id, name));
+  return id;
+}
+
+/** Copies a profile and returns the copy's id. */
+export async function duplicateProfile(profileId: string): Promise<string> {
+  const id = crypto.randomUUID();
+  await profiles.setValue(withProfileDuplicated(await profiles.getValue(), profileId, id));
+  return id;
+}
+
+/** Deletes a profile, unless it's the one the running session uses. */
+export async function deleteProfile(profileId: string): Promise<void> {
+  if ((await activeSession.getValue())?.profileId === profileId) return;
+  await profiles.setValue(withProfileRemoved(await profiles.getValue(), profileId));
+}
+
+export async function renameProfile(profileId: string, name: string): Promise<void> {
+  await profiles.setValue(withProfileRenamed(await profiles.getValue(), profileId, name));
+}
+
+/** Moves a profile earlier (-1) or later (1) in the list. */
+export async function moveProfile(profileId: string, offset: number): Promise<void> {
+  await profiles.setValue(withProfileMoved(await profiles.getValue(), profileId, offset));
+}
+
+/** Sets whether a profile allows, tames, redirects or restricts a site. */
+export async function setSiteLevel(profileId: string, recipeId: string, level: SiteLevel): Promise<void> {
+  await profiles.setValue(withSiteLevel(await profiles.getValue(), profileId, recipeId, level));
+}
+
+/** Restores the starter profiles to how they shipped. The user's own profiles are kept. */
+export async function resetStarterProfiles(): Promise<void> {
+  await profiles.setValue(withStarterProfilesReset(await profiles.getValue(), starterProfiles));
+}
+
 /** Changes how a profile handles redirected sites. */
 export async function setRedirectSettings(profileId: string, settings: RedirectSettings): Promise<void> {
   await profiles.setValue(withRedirectSettings(await profiles.getValue(), profileId, settings));
 }
 
 /** Records a trip to a redirected site and returns its id. */
-export async function recordGateVisit(recipeId: string, destination: RedirectDestination): Promise<string> {
+export async function recordGateVisit(recipeId: string, destination: RedirectDestination | 'blocked'): Promise<string> {
   const visit = { id: crypto.randomUUID(), recipeId, at: Date.now(), destination };
   await gateVisits.setValue(withGateVisit(await gateVisits.getValue(), visit));
   return visit.id;

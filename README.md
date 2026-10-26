@@ -6,13 +6,14 @@ A free, open-source focus app. Social media is light pollution: when you lock in
 
 ## Tame, don't just block
 
-Most blockers treat a site as all or nothing. Lock In gives every site one of three levels, chosen per session profile:
+Most blockers treat a site as all or nothing. Lock In gives every site one of four levels, chosen per session profile:
 
 | Level | What happens |
 |---|---|
 | **Allowed** | Nothing changes. |
 | **Tamed** | The site still works, but the distracting parts are hidden: feeds, trending, suggested and promoted posts. Optionally grayscale. |
 | **Redirected** | Visits go to a Lock In page instead: an intention gate that asks what you came for, a quote, one of your own links, or a 2-minute unstick. You can still get through for a few minutes if you need to. |
+| **Restricted** | Blocked, with no way through until the session ends. |
 
 What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. You can flip toggles from the extension popup for one session or save them to a profile.
 

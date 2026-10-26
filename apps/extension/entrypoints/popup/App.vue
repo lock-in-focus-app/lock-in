@@ -32,12 +32,14 @@ const elapsed = computed(() => {
 
 function describe(profile: Profile): string {
   return profile.sites
+    .filter((site) => site.level !== 'allowed')
     .map((site) => {
       const recipe = recipes.find((r) => r.id === site.recipeId);
       const name = recipe?.name ?? site.recipeId;
-      return site.toggles?.grayscale ? `${name} ${site.level} · grayscale` : `${name} ${site.level}`;
+      if (site.level === 'tamed' && site.toggles?.grayscale) return `${name} tamed · grayscale`;
+      return `${name} ${site.level}`;
     })
-    .join(', ');
+    .join(', ') || 'Everything allowed';
 }
 
 function openSettings() {

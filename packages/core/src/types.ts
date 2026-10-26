@@ -1,5 +1,8 @@
-/** How a site behaves during a session. */
-export type SiteLevel = 'allowed' | 'tamed' | 'redirected';
+/**
+ * How a site behaves during a session: left alone, tamed with its recipe, redirected
+ * to a page you can get through with a pass, or restricted with no way through.
+ */
+export type SiteLevel = 'allowed' | 'tamed' | 'redirected' | 'restricted';
 
 /** A single on/off switch in a site recipe, e.g. "Hide home feed". */
 export interface RecipeToggle {
@@ -115,8 +118,8 @@ export interface GateVisit {
   recipeId: string;
   /** Epoch milliseconds. */
   at: number;
-  /** The page the visit was sent to. */
-  destination?: RedirectDestination;
+  /** The page the visit was sent to. "blocked" is the page for restricted sites. */
+  destination?: RedirectDestination | 'blocked';
   /** The user's one-tap answer to "why are you here?". */
   why?: WhyReason;
   /** What the user said they came for, if they typed anything. */

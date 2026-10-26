@@ -1,21 +1,12 @@
 <script lang="ts" setup>
-import {
-  defaultWaits,
-  parseHttpUrl,
-  redirectDestinations,
-  redirectSettingsFor,
-  type GateSettings,
-  type GateWait,
-  type PassExpiry,
-  type RedirectDestination,
-  type RedirectSettings,
-} from '@lock-in/core';
-import { computed, ref, watch } from 'vue';
-import ToggleSwitch from '@/components/ToggleSwitch.vue';
-import NumberField from './components/NumberField.vue';
+import { maxProfileNameLength } from '@lock-in/core';
+import { computed, nextTick, ref, watch } from 'vue';
+import QuotesSection from './components/QuotesSection.vue';
+import RedirectSection from './components/RedirectSection.vue';
+import SitesSection from './components/SitesSection.vue';
 
 const profileList = useStorageItem(profiles);
-const quoteList = useStorageItem(ownQuotes);
+const session = useStorageItem(activeSession);
 
 const selectedId = ref<string>();
 watch(
@@ -27,69 +18,39 @@ watch(
 );
 
 const profile = computed(() => profileList.value?.find((p) => p.id === selectedId.value));
-const settings = computed(() => redirectSettingsFor(profile.value));
+const position = computed(() => profileList.value?.findIndex((p) => p.id === selectedId.value) ?? -1);
+const isRunning = computed(() => !!profile.value && session.value?.profileId === profile.value.id);
+const canDelete = computed(() => !isRunning.value && (profileList.value?.length ?? 0) > 1);
 
-const destinations: { id: RedirectDestination; label: string; detail: string }[] = [
-  { id: 'gate', label: 'Intention gate', detail: 'Asks what you came for, then lets you through after a short wait.' },
-  { id: 'quote', label: 'Quote', detail: 'A quote from the built-in pack or your own.' },
-  { id: 'link', label: 'Your links', detail: 'One of the links below, like your draft or to-do list.' },
-  { id: 'stuck', label: "I'm stuck", detail: 'A 2-minute unstick: name it, shrink it, stretch, breathe.' },
-];
+const nameInput = ref<HTMLInputElement>();
+const confirmingDelete = ref(false);
+const confirmingReset = ref(false);
+watch(selectedId, () => (confirmingDelete.value = false));
 
-const expiryOptions: { id: PassExpiry; label: string }[] = [
-  { id: 'pause', label: 'Pause the tab' },
-  { id: 'redirect', label: 'Send it back to the gate' },
-  { id: 'nothing', label: 'Leave it open' },
-];
-
-function save(patch: Partial<RedirectSettings>) {
-  if (profile.value) void setRedirectSettings(profile.value.id, { ...settings.value, ...patch });
+async function select(id: string, focusName = false) {
+  selectedId.value = id;
+  if (!focusName) return;
+  await nextTick();
+  nameInput.value?.select();
 }
 
-function saveGate(patch: Partial<GateSettings>) {
-  save({ gate: { ...settings.value.gate, ...patch } });
+async function rename(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (!profile.value) return;
+  await renameProfile(profile.value.id, input.value);
+  // A blank name is ignored, so put the saved one back in the field.
+  input.value = profile.value.name;
 }
 
-function saveWait(patch: Partial<GateWait>) {
-  saveGate({ wait: { ...settings.value.gate.wait, ...patch } as GateWait });
+async function remove() {
+  if (!profile.value) return;
+  await deleteProfile(profile.value.id);
+  confirmingDelete.value = false;
 }
 
-function toggleDestination(id: RedirectDestination, on: boolean) {
-  const current = settings.value.destinations;
-  save({ destinations: redirectDestinations.filter((d) => (d === id ? on : current.includes(d))) });
-}
-
-// Links
-const linkTitle = ref('');
-const linkUrl = ref('');
-const linkError = ref('');
-
-function addLink() {
-  const raw = linkUrl.value.trim();
-  const url = parseHttpUrl(raw) ?? parseHttpUrl(`https://${raw}`);
-  if (!raw || !url || !url.hostname.includes('.')) {
-    linkError.value = 'Enter a web address, like docs.google.com/…';
-    return;
-  }
-  const title = linkTitle.value.trim() || url.hostname;
-  save({ links: [...settings.value.links, { id: crypto.randomUUID(), title, url: url.href }] });
-  linkTitle.value = '';
-  linkUrl.value = '';
-  linkError.value = '';
-}
-
-function removeLink(id: string) {
-  save({ links: settings.value.links.filter((link) => link.id !== id) });
-}
-
-// Quotes
-const quoteText = ref('');
-const quoteAuthor = ref('');
-
-async function addQuote() {
-  await addOwnQuote(quoteText.value, quoteAuthor.value);
-  quoteText.value = '';
-  quoteAuthor.value = '';
+async function reset() {
+  await resetStarterProfiles();
+  confirmingReset.value = false;
 }
 </script>
 
@@ -101,167 +62,91 @@ async function addQuote() {
     </header>
 
     <section v-if="profileList && profile">
-      <div class="profiles" role="tablist" aria-label="Profile">
-        <button
-          v-for="p in profileList"
-          :key="p.id"
-          type="button"
-          role="tab"
-          :aria-selected="p.id === selectedId"
-          @click="selectedId = p.id"
-        >
-          {{ p.name }}
-        </button>
+      <div class="profiles">
+        <div class="tabs" role="tablist" aria-label="Profiles">
+          <button
+            v-for="p in profileList"
+            :key="p.id"
+            type="button"
+            role="tab"
+            :aria-selected="p.id === selectedId"
+            @click="select(p.id)"
+          >
+            {{ p.name }}
+            <span v-if="session?.profileId === p.id" class="running" title="Running now" aria-label="(running now)" />
+          </button>
+        </div>
+        <button type="button" class="new" @click="createProfile().then((id) => select(id, true))">+ New profile</button>
       </div>
 
-      <h2>Redirected sites</h2>
-      <p class="help">When {{ profile.name }} redirects a site, show one of these at random.</p>
-      <ul class="destinations">
-        <li v-for="d in destinations" :key="d.id">
-          <label>
-            <input
-              type="checkbox"
-              :checked="settings.destinations.includes(d.id)"
-              :disabled="settings.destinations.length === 1 && settings.destinations.includes(d.id)"
-              @change="toggleDestination(d.id, ($event.target as HTMLInputElement).checked)"
-            />
-            <span>
-              <span class="name">{{ d.label }}</span>
-              <span class="detail">{{ d.detail }}</span>
-            </span>
-          </label>
-        </li>
-      </ul>
-      <p class="help small">Every page has a "Still need it?" link that goes to the intention gate.</p>
-
-      <h2>Intention gate</h2>
-      <div class="rows">
-        <ToggleSwitch
-          label="Require a reason to continue"
-          :model-value="settings.gate.requireReason"
-          @update:model-value="saveGate({ requireReason: $event })"
-        />
-
-        <div class="row">
-          <span>Wait before Continue</span>
-          <select
-            aria-label="Wait before Continue"
-            :value="settings.gate.wait.mode"
-            @change="saveGate({ wait: defaultWaits[($event.target as HTMLSelectElement).value as GateWait['mode']] })"
-          >
-            <option value="fixed">The same every time</option>
-            <option value="escalating">Longer each try</option>
-          </select>
-        </div>
-        <div v-if="settings.gate.wait.mode === 'fixed'" class="row sub">
-          <span>Wait</span>
-          <NumberField
-            label="Wait in seconds"
-            unit="sec"
-            :min="0"
-            :max="300"
-            :model-value="settings.gate.wait.seconds"
-            @update:model-value="saveWait({ seconds: $event })"
+      <div class="profile">
+        <label class="name-field">
+          <span>Name</span>
+          <input
+            ref="nameInput"
+            :key="profile.id"
+            class="field"
+            :value="profile.name"
+            :maxlength="maxProfileNameLength"
+            aria-label="Profile name"
+            @change="rename"
+            @keydown.enter="($event.target as HTMLInputElement).blur()"
           />
-        </div>
-        <template v-else>
-          <div class="row sub">
-            <span>First try today</span>
-            <NumberField
-              label="First wait in seconds"
-              unit="sec"
-              :min="0"
-              :max="300"
-              :model-value="settings.gate.wait.startSeconds"
-              @update:model-value="saveWait({ startSeconds: $event })"
-            />
-          </div>
-          <div class="row sub">
-            <span>Add for each try after</span>
-            <NumberField
-              label="Seconds added per try"
-              unit="sec"
-              :min="0"
-              :max="300"
-              :model-value="settings.gate.wait.stepSeconds"
-              @update:model-value="saveWait({ stepSeconds: $event })"
-            />
-          </div>
-          <div class="row sub">
-            <span>Never longer than</span>
-            <NumberField
-              label="Longest wait in seconds"
-              unit="sec"
-              :min="0"
-              :max="300"
-              :model-value="settings.gate.wait.maxSeconds"
-              @update:model-value="saveWait({ maxSeconds: $event })"
-            />
-          </div>
-        </template>
+        </label>
 
-        <div class="row">
-          <span>Pass length</span>
-          <NumberField
-            label="Pass length in minutes"
-            unit="min"
-            :min="1"
-            :max="120"
-            :model-value="settings.gate.passMinutes"
-            @update:model-value="saveGate({ passMinutes: $event })"
-          />
-        </div>
-
-        <div class="row">
-          <span>When a pass runs out</span>
-          <select
-            aria-label="When a pass runs out"
-            :value="settings.gate.onPassExpiry"
-            @change="saveGate({ onPassExpiry: ($event.target as HTMLSelectElement).value as PassExpiry })"
+        <div v-if="!confirmingDelete" class="actions">
+          <button type="button" class="text-button" :disabled="position <= 0" @click="moveProfile(profile.id, -1)">
+            Move earlier
+          </button>
+          <button
+            type="button"
+            class="text-button"
+            :disabled="position >= profileList.length - 1"
+            @click="moveProfile(profile.id, 1)"
           >
-            <option v-for="option in expiryOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
-          </select>
+            Move later
+          </button>
+          <button type="button" class="text-button" @click="duplicateProfile(profile.id).then((id) => select(id, true))">
+            Duplicate
+          </button>
+          <button
+            type="button"
+            class="text-button danger"
+            :disabled="!canDelete"
+            :title="isRunning ? 'End the session to delete this profile' : undefined"
+            @click="confirmingDelete = true"
+          >
+            Delete
+          </button>
+        </div>
+        <div v-else class="actions confirm" role="alert">
+          <span>Delete {{ profile.name }}?</span>
+          <button type="button" class="text-button" @click="confirmingDelete = false">Cancel</button>
+          <button type="button" class="text-button danger confirm-delete" @click="remove">Delete</button>
         </div>
       </div>
-      <p class="help small">This also applies to tabs that were already open when the session started.</p>
 
-      <h2>Your links</h2>
-      <p class="help">Shown when "Your links" is picked for {{ profile.name }}.</p>
-      <ul v-if="settings.links.length" class="items">
-        <li v-for="link in settings.links" :key="link.id">
-          <span>
-            <span class="name">{{ link.title }}</span>
-            <span class="detail">{{ link.url }}</span>
-          </span>
-          <button type="button" class="remove" :aria-label="`Remove ${link.title}`" @click="removeLink(link.id)">Remove</button>
-        </li>
-      </ul>
-      <form class="add" @submit.prevent="addLink">
-        <input v-model="linkTitle" aria-label="Link name" placeholder="Name (optional)" />
-        <input v-model="linkUrl" aria-label="Link address" placeholder="docs.google.com/…" />
-        <button type="submit">Add link</button>
-      </form>
-      <p v-if="linkError" class="error" role="alert">{{ linkError }}</p>
+      <p v-if="isRunning" class="help small">{{ profile.name }} is running now, so changes apply right away.</p>
+
+      <SitesSection :profile="profile" />
+      <RedirectSection :profile="profile" />
     </section>
 
     <section>
-      <h2>Your quotes</h2>
-      <p class="help">Mixed in with the built-in quotes for every profile, and shown more often.</p>
-      <ul v-if="quoteList?.length" class="items">
-        <li v-for="quote in quoteList" :key="quote.id">
-          <span>
-            <span class="name">{{ quote.text }}</span>
-            <span v-if="quote.author" class="detail">{{ quote.author }}</span>
-          </span>
-          <button type="button" class="remove" aria-label="Remove quote" @click="removeOwnQuote(quote.id)">Remove</button>
-        </li>
-      </ul>
-      <form class="add" @submit.prevent="addQuote">
-        <input v-model="quoteText" class="wide" aria-label="Quote" placeholder="A quote that gets you back to work" maxlength="280" />
-        <input v-model="quoteAuthor" aria-label="Author" placeholder="Author (optional)" />
-        <button type="submit" :disabled="!quoteText.trim()">Add quote</button>
-      </form>
+      <QuotesSection />
     </section>
+
+    <footer>
+      <template v-if="!confirmingReset">
+        <button type="button" class="text-button reset" @click="confirmingReset = true">Reset starter profiles</button>
+        <p class="help small">Puts Writing, Deep Work and Wind Down back the way they shipped. Your own profiles are kept.</p>
+      </template>
+      <div v-else class="actions confirm" role="alert">
+        <span>Reset the starter profiles? Changes you made to them will be lost.</span>
+        <button type="button" class="text-button" @click="confirmingReset = false">Cancel</button>
+        <button type="button" class="text-button danger confirm-reset" @click="reset">Reset</button>
+      </div>
+    </footer>
   </main>
 </template>
 
@@ -288,24 +173,16 @@ h1 {
   font-weight: 500;
 }
 
-h2 {
-  margin: 32px 0 4px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.help {
-  margin: 0 0 12px;
-  color: var(--dim);
-}
-
-.help.small {
-  margin-top: 8px;
-  font-size: 12px;
-}
-
 .profiles {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tabs {
+  display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
@@ -313,149 +190,80 @@ h2 {
   background: var(--sky-raised);
 }
 
-.profiles button {
+.tabs button {
   flex: 1;
   padding: 8px 12px;
   background: none;
   color: var(--dim);
+  white-space: nowrap;
   transition: background 150ms, color 150ms;
 }
 
-.profiles button[aria-selected='true'] {
+.tabs button[aria-selected='true'] {
   background: var(--sky-hover);
   color: var(--starlight);
 }
 
-ul {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.running {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--glow);
+  vertical-align: middle;
 }
 
-.destinations label {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
-  cursor: pointer;
-}
-
-.destinations input {
-  margin-top: 3px;
-  accent-color: var(--glow);
-}
-
-.name {
-  display: block;
-}
-
-.detail {
-  display: block;
-  overflow: hidden;
-  color: var(--dim);
-  font-size: 12px;
-  text-overflow: ellipsis;
-}
-
-.rows {
-  padding: 4px 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 40px;
-}
-
-.row.sub {
-  padding-left: 16px;
-  color: var(--dim);
-}
-
-select {
-  padding: 6px 8px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
-  background: var(--sky);
-  color: var(--starlight);
-  font: inherit;
-}
-
-.items li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
-}
-
-.items li > span {
-  min-width: 0;
-}
-
-.remove {
-  flex: none;
-  padding: 4px 8px;
+.new {
+  padding: 8px 12px;
   background: none;
-  color: var(--dim);
-  font-size: 12px;
+  color: var(--glow);
 }
 
-.remove:hover {
-  color: var(--starlight);
+.new:hover {
+  background: var(--sky-raised);
 }
 
-.add {
+.profile {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 16px;
 }
 
-.add input {
-  flex: 1 1 140px;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
-  background: var(--sky-raised);
-  color: var(--starlight);
-  font: inherit;
-}
-
-.add input.wide {
-  flex-basis: 100%;
-}
-
-.add input:focus {
-  border-color: var(--glow);
-  outline: none;
-}
-
-.add button {
-  padding: 8px 14px;
-  background: var(--sky-hover);
-}
-
-.add button:disabled {
+.name-field {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 10px;
   color: var(--dim);
-  cursor: default;
 }
 
-.error {
-  margin: 6px 0 0;
-  color: var(--glow);
-  font-size: 12px;
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+
+.confirm span {
+  margin-right: 6px;
+  color: var(--starlight);
+}
+
+footer {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid var(--sky-raised);
+}
+
+.reset {
+  margin-left: -8px;
+}
+
+footer .help.small {
+  margin-top: 4px;
 }
 </style>

@@ -2,12 +2,11 @@
 import {
   attemptsToday,
   findRecipe,
-  findRule,
-  hasPass,
   parseHttpUrl,
   pickDestination,
   pickLink,
   redirectSettingsFor,
+  siteAccess,
   waitSecondsFor,
   type RedirectDestination,
   type RedirectSettings,
@@ -16,6 +15,7 @@ import {
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import { computed, onMounted, ref, watch } from 'vue';
+import BlockedCard from './components/BlockedCard.vue';
 import IntentionGate from './components/IntentionGate.vue';
 import LinkCard from './components/LinkCard.vue';
 import QuoteCard from './components/QuoteCard.vue';
@@ -31,7 +31,7 @@ const expired = new URLSearchParams(location.search).has('expired');
 const ready = ref(false);
 const profileName = ref('');
 const settings = ref<RedirectSettings>();
-const destination = ref<RedirectDestination>('gate');
+const destination = ref<RedirectDestination | 'blocked'>('gate');
 const link = ref<SavedLink>();
 const attempts = ref(0);
 const visitId = ref('');
@@ -55,9 +55,9 @@ onMounted(async () => {
 
   const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
   const profile = profileList.find((p) => p.id === session?.profileId);
-  const stillRedirected = findRule(profile, recipe.id)?.level === 'redirected' && !hasPass(session, recipe.id, Date.now());
+  const access = siteAccess({ session, profiles: profileList, recipeId: recipe.id, now: Date.now() });
 
-  if (!session || !profile || !stillRedirected) {
+  if (!profile || access === 'open') {
     // The session ended or a pass started since this tab was sent here. Make sure the
     // redirect rules have caught up, then carry on to the site.
     await syncRedirectsNow();
@@ -68,7 +68,10 @@ onMounted(async () => {
   profileName.value = profile.name;
   settings.value = redirectSettingsFor(profile);
 
-  if (!expired) {
+  if (access === 'restricted') {
+    destination.value = 'blocked';
+    visitId.value = await recordGateVisit(recipe.id, 'blocked');
+  } else if (!expired) {
     destination.value = pickDestination(settings.value);
     link.value = destination.value === 'link' ? pickLink(settings.value.links) : undefined;
     visitId.value = await recordGateVisit(recipe.id, destination.value);
@@ -123,6 +126,7 @@ function ordinal(n: number): string {
       </IntentionGate>
       <QuoteCard v-else-if="destination === 'quote'" @back="backToFocus" />
       <LinkCard v-else-if="destination === 'link' && link" :link="link" />
+      <BlockedCard v-else-if="destination === 'blocked'" :site-name="siteName" :profile-name="profileName" @back="backToFocus" />
       <StuckPage v-else @back="backToFocus" />
 
       <footer>
@@ -131,7 +135,7 @@ function ordinal(n: number): string {
           <button v-if="why === 'stuck' && destination !== 'stuck'" type="button" class="quiet" @click="destination = 'stuck'">
             Stuck? Try a 2-minute unstick
           </button>
-          <button v-if="destination !== 'gate'" type="button" class="quiet still-need" @click="destination = 'gate'">
+          <button v-if="destination !== 'gate' && destination !== 'blocked'" type="button" class="quiet still-need" @click="destination = 'gate'">
             Still need {{ siteName }}?
           </button>
         </div>

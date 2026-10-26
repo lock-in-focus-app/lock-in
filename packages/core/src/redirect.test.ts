@@ -5,6 +5,7 @@ import {
   hasPass,
   nextPassExpiry,
   redirectedRecipes,
+  siteAccess,
   withGateVisit,
   withGateVisitContinued,
   withGateVisitWhy,
@@ -152,5 +153,35 @@ describe('checkOpenPage', () => {
     expect(checkOpenPage({ url, session: null, profiles, recipes, now })).toEqual({ action: 'none' });
     expect(checkOpenPage({ url: 'https://docs.com/', session, profiles, recipes, now })).toEqual({ action: 'none' });
     expect(checkOpenPage({ url: 'https://example.org/', session, profiles, recipes, now })).toEqual({ action: 'none' });
+  });
+});
+
+describe('restricted sites', () => {
+  const restricted: Profile[] = [{ ...profiles[0]!, sites: [{ recipeId: 'reddit', level: 'restricted' }] }];
+  const passed = { ...session, passes: { reddit: now + minute } };
+
+  it('stay shut even with a pass', () => {
+    expect(siteAccess({ session: passed, profiles: restricted, recipeId: 'reddit', now })).toBe('restricted');
+    expect(redirectedRecipes({ session: passed, profiles: restricted, recipes, now }).map((r) => r.id)).toEqual(['reddit']);
+  });
+
+  it('open up when the session ends', () => {
+    expect(siteAccess({ session: null, profiles: restricted, recipeId: 'reddit', now })).toBe('open');
+  });
+
+  it('cover tabs that were already open, whatever the pass setting', () => {
+    const nothing: Profile[] = [{ ...restricted[0]!, redirect: { gate: { onPassExpiry: 'nothing' } } }];
+    expect(checkOpenPage({ url: 'https://reddit.com/', session: passed, profiles: nothing, recipes, now })).toMatchObject({
+      action: 'block',
+      recipe: { id: 'reddit' },
+    });
+  });
+});
+
+describe('siteAccess', () => {
+  it('reports redirected sites until they have a pass', () => {
+    expect(siteAccess({ session, profiles, recipeId: 'x', now })).toBe('redirected');
+    expect(siteAccess({ session: { ...session, passes: { x: now + 1 } }, profiles, recipeId: 'x', now })).toBe('open');
+    expect(siteAccess({ session, profiles, recipeId: 'docs', now })).toBe('open');
   });
 });

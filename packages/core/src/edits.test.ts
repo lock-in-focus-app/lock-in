@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { withProfileToggle, withRedirectSettings, withSessionOverridesSaved, withSessionToggle } from './edits';
+import {
+  withNewProfile,
+  withProfileDuplicated,
+  withProfileMoved,
+  withProfileRemoved,
+  withProfileRenamed,
+  withProfileToggle,
+  withRedirectSettings,
+  withSessionOverridesSaved,
+  withSessionToggle,
+  withSiteLevel,
+  withStarterProfilesReset,
+} from './edits';
 import { defaultRedirectSettings } from './settings';
 import type { Profile, Session, SiteRecipe } from './types';
 
@@ -91,5 +103,60 @@ describe('withRedirectSettings', () => {
     const next = withRedirectSettings(profiles, 'other', settings);
     expect(next[1]!.redirect).toEqual(settings);
     expect(next[0]).toBe(profiles[0]);
+  });
+});
+
+describe('managing profiles', () => {
+  const ids = (list: Profile[]) => list.map((p) => p.id);
+
+  it('adds a new, empty profile at the end', () => {
+    const next = withNewProfile(profiles, 'new', '  Reading   time ');
+    expect(next.at(-1)).toEqual({ id: 'new', name: 'Reading time', sites: [] });
+    expect(withNewProfile(profiles, 'new', '  ').at(-1)!.name).toBe('New profile');
+  });
+
+  it('duplicates a profile right after the original, without sharing data', () => {
+    const next = withProfileDuplicated(profiles, 'focus', 'copy');
+    expect(ids(next)).toEqual(['focus', 'copy', 'other']);
+    expect(next[1]).toMatchObject({ name: 'Focus copy', sites: profiles[0]!.sites });
+    expect(next[1]!.sites).not.toBe(profiles[0]!.sites);
+  });
+
+  it('removes a profile', () => {
+    expect(ids(withProfileRemoved(profiles, 'focus'))).toEqual(['other']);
+  });
+
+  it('renames a profile, ignoring blank names and trimming long ones', () => {
+    expect(withProfileRenamed(profiles, 'focus', 'Deep focus')[0]!.name).toBe('Deep focus');
+    expect(withProfileRenamed(profiles, 'focus', '   ')[0]!.name).toBe('Focus');
+    expect(withProfileRenamed(profiles, 'focus', 'x'.repeat(100))[0]!.name).toHaveLength(40);
+  });
+
+  it('moves a profile, stopping at either end', () => {
+    expect(ids(withProfileMoved(profiles, 'other', -1))).toEqual(['other', 'focus']);
+    expect(ids(withProfileMoved(profiles, 'other', 1))).toEqual(['focus', 'other']);
+    expect(ids(withProfileMoved(profiles, 'focus', -5))).toEqual(['focus', 'other']);
+  });
+
+  it('sets a site level, keeping toggles', () => {
+    const redirected = withSiteLevel(profiles, 'focus', 'example', 'redirected');
+    expect(redirected[0]!.sites[0]).toEqual({ recipeId: 'example', level: 'redirected', toggles: { grayscale: true } });
+    expect(withSiteLevel(redirected, 'focus', 'example', 'tamed')[0]!.sites[0]!.toggles).toEqual({ grayscale: true });
+  });
+
+  it('adds a rule for a site the profile did not mention', () => {
+    expect(withSiteLevel(profiles, 'focus', 'x', 'restricted')[0]!.sites.at(-1)).toEqual({ recipeId: 'x', level: 'restricted' });
+  });
+
+  it('resets starter profiles and keeps the user\'s own', () => {
+    const starters: Profile[] = [
+      { id: 'focus', name: 'Focus', sites: [] },
+      { id: 'fresh', name: 'Fresh', sites: [] },
+    ];
+    const edited = withProfileRenamed([...profiles, { id: 'mine', name: 'Mine', sites: [] }], 'focus', 'Renamed');
+    const reset = withStarterProfilesReset(edited, starters);
+    expect(ids(reset)).toEqual(['focus', 'other', 'mine', 'fresh']);
+    expect(reset[0]).toEqual(starters[0]);
+    expect(reset[0]).not.toBe(starters[0]);
   });
 });

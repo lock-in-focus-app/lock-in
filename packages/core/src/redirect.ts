@@ -14,20 +14,37 @@ export function hasPass(session: Session | null, recipeId: string, now: number):
   return (session?.passes?.[recipeId] ?? 0) > now;
 }
 
-/** The sites the active session is redirecting right now. Sites with a pass are left out. */
+/**
+ * Whether a site is kept from loading right now. Redirected sites open up while they have
+ * a pass; restricted sites stay shut until the session ends.
+ */
+export function siteAccess(options: {
+  session: Session | null;
+  profiles: readonly Profile[];
+  recipeId: string;
+  now: number;
+}): 'open' | 'redirected' | 'restricted' {
+  const { session, profiles, recipeId, now } = options;
+  if (!session) return 'open';
+
+  const level = findRule(
+    profiles.find((p) => p.id === session.profileId),
+    recipeId,
+  )?.level;
+  if (level === 'restricted') return 'restricted';
+  if (level === 'redirected' && !hasPass(session, recipeId, now)) return 'redirected';
+  return 'open';
+}
+
+/** The sites the active session keeps from loading right now: redirected ones without a pass, and restricted ones. */
 export function redirectedRecipes(options: {
   session: Session | null;
   profiles: readonly Profile[];
   recipes: readonly SiteRecipe[];
   now: number;
 }): SiteRecipe[] {
-  const { session, profiles, recipes, now } = options;
-  if (!session) return [];
-
-  const profile = profiles.find((p) => p.id === session.profileId);
-  return recipes.filter(
-    (recipe) => findRule(profile, recipe.id)?.level === 'redirected' && !hasPass(session, recipe.id, now),
-  );
+  const { recipes, ...rest } = options;
+  return recipes.filter((recipe) => siteAccess({ ...rest, recipeId: recipe.id }) !== 'open');
 }
 
 /** Gives the session a pass to one site, dropping any passes that have already run out. */
@@ -71,7 +88,7 @@ export function withGateVisitWhy(visits: readonly GateVisit[], visitId: string, 
   });
 }
 
-/** What an already-open page on a redirected site should do right now. */
+/** What an already-open page on a redirected or restricted site should do right now. */
 export type OpenPageCheck =
   | {
       action: 'none';
@@ -79,7 +96,7 @@ export type OpenPageCheck =
       recheckAt?: number;
     }
   | {
-      action: Exclude<PassExpiry, 'nothing'>;
+      action: Exclude<PassExpiry, 'nothing'> | 'block';
       recipe: SiteRecipe;
       profile: Profile;
       /** True when the page had a pass that ran out, false when it was open before the session. */
@@ -87,9 +104,10 @@ export type OpenPageCheck =
     };
 
 /**
- * New visits to redirected sites never load: the browser redirects them. Pages that were
- * already open when the session started, or when a pass ran out, are handled here using
- * the profile's "when a pass runs out" setting.
+ * New visits to redirected and restricted sites never load: the browser redirects them.
+ * Pages that were already open when the session started, or when a pass ran out, are
+ * handled here. Restricted sites are always covered; redirected ones follow the profile's
+ * "when a pass runs out" setting.
  */
 export function checkOpenPage(options: {
   url: string | URL;
@@ -101,8 +119,10 @@ export function checkOpenPage(options: {
   const { url, session, profiles, recipes, now } = options;
   const profile = profiles.find((p) => p.id === session?.profileId);
   const recipe = findRecipe(recipes, url);
-  if (!session || !profile || !recipe || findRule(profile, recipe.id)?.level !== 'redirected') return { action: 'none' };
+  const level = findRule(profile, recipe?.id ?? '')?.level;
+  if (!session || !profile || !recipe || (level !== 'redirected' && level !== 'restricted')) return { action: 'none' };
 
+  if (level === 'restricted') return { action: 'block', recipe, profile, passExpired: false };
   if (hasPass(session, recipe.id, now)) return { action: 'none', recheckAt: session.passes![recipe.id] };
 
   const { onPassExpiry } = redirectSettingsFor(profile).gate;

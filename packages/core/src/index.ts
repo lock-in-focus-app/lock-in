@@ -4,10 +4,18 @@ export { matchesPattern, matchPatternToRegex, parseHttpUrl } from './match';
 export { buildRecipeCss, cssForPage, findRecipe, isSafeSelector, resolveToggles } from './recipe';
 export {
   findRule,
+  maxProfileNameLength,
+  withNewProfile,
+  withProfileDuplicated,
+  withProfileMoved,
+  withProfileRemoved,
+  withProfileRenamed,
   withProfileToggle,
   withRedirectSettings,
   withSessionOverridesSaved,
   withSessionToggle,
+  withSiteLevel,
+  withStarterProfilesReset,
 } from './edits';
 export {
   attemptsToday,
@@ -16,6 +24,7 @@ export {
   maxIntentionLength,
   nextPassExpiry,
   redirectedRecipes,
+  siteAccess,
   withGateVisit,
   withGateVisitContinued,
   withGateVisitWhy,

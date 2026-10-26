@@ -12,29 +12,38 @@ export default defineContentScript({
     document.documentElement.append(style);
 
     let removeOverlay: (() => void) | undefined;
+    let overlayKey = '';
     let recheck: number | undefined;
 
     const apply = async () => {
       const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
       style.textContent = cssForPage({ url: location.href, session, profiles: profileList, recipes });
 
-      // Redirected sites only get this far if the tab was already open, so follow the
-      // profile's "when a pass runs out" setting.
+      // Redirected and restricted sites only get this far if the tab was already open.
       const check = checkOpenPage({ url: location.href, session, profiles: profileList, recipes, now: Date.now() });
       clearTimeout(recheck);
 
       if (check.action === 'none') {
         removeOverlay?.();
         removeOverlay = undefined;
+        overlayKey = '';
         if (check.recheckAt) recheck = ctx.setTimeout(apply, check.recheckAt - Date.now() + 250);
       } else if (check.action === 'redirect') {
         location.replace(redirectPageUrl(location.href, { expired: check.passExpired }));
       } else {
-        removeOverlay ??= showPauseOverlay({
+        const restricted = check.action === 'block';
+        const reason = restricted ? 'restricted' : check.passExpired ? 'expired' : 'open-before';
+        // Only redraw the cover when what it says would change.
+        const key = `${reason}:${check.profile.name}`;
+        if (key === overlayKey) return;
+
+        removeOverlay?.();
+        overlayKey = key;
+        removeOverlay = showPauseOverlay({
           siteName: check.recipe.name,
           profileName: check.profile.name,
-          passExpired: check.passExpired,
-          onStillNeed: () => location.assign(redirectPageUrl(location.href)),
+          reason,
+          onStillNeed: restricted ? undefined : () => location.assign(redirectPageUrl(location.href)),
           onClose: () => void closeThisTab(),
         });
       }

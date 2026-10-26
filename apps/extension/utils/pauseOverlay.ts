@@ -1,5 +1,5 @@
-// The "pause" for a redirected site: a cover over a tab that's still open after its pass
-// ran out, or that was open before the session started. It lives in a shadow root so the
+// A cover over a tab on a redirected site that's still open after its pass ran out, or
+// that was open before the session started, and over any open tab on a restricted site. It lives in a shadow root so the
 // site's styles can't change it.
 
 const css = `
@@ -35,7 +35,7 @@ const css = `
 .star { color: var(--glow); }
 h1 { margin: 0; font-size: 22px; font-weight: 500; line-height: 1.25; }
 p.body { margin: 8px 0 20px; color: var(--dim); }
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.actions { display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; gap: 8px; }
 button { padding: 11px; border: 0; border-radius: 10px; font: inherit; cursor: pointer; }
 .close { background: var(--glow); color: var(--sky); font-weight: 600; }
 .still { background: var(--sky-raised); color: var(--starlight); }
@@ -46,10 +46,27 @@ button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 export interface PauseOverlayOptions {
   siteName: string;
   profileName: string;
-  passExpired: boolean;
-  onStillNeed: () => void;
+  /** Why the tab is covered: its pass ran out, it was open before the session, or the site is restricted. */
+  reason: 'expired' | 'open-before' | 'restricted';
+  /** Leave out for restricted sites, which have no way through. */
+  onStillNeed?: () => void;
   onClose: () => void;
 }
+
+const copy = {
+  expired: (o: PauseOverlayOptions) => ({
+    title: `Your pass for ${o.siteName} ran out`,
+    body: "Still need it? You'll go back through the gate first.",
+  }),
+  'open-before': (o: PauseOverlayOptions) => ({
+    title: `${o.siteName} is paused for now`,
+    body: `This tab was open before ${o.profileName} started.`,
+  }),
+  restricted: (o: PauseOverlayOptions) => ({
+    title: `${o.siteName} is off for now`,
+    body: `It's restricted during ${o.profileName} and will be back when the session ends.`,
+  }),
+};
 
 /** Covers the page and pauses any media. Returns a function that removes the cover. */
 export function showPauseOverlay(options: PauseOverlayOptions): () => void {
@@ -67,26 +84,20 @@ export function showPauseOverlay(options: PauseOverlayOptions): () => void {
 
   const brand = element('p', 'brand', ` Lock In · ${options.profileName}`);
   brand.prepend(element('span', 'star', '✦'));
-  const title = element(
-    'h1',
-    '',
-    options.passExpired ? `Your pass for ${options.siteName} ran out` : `${options.siteName} is paused for now`,
-  );
+  const text = copy[options.reason](options);
+  const title = element('h1', '', text.title);
   title.id = 'title';
-  const body = element(
-    'p',
-    'body',
-    options.passExpired
-      ? "Still need it? You'll go back through the gate first."
-      : `This tab was open before ${options.profileName} started.`,
-  );
+  const body = element('p', 'body', text.body);
 
-  const still = element('button', 'still', 'Still need it');
-  still.addEventListener('click', options.onStillNeed);
   const close = element('button', 'close', 'Close tab');
   close.addEventListener('click', options.onClose);
   const actions = element('div', 'actions');
-  actions.append(still, close);
+  if (options.onStillNeed) {
+    const still = element('button', 'still', 'Still need it');
+    still.addEventListener('click', options.onStillNeed);
+    actions.append(still);
+  }
+  actions.append(close);
 
   card.append(brand, title, body, actions);
   root.append(style, card);

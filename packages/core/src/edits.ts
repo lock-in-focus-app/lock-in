@@ -1,4 +1,4 @@
-import type { Profile, RedirectSettings, Session, SiteRecipe, SiteRule } from './types';
+import type { Profile, RedirectSettings, Session, SiteLevel, SiteRecipe, SiteRule } from './types';
 
 // Pure, immutable edits to profiles and sessions. The extension (and later the desktop
 // app) persists whatever these return.
@@ -78,4 +78,70 @@ function withRecipeOverrides(session: Session, recipeId: string, recipeOverrides
 
   const { overrides: _previous, ...rest } = session;
   return Object.keys(overrides).length > 0 ? { ...rest, overrides } : rest;
+}
+
+/** Longest profile name we keep. */
+export const maxProfileNameLength = 40;
+
+/** Adds an empty profile at the end. Every site starts out allowed. */
+export function withNewProfile(profiles: readonly Profile[], id: string, name: string): Profile[] {
+  return [...profiles, { id, name: cleanName(name) || 'New profile', sites: [] }];
+}
+
+/** Copies a profile, placing the copy right after it. */
+export function withProfileDuplicated(profiles: readonly Profile[], profileId: string, newId: string): Profile[] {
+  const index = profiles.findIndex((p) => p.id === profileId);
+  const original = profiles[index];
+  if (!original) return [...profiles];
+
+  const copy: Profile = structuredClone({ ...original, id: newId, name: cleanName(`${original.name} copy`) });
+  return [...profiles.slice(0, index + 1), copy, ...profiles.slice(index + 1)];
+}
+
+export function withProfileRemoved(profiles: readonly Profile[], profileId: string): Profile[] {
+  return profiles.filter((p) => p.id !== profileId);
+}
+
+/** Renames a profile. Blank names are ignored. */
+export function withProfileRenamed(profiles: readonly Profile[], profileId: string, name: string): Profile[] {
+  const cleaned = cleanName(name);
+  if (!cleaned) return [...profiles];
+  return profiles.map((p) => (p.id === profileId ? { ...p, name: cleaned } : p));
+}
+
+/** Moves a profile earlier (negative offset) or later in the list, stopping at either end. */
+export function withProfileMoved(profiles: readonly Profile[], profileId: string, offset: number): Profile[] {
+  const from = profiles.findIndex((p) => p.id === profileId);
+  if (from === -1) return [...profiles];
+
+  const to = Math.min(profiles.length - 1, Math.max(0, from + offset));
+  const list = [...profiles];
+  const [moved] = list.splice(from, 1);
+  list.splice(to, 0, moved!);
+  return list;
+}
+
+/** Sets how a profile treats a site. Toggles are kept, so switching back to tamed restores them. */
+export function withSiteLevel(profiles: readonly Profile[], profileId: string, recipeId: string, level: SiteLevel): Profile[] {
+  return profiles.map((profile) => {
+    if (profile.id !== profileId) return profile;
+    const exists = profile.sites.some((site) => site.recipeId === recipeId);
+    return {
+      ...profile,
+      sites: exists
+        ? profile.sites.map((site) => (site.recipeId === recipeId ? { ...site, level } : site))
+        : [...profile.sites, { recipeId, level }],
+    };
+  });
+}
+
+/** Puts the starter profiles back the way they shipped, keeping the user's own profiles. */
+export function withStarterProfilesReset(profiles: readonly Profile[], starters: readonly Profile[]): Profile[] {
+  const restored = profiles.map((profile) => starters.find((s) => s.id === profile.id) ?? profile);
+  const missing = starters.filter((starter) => !profiles.some((p) => p.id === starter.id));
+  return structuredClone([...restored, ...missing]);
+}
+
+function cleanName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').slice(0, maxProfileNameLength);
 }

@@ -6,5 +6,7 @@ export default defineConfig({
     include: ['e2e/**/*.e2e.ts'],
     testTimeout: 30_000,
     hookTimeout: 60_000,
+    // Each file runs its own Chrome; too many at once makes popups and timers flaky.
+    maxWorkers: 3,
   },
 });
