@@ -3,6 +3,7 @@ mod commands;
 mod engine;
 mod error;
 mod hosts;
+mod idle;
 mod link;
 mod session;
 mod settings;
@@ -20,6 +21,7 @@ use tauri_plugin_notification::NotificationExt;
 
 use engine::Engine;
 use error::Result;
+use idle::IdleWatch;
 use session::{EndReason, Session};
 use store::Store;
 use timer::TimerEnd;
@@ -54,7 +56,8 @@ pub(crate) fn end_session(app: &AppHandle, reason: EndReason) -> Result<()> {
     Ok(())
 }
 
-/// Tells the window and the menu bar about a change, and schedules the session's timer.
+/// Tells the window and the menu bar about a change, and schedules the session's timer and
+/// idle check.
 pub(crate) fn changed(app: &AppHandle) {
     // Copy what's needed and let go of the engine first, so the menu bar (which runs on the
     // main thread) never waits on a lock another thread holds.
@@ -67,7 +70,76 @@ pub(crate) fn changed(app: &AppHandle) {
     if let Err(error) = tray::refresh(app, &snapshot) {
         eprintln!("Lock In: couldn't update the menu bar: {error}");
     }
+    watch_idle(
+        app,
+        session.as_ref().map(|s| s.id.clone()),
+        snapshot.settings.idle_minutes,
+    );
     schedule_timer(app, session, snapshot.session.map(|s| s.profile_name));
+}
+
+/// The running session's check for idle time.
+#[derive(Default)]
+struct IdleTask(Mutex<Option<JoinHandle<()>>>);
+
+/// Checks once a minute while a session runs, and ends it after `idle_minutes` without
+/// keyboard or mouse input. Nothing runs between sessions, or where the system can't say how
+/// long it's been idle.
+fn watch_idle(app: &AppHandle, session_id: Option<String>, idle_minutes: u32) {
+    let task = app.state::<IdleTask>();
+    let mut task = task.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(previous) = task.take() {
+        previous.abort();
+    }
+
+    let Some(session_id) = session_id else { return };
+    if idle_minutes == 0 {
+        return;
+    }
+    let limit = i64::from(idle_minutes) * 60_000;
+
+    let app = app.clone();
+    *task = Some(tauri::async_runtime::spawn(async move {
+        let Some(idle_ms) = idle_reading().await else { return };
+        let mut watch = IdleWatch::new(now_ms(), idle_ms);
+        loop {
+            tokio::time::sleep(Duration::from_millis(idle::CHECK_EVERY_MS as u64)).await;
+            let Some(idle_ms) = idle_reading().await else { return };
+            let now = now_ms();
+            let last_input = watch.check(now, idle_ms);
+            if now - last_input >= limit {
+                end_idle_session(&app, &session_id, last_input, now, idle_minutes);
+                return;
+            }
+        }
+    }));
+}
+
+/// Reads the system's idle time on a thread that's allowed to wait, since on Linux it waits on
+/// D-Bus.
+async fn idle_reading() -> Option<i64> {
+    tauri::async_runtime::spawn_blocking(idle::system_idle_ms)
+        .await
+        .ok()
+        .flatten()
+}
+
+fn end_idle_session(app: &AppHandle, session_id: &str, last_input: i64, now: i64, idle_minutes: u32) {
+    let ended = engine(app).end_idle_session(session_id, last_input, now);
+    match ended {
+        Ok(Some(record)) => {
+            let notification = app.notification().builder().title("Session ended").body(format!(
+                "{} ended after {idle_minutes} minutes away. The time away isn't counted.",
+                record.profile_name
+            ));
+            if let Err(error) = notification.show() {
+                eprintln!("Lock In: couldn't show the idle notification: {error}");
+            }
+            changed(app);
+        }
+        Ok(None) => {}
+        Err(error) => eprintln!("Lock In: couldn't end an idle session: {error}"),
+    }
 }
 
 /// The running session's timer, waiting to go off.
@@ -175,9 +247,15 @@ pub fn run() {
             let session = engine.session().cloned();
             app.manage(Mutex::new(engine));
             app.manage(TimerTask::default());
+            app.manage(IdleTask::default());
             app.manage(link::Links::default());
 
             tray::create(app.handle(), &snapshot)?;
+            watch_idle(
+                app.handle(),
+                session.as_ref().map(|s| s.id.clone()),
+                snapshot.settings.idle_minutes,
+            );
             schedule_timer(app.handle(), session, snapshot.session.map(|s| s.profile_name));
             tauri::async_runtime::spawn(link::serve(app.handle().clone()));
             match std::env::current_exe() {
