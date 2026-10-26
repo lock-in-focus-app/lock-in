@@ -1,9 +1,16 @@
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { starterProfiles, type GateVisit, type OwnQuote, type Profile, type Session } from '@lock-in/core';
+import {
+  desktopHostName,
+  starterProfiles,
+  type GateVisit,
+  type OwnQuote,
+  type Profile,
+  type Session,
+} from '@lock-in/core';
 import puppeteer, { type Browser, type Extension, type Page } from 'puppeteer';
 
 // Browser tests load the real extension build into Chrome for Testing and point it at
@@ -38,6 +45,9 @@ export const urls = {
   other: 'http://other.test/',
 };
 
+/** The extension's id in Chrome, fixed by the public key in its manifest. */
+export const chromeExtensionId = 'nfaamgjiehkppopelaampopbofjoepca';
+
 export interface TestBrowser {
   browser: Browser;
   extension: Extension;
@@ -45,15 +55,34 @@ export interface TestBrowser {
   close(): Promise<void>;
 }
 
-export async function launch(): Promise<TestBrowser> {
+/**
+ * Starts Chrome with the extension. `nativeHost` is an executable to use as the desktop
+ * app's Native Messaging host; without one, the extension runs on its own.
+ */
+export async function launch({ nativeHost }: { nativeHost?: string } = {}): Promise<TestBrowser> {
   const extensionDir = await copyBuildForTests();
   const server = await serveFixtures();
   const { port } = server.address() as AddressInfo;
+
+  // Chrome looks for host manifests in the profile folder, so a fresh one keeps tests apart.
+  const userDataDir = await mkdtemp(join(tmpdir(), 'lock-in-profile-'));
+  if (nativeHost) {
+    await mkdir(join(userDataDir, 'NativeMessagingHosts'));
+    const manifest = {
+      name: desktopHostName,
+      description: 'Fake Lock In app for tests',
+      path: nativeHost,
+      type: 'stdio',
+      allowed_origins: [`chrome-extension://${chromeExtensionId}/`],
+    };
+    await writeFile(join(userDataDir, 'NativeMessagingHosts', `${desktopHostName}.json`), JSON.stringify(manifest));
+  }
 
   const browser = await puppeteer.launch({
     headless: true,
     pipe: true,
     enableExtensions: true,
+    userDataDir,
     args: [
       `--host-resolver-rules=MAP *.test 127.0.0.1:${port}`,
       '--no-proxy-server',
@@ -72,6 +101,7 @@ export async function launch(): Promise<TestBrowser> {
       await browser.close();
       server.close();
       await rm(extensionDir, { recursive: true, force: true });
+      await rm(userDataDir, { recursive: true, force: true });
     },
   };
 }
@@ -95,6 +125,7 @@ export interface Stored {
   profiles?: Profile[];
   gateVisits?: GateVisit[];
   ownQuotes?: OwnQuote[];
+  syncedAt?: { profiles: number; activeSession: number };
 }
 
 /** Everything in the extension's local storage, read from one of its pages. */

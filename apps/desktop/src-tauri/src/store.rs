@@ -1,13 +1,15 @@
 use std::path::Path;
 
 use rusqlite::{Connection, OptionalExtension, params};
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::error::Result;
-use crate::session::{EndReason, SessionRecord};
+use crate::session::{EndReason, GateVisit, SessionRecord};
 
-/// A value that's kept in step with the extension, with when it last changed.
-#[derive(Clone, Debug, PartialEq)]
+/// A value that's kept in step with the extension, with when it last changed. The newest
+/// change wins.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Synced<T> {
     pub value: T,
     /// Epoch milliseconds. 0 means it has never been changed.
@@ -20,7 +22,8 @@ pub struct Store {
 }
 
 /// Each entry upgrades the database by one version. Add new ones to the end; never edit old ones.
-const MIGRATIONS: &[&str] = &[r#"
+const MIGRATIONS: &[&str] = &[
+    r#"
     CREATE TABLE state (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
@@ -40,7 +43,21 @@ const MIGRATIONS: &[&str] = &[r#"
         end_reason TEXT NOT NULL
     );
     CREATE INDEX sessions_started_at ON sessions (started_at);
-"#];
+"#,
+    r#"
+    CREATE TABLE gate_visits (
+        id TEXT PRIMARY KEY,
+        session_id TEXT,
+        recipe_id TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        destination TEXT,
+        why TEXT,
+        intention TEXT,
+        continued INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX gate_visits_at ON gate_visits (at);
+"#,
+];
 
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
@@ -109,6 +126,52 @@ impl Store {
         save(&tx, key, synced)?;
         tx.commit()?;
         Ok(())
+    }
+
+    /// Saves a trip to a redirected site. The extension sends it again as the user answers
+    /// "why?" or continues, so later sends update it, keeping the session it started in.
+    pub fn save_gate_visit(&self, visit: &GateVisit, session_id: Option<&str>) -> Result<()> {
+        self.db.execute(
+            "INSERT INTO gate_visits (id, session_id, recipe_id, at, destination, why, intention, continued)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+             ON CONFLICT (id) DO UPDATE SET destination = excluded.destination, why = excluded.why,
+                intention = excluded.intention, continued = excluded.continued",
+            params![
+                visit.id,
+                session_id,
+                visit.recipe_id,
+                visit.at,
+                visit.destination,
+                visit.why,
+                visit.intention,
+                visit.continued,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Gate visits as (session id, visit), oldest first.
+    #[allow(dead_code)] // Read by insights and the night sky once they land.
+    pub fn gate_visits(&self) -> Result<Vec<(Option<String>, GateVisit)>> {
+        let mut statement = self.db.prepare(
+            "SELECT session_id, id, recipe_id, at, destination, why, intention, continued
+             FROM gate_visits ORDER BY at",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                GateVisit {
+                    id: row.get(1)?,
+                    recipe_id: row.get(2)?,
+                    at: row.get(3)?,
+                    destination: row.get(4)?,
+                    why: row.get(5)?,
+                    intention: row.get(6)?,
+                    continued: row.get(7)?,
+                },
+            ))
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
     /// The session log, oldest first.

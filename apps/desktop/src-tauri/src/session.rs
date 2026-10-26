@@ -116,6 +116,50 @@ impl SessionRecord {
     }
 }
 
+/// One trip to a redirected site, as the extension reports it.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GateVisit {
+    pub id: String,
+    pub recipe_id: String,
+    /// Epoch milliseconds.
+    pub at: i64,
+    /// The page the visit landed on, e.g. "gate" or "quote".
+    pub destination: Option<String>,
+    /// The one-tap answer to "why are you here?".
+    pub why: Option<String>,
+    /// What the user said they came for.
+    pub intention: Option<String>,
+    /// Whether they continued to the site with a pass.
+    #[serde(default)]
+    pub continued: bool,
+}
+
+/// The longest text kept from a gate visit. The extension already limits it; this is a backstop.
+const MAX_VISIT_TEXT: usize = 500;
+
+impl GateVisit {
+    /// The same visit with its text fields cut down to a sensible length.
+    pub fn trimmed(mut self) -> Self {
+        for text in [&mut self.id, &mut self.recipe_id] {
+            truncate(text, 100);
+        }
+        for text in [&mut self.destination, &mut self.why, &mut self.intention]
+            .into_iter()
+            .flatten()
+        {
+            truncate(text, MAX_VISIT_TEXT);
+        }
+        self
+    }
+}
+
+fn truncate(text: &mut String, max_chars: usize) {
+    if let Some((index, _)) = text.char_indices().nth(max_chars) {
+        text.truncate(index);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,6 +224,16 @@ mod tests {
             assert_eq!(record.timer_minutes, None);
             assert_eq!((record.focused_ms, record.overtime_ms), (40 * MIN, 0));
         }
+    }
+
+    #[test]
+    fn trims_long_visit_text() {
+        let visit: GateVisit = serde_json::from_value(json!({
+            "id": "v", "recipeId": "reddit", "at": 1, "intention": "é".repeat(600)
+        }))
+        .unwrap();
+        assert!(!visit.continued);
+        assert_eq!(visit.trimmed().intention.unwrap().chars().count(), MAX_VISIT_TEXT);
     }
 
     #[test]

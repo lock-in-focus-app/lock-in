@@ -27,6 +27,8 @@ cargo clippy --all-targets -- -D warnings
 - `src-tauri/src/session.rs`: finished sessions go into the session log with their focused time, overtime and (once idle detection lands) idle tail, so stars and stardust can be worked out from past sessions later.
 - `src-tauri/src/timer.rs` and `lib.rs`: the quiet timer. When it's done it shows a quiet notification, one with a sound, or nothing at all, depending on the profile. The session keeps going either way.
 - `src-tauri/src/tray.rs`: the menu-bar menu, rebuilt when the session or profiles change.
+- `src-tauri/src/link.rs` and `bridge.rs`: the link to the browser extension. Browsers can only talk to a program they start themselves (Native Messaging), so they start Lock In's own executable, which notices it was started by a browser and runs as a small bridge instead of the app. The bridge passes messages to the running app over a local socket in the data folder, and waits quietly (one connect attempt every 2 seconds) while the app isn't running. Profiles and the session sync both ways; the newest change wins.
+- `src-tauri/src/hosts.rs`: on every launch the app writes a Native Messaging host manifest into each installed browser's folder (Chrome, Chrome for Testing, Chromium, Brave, Edge, Vivaldi, Arc, Firefox, Zen), pointing at its own executable and allowing only Lock In's extension. Windows needs registry entries instead, which come with Windows support.
 - `src/`: the window. It asks the core for a snapshot of its state and gets a new one whenever something changes (`app.ts`).
 - The database lives in the app data folder (on macOS, `~/Library/Application Support/io.github.lock-in-focus-app.lock-in/`), readable by your user only.
 
