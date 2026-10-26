@@ -16,13 +16,25 @@ const fixturesDir = join(import.meta.dirname, 'fixtures');
 
 const testDomains: Record<string, string> = {
   '*.reddit.com/': '*.reddit.test/',
+  '*.youtube.com/': '*.youtube.test/',
   '*.x.com/': '*.x.test/',
   '*.twitter.com/': '*.twitter.test/',
+  '*.instagram.com/': '*.instagram.test/',
+  '*.tiktok.com/': '*.tiktok.test/',
+  '*.facebook.com/': '*.facebook.test/',
+  '*.linkedin.com/': '*.linkedin.test/',
+  '*.pinterest.com/': '*.pinterest.test/',
 };
 
 export const urls = {
   reddit: 'http://www.reddit.test/',
+  youtube: 'http://www.youtube.test/',
   x: 'http://x.test/home',
+  instagram: 'http://www.instagram.test/',
+  tiktok: 'http://www.tiktok.test/',
+  facebook: 'http://www.facebook.test/',
+  linkedin: 'http://www.linkedin.test/feed/',
+  pinterest: 'http://www.pinterest.test/',
   other: 'http://other.test/',
 };
 
@@ -146,9 +158,17 @@ async function copyBuildForTests(): Promise<string> {
 }
 
 async function serveFixtures(): Promise<Server> {
+  const fixture = (name: string) => readFile(join(fixturesDir, `${name}.html`), 'utf8');
+  // Each site's page is served for every path, so tests can visit or pushState anywhere.
   const pages: Record<string, string> = {
-    'www.reddit.test': await readFile(join(fixturesDir, 'reddit.html'), 'utf8'),
-    'x.test': '<!doctype html><title>Fake X</title><p id="post">A post</p>',
+    'www.reddit.test': await fixture('reddit'),
+    'www.youtube.test': await fixture('youtube'),
+    'x.test': await fixture('x'),
+    'www.instagram.test': await fixture('instagram'),
+    'www.tiktok.test': await fixture('tiktok'),
+    'www.facebook.test': await fixture('facebook'),
+    'www.linkedin.test': await fixture('linkedin'),
+    'www.pinterest.test': await fixture('pinterest'),
   };
   const server = createServer((req, res) => {
     const host = req.headers.host?.split(':')[0] ?? '';

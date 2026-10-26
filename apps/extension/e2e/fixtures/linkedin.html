@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- A stand-in for LinkedIn. The feed is hidden on /feed/ only, so a single post still shows. -->
+<html>
+  <head>
+    <title>Fake LinkedIn</title>
+    <style>
+      body { font: 16px sans-serif; background: #fff; }
+      body * { display: block; margin: 8px; padding: 12px; background: #0a66c2; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div data-testid="mainFeed">
+        <div id="keep">Start a post (stays)</div>
+        <div id="feed">Feed posts (hidden)</div>
+      </div>
+    </main>
+    <aside><div id="feed-news-module">LinkedIn News (hidden)</div></aside>
+  </body>
+</html>

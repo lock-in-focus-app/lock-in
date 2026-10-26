@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- A stand-in for YouTube, with one element for each thing the recipe hides. -->
+<html>
+  <head>
+    <title>Fake YouTube</title>
+    <style>
+      body { font: 16px sans-serif; background: #fff; }
+      body * { display: block; margin: 8px; padding: 12px; background: #f00; color: #fff; }
+      #keep { background: #065fd4; }
+    </style>
+  </head>
+  <body>
+    <p id="keep">Search and the video player (stay)</p>
+    <ytd-guide-entry-renderer id="shorts-nav"><a title="Shorts">Shorts</a></ytd-guide-entry-renderer>
+    <ytd-browse page-subtype="home" id="home">Home feed (hidden)</ytd-browse>
+    <ytd-rich-section-renderer id="shorts-shelf"><ytd-rich-shelf-renderer is-shorts>Shorts shelf (hidden)</ytd-rich-shelf-renderer></ytd-rich-section-renderer>
+    <ytd-reel-shelf-renderer id="reel-shelf">Shorts in search (hidden, except in history)</ytd-reel-shelf-renderer>
+    <div class="html5-endscreen" id="endscreen">End screen (hidden)</div>
+    <div id="secondary"><div id="related">Recommended videos (hidden)</div></div>
+    <ytd-comments id="comments">Comments (hidden)</ytd-comments>
+  </body>
+</html>

@@ -8,7 +8,11 @@ export type SiteLevel = 'allowed' | 'tamed' | 'redirected' | 'restricted';
 export interface RecipeToggle {
   id: string;
   label: string;
-  /** CSS selectors for elements hidden while the toggle is on. */
+  /**
+   * CSS selectors for elements hidden while the toggle is on. To hide something on some
+   * pages only, start the selector with the page path the extension keeps on `<html>`,
+   * e.g. `html[data-lock-in-path^="/explore"] main`.
+   */
   selectors?: string[];
   /** A whole-page effect applied while the toggle is on. */
   effect?: 'grayscale';

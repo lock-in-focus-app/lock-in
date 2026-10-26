@@ -1,0 +1,60 @@
+{
+  "id": "youtube",
+  "name": "YouTube",
+  "matches": ["*://*.youtube.com/*"],
+  "source": "Home feed, recommendation and Shorts selectors adapted from UBlock-Filters-for-Social-Media by Bevíz László (MIT), https://github.com/BevizLaszlo/UBlock-Filters-for-Social-Media, which includes ublock-hide-yt-shorts by gijsdev (MIT), https://github.com/gijsdev/ublock-hide-yt-shorts, and News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator",
+  "toggles": [
+    {
+      "id": "hideHomeFeed",
+      "label": "Hide home feed",
+      "selectors": ["ytd-browse[page-subtype=\"home\"]"],
+      "default": true
+    },
+    {
+      "id": "hideShorts",
+      "label": "Hide Shorts",
+      "selectors": [
+        "html:not([data-lock-in-path^=\"/feed/history\"]) ytd-reel-shelf-renderer",
+        "ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])",
+        "ytd-rich-shelf-renderer[is-shorts]",
+        "ytd-rich-item-renderer:has(ytm-shorts-lockup-view-model)",
+        "ytd-video-renderer:has(ytd-thumbnail-overlay-time-status-renderer[overlay-style=\"SHORTS\"])",
+        "grid-shelf-view-model:has(ytm-shorts-lockup-view-model-v2)",
+        "ytd-guide-entry-renderer:has([title=\"Shorts\"])",
+        "ytd-mini-guide-entry-renderer:has([title=\"Shorts\"])",
+        "ytd-mini-guide-entry-renderer[aria-label=\"Shorts\"]",
+        "yt-tab-shape[tab-title=\"Shorts\"]"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideRecommendations",
+      "label": "Hide recommended videos",
+      "selectors": ["#secondary #related", "#below #related", "ytd-watch-next-secondary-results-renderer"],
+      "default": true
+    },
+    {
+      "id": "hideEndScreen",
+      "label": "Hide end-of-video suggestions",
+      "selectors": [
+        ".html5-endscreen",
+        ".ytp-ce-element",
+        ".ytp-fullscreen-grid-main-content",
+        ".ytp-fullscreen-grid"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideComments",
+      "label": "Hide comments",
+      "selectors": ["ytd-comments"],
+      "default": false
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

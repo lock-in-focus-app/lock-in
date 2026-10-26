@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- A stand-in for Pinterest. Grid items are hidden on the home feed, under a Pin and on Explore, but not in search. -->
+<html>
+  <head>
+    <title>Fake Pinterest</title>
+    <style>
+      body { font: 16px sans-serif; background: #fff; }
+      body * { display: block; margin: 8px; padding: 12px; background: #e60023; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div id="VerticalNavContent">
+      <div id="explore-nav"><div data-test-id="vertical-nav-icon"><div aria-label="Explore">Explore (hidden)</div></div></div>
+    </div>
+    <p id="keep">Search box (stays)</p>
+    <div data-test-id="search-story-suggestions-container" id="suggestions">Popular searches (hidden)</div>
+    <div role="list"><div role="listitem" id="pin">A Pin</div></div>
+  </body>
+</html>

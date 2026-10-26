@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- A stand-in for X. The timeline is hidden on /home and /explore; the Explore tabs only on /explore. -->
+<html>
+  <head>
+    <title>Fake X</title>
+    <style>
+      body { font: 16px sans-serif; background: #fff; }
+      body * { display: block; margin: 8px; padding: 12px; background: #1d9bf0; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div data-testid="primaryColumn">
+        <div>
+          <div><nav id="explore-tabs">For you · Trending · News (hidden on Explore)</nav></div>
+          <div>
+            <section>
+              <h1>Timeline</h1>
+              <div aria-label="Timeline" id="timeline">
+                <div data-testid="cellInnerDiv"><article data-testid="tweet" id="post">A post</article></div>
+                <div data-testid="cellInnerDiv" id="promoted">
+                  <div data-testid="placementTracking"><article data-testid="tweet">Promoted post (hidden)</article></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div data-testid="sidebarColumn">
+        <section id="trending"><div data-testid="trend">Trending (hidden)</div></section>
+        <aside role="complementary" id="who-to-follow">Who to follow (hidden)</aside>
+      </div>
+    </main>
+  </body>
+</html>

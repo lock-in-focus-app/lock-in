@@ -1,4 +1,4 @@
-import { checkOpenPage, cssForPage } from '@lock-in/core';
+import { checkOpenPage, cssForPage, pagePathAttribute } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 
 export default defineContentScript({
@@ -11,6 +11,18 @@ export default defineContentScript({
     style.dataset.lockIn = '';
     document.documentElement.append(style);
 
+    // Recipes can hide things on some pages only by matching the path kept on <html>.
+    // It's only there while the site is tamed, and follows single-page app navigation.
+    let path = location.pathname;
+    const markPath = () => {
+      if (style.textContent) document.documentElement.setAttribute(pagePathAttribute, path);
+      else document.documentElement.removeAttribute(pagePathAttribute);
+    };
+    ctx.addEventListener(window, 'wxt:locationchange', ({ newUrl }) => {
+      path = newUrl.pathname;
+      markPath();
+    });
+
     let removeOverlay: (() => void) | undefined;
     let overlayKey = '';
     let recheck: number | undefined;
@@ -18,6 +30,7 @@ export default defineContentScript({
     const apply = async () => {
       const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
       style.textContent = cssForPage({ url: location.href, session, profiles: profileList, recipes });
+      markPath();
 
       // Redirected and restricted sites only get this far if the tab was already open.
       const check = checkOpenPage({ url: location.href, session, profiles: profileList, recipes, now: Date.now() });
@@ -60,6 +73,7 @@ export default defineContentScript({
       unwatchSession();
       unwatchProfiles();
       style.remove();
+      document.documentElement.removeAttribute(pagePathAttribute);
       removeOverlay?.();
     });
   },

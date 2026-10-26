@@ -1,0 +1,38 @@
+{
+  "id": "tiktok",
+  "name": "TikTok",
+  "matches": ["*://*.tiktok.com/*"],
+  "toggles": [
+    {
+      "id": "hideForYou",
+      "label": "Hide For You feed",
+      "selectors": [
+        "[data-e2e=\"recommend-list-item-container\"]",
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path^=\"/foryou\"]) main"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideExplore",
+      "label": "Hide Explore",
+      "selectors": [
+        "a[href=\"/explore\"]",
+        "[data-e2e=\"nav-explore\"]",
+        "html[data-lock-in-path^=\"/explore\"] main"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideLive",
+      "label": "Hide LIVE",
+      "selectors": ["a[href=\"/live\"]", "[data-e2e=\"nav-live\"]"],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { isSafeSelector } from '@lock-in/core';
+import { isSafeSelector, pagePathAttribute } from '@lock-in/core';
 import { describe, expect, it } from 'vitest';
 import { recipes } from './index';
 
@@ -11,6 +11,12 @@ describe.each(recipes)('$name recipe', (recipe) => {
   it('only uses safe selectors', () => {
     const selectors = recipe.toggles.flatMap((toggle) => toggle.selectors ?? []);
     expect(selectors.filter((selector) => !isSafeSelector(selector))).toEqual([]);
+  });
+
+  it('only matches the page path on <html>, where the extension keeps it', () => {
+    const selectors = recipe.toggles.flatMap((toggle) => toggle.selectors ?? []);
+    const misplaced = selectors.filter((selector) => selector.includes(pagePathAttribute) && !selector.startsWith('html'));
+    expect(misplaced).toEqual([]);
   });
 
   it('gives every toggle something to do', () => {

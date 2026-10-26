@@ -2,5 +2,54 @@
   "id": "x",
   "name": "X",
   "matches": ["*://*.x.com/*", "*://*.twitter.com/*"],
-  "toggles": []
+  "source": "Timeline, sidebar and promoted-post selectors adapted from Control Panel for Twitter by Jonny Buchanan (MIT), https://github.com/insin/control-panel-for-twitter, News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator, and UBlock-Filters-for-Social-Media by Bevíz László (MIT), https://github.com/BevizLaszlo/UBlock-Filters-for-Social-Media",
+  "toggles": [
+    {
+      "id": "hideHomeTimeline",
+      "label": "Hide home timeline",
+      "selectors": [
+        "html[data-lock-in-path=\"/home\"] [data-testid=\"primaryColumn\"] section > h1 + div[aria-label]",
+        "html[data-lock-in-path=\"/home\"] [data-testid=\"primaryColumn\"] > div > div > section[role=\"region\"]",
+        "[aria-label=\"Timeline: Your Home Timeline\"]"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideTrending",
+      "label": "Hide trending, news & Explore",
+      "selectors": [
+        "[data-testid=\"sidebarColumn\"] section:has([data-testid=\"trend\"])",
+        "[aria-label=\"Timeline: Trending now\"]",
+        "div:has(> div[data-testid=\"news_sidebar\"])",
+        "div:has(> div[data-testid^=\"news_sidebar_article_\"])",
+        "html[data-lock-in-path^=\"/explore\"] [data-testid=\"primaryColumn\"] > div > div:first-of-type nav",
+        "html[data-lock-in-path^=\"/explore\"] [data-testid=\"primaryColumn\"] section > h1 + div[aria-label]",
+        "html[data-lock-in-path^=\"/explore\"] [data-testid=\"primaryColumn\"] [data-testid=\"cellInnerDiv\"]:has(article[data-testid=\"tweet\"])"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideWhoToFollow",
+      "label": "Hide who to follow",
+      "selectors": [
+        "[data-testid=\"sidebarColumn\"] aside[role=\"complementary\"]",
+        "[data-testid=\"primaryColumn\"] aside[role=\"complementary\"]"
+      ],
+      "default": true
+    },
+    {
+      "id": "hidePromoted",
+      "label": "Hide promoted posts",
+      "selectors": [
+        "[data-testid=\"cellInnerDiv\"]:has([data-testid=\"placementTracking\"] [data-testid=\"tweet\"])"
+      ],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
 }

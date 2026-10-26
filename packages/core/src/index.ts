@@ -1,7 +1,7 @@
 // Shared types, schemas, and logic for Lock In (profiles, recipes, sessions, rewards).
 export type * from './types';
 export { matchesPattern, matchPatternToRegex, parseHttpUrl } from './match';
-export { buildRecipeCss, cssForPage, findRecipe, isSafeSelector, resolveToggles } from './recipe';
+export { buildRecipeCss, cssForPage, findRecipe, isSafeSelector, pagePathAttribute, resolveToggles } from './recipe';
 export {
   findRule,
   maxProfileNameLength,

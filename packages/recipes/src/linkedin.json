@@ -1,0 +1,31 @@
+{
+  "id": "linkedin",
+  "name": "LinkedIn",
+  "matches": ["*://*.linkedin.com/*"],
+  "source": "Feed and news selectors adapted from News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator, and UBlock-Filters-for-Social-Media by Bevíz László (MIT), https://github.com/BevizLaszlo/UBlock-Filters-for-Social-Media",
+  "toggles": [
+    {
+      "id": "hideFeed",
+      "label": "Hide home feed",
+      "selectors": [
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/feed\"], [data-lock-in-path=\"/feed/\"]) main > div.relative > .scaffold-finite-scroll",
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/feed\"], [data-lock-in-path=\"/feed/\"]) div[componentkey^=\"container-update-list_mainFeed\"]",
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/feed\"], [data-lock-in-path=\"/feed/\"]) div[data-testid=\"mainFeed\"] > div:not(:first-child)",
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/feed\"], [data-lock-in-path=\"/feed/\"]) main > .feed-sort-toggle-dsa__wrapper"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideNews",
+      "label": "Hide LinkedIn News",
+      "selectors": ["#feed-news-module", "div:has(> div > div[data-view-name=\"news-module\"])"],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

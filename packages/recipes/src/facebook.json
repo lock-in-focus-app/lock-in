@@ -1,0 +1,38 @@
+{
+  "id": "facebook",
+  "name": "Facebook",
+  "matches": ["*://*.facebook.com/*"],
+  "source": "Generated-class fallbacks for the News Feed and stories from News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator",
+  "toggles": [
+    {
+      "id": "hideNewsFeed",
+      "label": "Hide News Feed & stories",
+      "selectors": [
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/home.php\"]) [role=\"main\"]:has([role=\"feed\"])",
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/home.php\"]) div.x1hc1fzr.x1unhpq9.x6o7n8i",
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/home.php\"]) [data-dcm-id]",
+        "html:is([data-lock-in-path=\"/\"], [data-lock-in-path=\"/home.php\"]) div.x193iq5w.xgmub6v.x1ceravr.x1v0nzow",
+        "html[data-lock-in-path^=\"/groups/feed\"] [role=\"main\"] [role=\"feed\"]"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideReels",
+      "label": "Hide Reels & Watch links",
+      "selectors": [
+        "a[href=\"/reel/\"]",
+        "a[href^=\"/reel/?\"]",
+        "a[href$=\"facebook.com/reel/\"]",
+        "a[href=\"/watch/\"]",
+        "a[href$=\"facebook.com/watch/\"]"
+      ],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

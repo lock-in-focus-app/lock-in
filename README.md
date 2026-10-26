@@ -15,7 +15,7 @@ Most blockers treat a site as all or nothing. Lock In gives every site one of fo
 | **Redirected** | Visits go to a Lock In page instead: an intention gate that asks what you came for, a quote, one of your own links, or a 2-minute unstick. You can still get through for a few minutes if you need to. |
 | **Restricted** | Blocked, with no way through until the session ends. |
 
-What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. You can flip toggles from the extension popup for one session or save them to a profile.
+What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. There are built-in recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. You can flip toggles from the extension popup for one session or save them to a profile.
 
 Lock In has no accounts and no telemetry. Everything stays on your device.
 

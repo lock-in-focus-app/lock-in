@@ -1,6 +1,6 @@
 # Lock In — Product & Build Plan
 
-> **Status:** plan approved, Oct 26 2026. Next: scaffold the pnpm workspace (§8), then start Phase 1.
+> **Status:** Phase 1 in progress. The extension runs sessions, profiles (with an editor), all four site levels, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Next: path rules, then the recipe editor.
 
 ## Context
 
@@ -37,23 +37,31 @@ Each site has one of four levels, set per session profile:
 | **Redirected** | Sent to a redirect destination (§3) | x.com → intention gate |
 | **Restricted** | Blocked outright: no countdown, no pass, no way through until the session ends | Reddit during an exam-prep session |
 
-Paths can override their site (e.g. `reddit.com/r/writing` allowed, `/r/all` redirected).
+Paths can override their site (e.g. `reddit.com/r/writing` allowed, `/r/all` redirected). *Not built yet.* This is also how Shorts and Reels players get handled: a recipe can hide the links to them, but hiding a playing video with CSS doesn't stop its sound, so `/shorts/*` and `/reels/*` (and TikTok's For You page, which autoplays) need to be redirected rather than hidden.
 
 ### Site Recipes (JSON) + live visual editor
-A **recipe** defines what "tamed" means for one site: a list of toggles, each mapped to CSS selectors and effects. Built-in recipes cover Reddit, YouTube, X, Instagram, TikTok, Facebook and LinkedIn. Users can edit them or create their own, and the community can contribute fixes when sites change their HTML.
+A **recipe** defines what "tamed" means for one site: a list of toggles, each mapped to CSS selectors and effects. Built-in recipes cover Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Users can edit them or create their own, and the community can contribute fixes when sites change their HTML.
 
 ```json
 {
-  "id": "reddit",
-  "match": ["*://*.reddit.com/*"],
+  "id": "x",
+  "name": "X",
+  "matches": ["*://*.x.com/*", "*://*.twitter.com/*"],
+  "source": "Where the selectors came from, with the license",
   "toggles": [
-    { "id": "hideHomeFeed", "label": "Hide home feed", "selectors": ["shreddit-feed"], "paths": ["/", "/r/all", "/r/popular"], "default": true },
-    { "id": "hideSidebarRecs", "label": "Hide recommended communities", "selectors": ["#right-sidebar-container"] },
-    { "id": "grayscale", "label": "Grayscale", "effect": "grayscale" }
+    { "id": "hideHomeTimeline", "label": "Hide home timeline", "selectors": ["html[data-lock-in-path=\"/home\"] [data-testid=\"primaryColumn\"] section > h1 + div[aria-label]"], "default": true },
+    { "id": "hideWhoToFollow", "label": "Hide who to follow", "selectors": ["[data-testid=\"sidebarColumn\"] aside[role=\"complementary\"]"], "default": true },
+    { "id": "grayscale", "label": "Grayscale", "effect": "grayscale", "default": false }
   ]
 }
 ```
-(The selectors above are illustrative. The real ones are written and tested against the live sites in Phase 1.)
+
+**How recipes are written:**
+- **Plain CSS only.** Recipes are injected as one stylesheet at `document_start`, so there's no flash and no script running per element. Selectors are checked so they can't break out of the stylesheet.
+- **Page-specific hiding.** CSS can't see the URL, so while a site is tamed the extension keeps the page's path on `<html data-lock-in-path="…">` and updates it as single-page apps navigate. A selector like `html[data-lock-in-path^="/explore"] main` hides something on some pages only.
+- **Prefer stable hooks.** Use test ids, roles, `href`s and custom element names over generated class names (Facebook and Instagram change theirs constantly). Some selectors still rely on English labels (`aria-label="Explore"`), which is a known gap for other languages.
+- **Credit sources.** Selectors adapted from open projects (UBlock-Filters-for-Social-Media, Control Panel for Twitter and Declutter Pinterest, all MIT; News Feed Eradicator, AGPL-3.0 like Lock In) are credited in the recipe's `source`. TikTok has no open list to draw on, so its recipe uses TikTok's own `data-e2e` test attributes and links.
+- **Tested twice.** Browser tests check each recipe against a stand-in page for the site. Sites change their HTML without notice, so each recipe also needs checking on the real site before a release.
 
 **The editor shows a version of the actual site and animates every toggle:**
 - **Preview mock**: each built-in recipe ships with a lightweight, stylized wireframe of the site, built as a Vue component. It is *our own drawing*, not copied site assets.
@@ -73,9 +81,9 @@ A profile bundles:
 - redirect destinations
 
 You can create, edit, duplicate, delete, reorder, and import/export (JSON) profiles. The app ships with **starter profiles that show what's possible**. They're ordinary editable profiles, and "Reset starter profiles" restores them:
-- *Writing*: Reddit and YouTube tamed + grayscale, X redirected, Discord closed
-- *Deep Work*: all social redirected, chat apps closed
-- *Wind Down*: YouTube tamed (no Shorts or recommendations), nothing else
+- *Writing*: Reddit and YouTube tamed + grayscale; X, Instagram, TikTok and Facebook redirected; Discord closed
+- *Deep Work*: all social redirected (with a quote or unstick page some of the time, and an escalating wait), chat apps closed
+- *Wind Down*: Reddit, YouTube and Instagram tamed (no feeds, Shorts or recommendations), nothing else
 
 ---
 
@@ -258,10 +266,11 @@ lock-in/
 
 **Phase 1: Extension MVP** *(replaces your manual SocialFocus toggling first)*
 - Standalone: sessions run from the extension popup, with no desktop app needed (the app plugs in later via Native Messaging).
-- Recipes for Reddit, YouTube and X with real tested selectors: tame, grayscale, redirect, path rules.
-- Profiles: CRUD + starter profiles, manual start/stop.
-- Redirect destinations: intention gate with countdown, quote card, productive URL, stuck page.
-- Attempt counter + why-tap.
+- ✅ Recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest: tame, grayscale, redirect. (Still to do: check each on the real site.)
+- Path rules (§1), including redirecting Shorts and Reels players.
+- ✅ Profiles: CRUD + starter profiles, manual start/stop, four site levels including Restricted.
+- ✅ Redirect destinations: intention gate with countdown, quote card, productive URL, stuck page.
+- ✅ Attempt counter + why-tap.
 - Recipe editor with animated preview mocks.
 
 **Phase 2: Desktop app (Tauri)**
@@ -281,7 +290,7 @@ lock-in/
 
 **Phase 5: Polish & release**
 - Recipe live mode + element picker.
-- Remaining built-in recipes.
+- More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.
 - Export/import.
 - Signed builds: macOS notarization requires a paid Apple account, while unsigned builds work with a Gatekeeper warning. Also publish to the Chrome Web Store and Firefox Add-ons.

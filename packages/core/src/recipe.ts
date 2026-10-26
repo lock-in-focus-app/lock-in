@@ -2,6 +2,13 @@ import { matchesPattern } from './match';
 import type { Profile, Session, SiteRecipe, SiteRule } from './types';
 
 /**
+ * While a site is tamed, the extension keeps the page's path in this attribute on
+ * `<html>` and updates it as single-page apps navigate. CSS can't see the URL, so this
+ * is how a recipe hides something on some pages only.
+ */
+export const pagePathAttribute = 'data-lock-in-path';
+
+/**
  * Selectors end up inside a generated stylesheet, so anything that could close the rule
  * or start a new one (braces, semicolons, at-rules, comments, escapes) is rejected. This
  * matters for recipes imported from other people.

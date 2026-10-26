@@ -1,0 +1,55 @@
+{
+  "id": "pinterest",
+  "name": "Pinterest",
+  "matches": [
+    "*://*.pinterest.com/*",
+    "*://*.pinterest.co.uk/*",
+    "*://*.pinterest.ca/*",
+    "*://*.pinterest.com.au/*",
+    "*://*.pinterest.nz/*",
+    "*://*.pinterest.ie/*",
+    "*://*.pinterest.de/*",
+    "*://*.pinterest.fr/*",
+    "*://*.pinterest.es/*",
+    "*://*.pinterest.it/*",
+    "*://*.pinterest.com.mx/*",
+    "*://*.pinterest.jp/*"
+  ],
+  "source": "Search suggestion and Explore selectors adapted from Declutter Pinterest (MIT), https://greasyfork.org/scripts/512469-declutter-pinterest",
+  "toggles": [
+    {
+      "id": "hideHomeFeed",
+      "label": "Hide home feed",
+      "selectors": ["html[data-lock-in-path=\"/\"] [role=\"listitem\"]"],
+      "default": true
+    },
+    {
+      "id": "hideMoreLikeThis",
+      "label": "Hide more ideas under a Pin",
+      "selectors": ["html[data-lock-in-path^=\"/pin/\"] [role=\"listitem\"]"],
+      "default": true
+    },
+    {
+      "id": "hideExplore",
+      "label": "Hide Explore",
+      "selectors": [
+        "html[data-lock-in-path^=\"/today\"] [role=\"listitem\"]",
+        "html[data-lock-in-path^=\"/ideas\"] [role=\"listitem\"]",
+        "#VerticalNavContent div:has(> [data-test-id=\"vertical-nav-icon\"] div[aria-label=\"Explore\"])"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideSearchSuggestions",
+      "label": "Hide popular search suggestions",
+      "selectors": ["[data-test-id=\"search-story-suggestions-container\"]"],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "instagram",
+  "name": "Instagram",
+  "matches": ["*://*.instagram.com/*"],
+  "source": "Suggested-accounts selector adapted from News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator",
+  "toggles": [
+    {
+      "id": "hideHomeFeed",
+      "label": "Hide home feed & stories",
+      "selectors": [
+        "html[data-lock-in-path=\"/\"] main:has(article)",
+        "html[data-lock-in-path=\"/\"] div:has(> div > a[href=\"/explore/people/\"])"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideExplore",
+      "label": "Hide Explore",
+      "selectors": [
+        "a[href=\"/explore/\"]",
+        "html[data-lock-in-path^=\"/explore\"]:not([data-lock-in-path^=\"/explore/search\"]) main"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideReels",
+      "label": "Hide Reels links",
+      "selectors": ["a[href=\"/reels/\"]", "a[href$=\"/reels/\"][role=\"tab\"]"],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

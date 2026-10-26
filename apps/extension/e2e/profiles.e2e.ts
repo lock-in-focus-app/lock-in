@@ -46,22 +46,21 @@ describe('profile editor', () => {
     expect(await levelOf('X')).toBe('Redirected');
   });
 
-  it("can't tame a site that has nothing to hide yet", async () => {
-    const disabled = await page.$eval('[role=radiogroup][aria-label="X level"]', (group) =>
-      [...group.querySelectorAll('button')].filter((b) => b.disabled).map((b) => b.textContent!.trim()),
-    );
-    expect(disabled).toEqual(['Tamed']);
+  it('lists every built-in site, with sites a profile leaves out allowed', async () => {
+    expect(await levelOf('YouTube')).toBe('Tamed');
+    expect(await levelOf('Instagram')).toBe('Redirected');
+    expect(await levelOf('Pinterest')).toBe('Allowed');
   });
 
   it('changes site levels, keeping toggles for later', async () => {
     await setLevel('Reddit', 'Restricted');
     await wait(150);
     expect((await savedProfiles())[0]!.sites[0]).toEqual({ recipeId: 'reddit', level: 'restricted', toggles: { grayscale: true } });
-    expect(await page.$('.toggles')).toBeNull();
+    expect(await page.$('li:has([aria-label="Reddit level"]) .toggles')).toBeNull();
 
     await setLevel('Reddit', 'Tamed');
     await wait(150);
-    expect(await page.$$eval('.toggles [role=switch]', (els) => els.length)).toBe(5);
+    expect(await page.$$eval('li:has([aria-label="Reddit level"]) .toggles [role=switch]', (els) => els.length)).toBe(5);
   });
 
   it('creates a profile and selects its name for editing', async () => {
