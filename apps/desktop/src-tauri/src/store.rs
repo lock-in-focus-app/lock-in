@@ -174,6 +174,15 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    /// When each emergency pass was used (epoch ms), oldest first.
+    pub fn pass_uses(&self) -> Result<Vec<i64>> {
+        let mut statement = self
+            .db
+            .prepare("SELECT ended_at FROM sessions WHERE end_reason = ?1 ORDER BY ended_at")?;
+        let rows = statement.query_map(params![EndReason::EmergencyPass.as_str()], |row| row.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     /// The session log, oldest first.
     #[allow(dead_code)] // Read by insights and the night sky once they land.
     pub fn sessions(&self) -> Result<Vec<SessionRecord>> {

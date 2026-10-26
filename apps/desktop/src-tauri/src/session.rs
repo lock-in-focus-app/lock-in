@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use ts_rs::TS;
 
-use crate::timer::TimerSettings;
+use crate::timer::{Strictness, TimerSettings};
 
 /// A profile, as the extension saves it. The app only reads a few fields; everything else
 /// (site levels, redirect settings) is kept as it is, so nothing is lost when it's saved back.
@@ -47,6 +47,16 @@ pub struct Session {
     pub rest: Map<String, Value>,
 }
 
+impl Session {
+    /// How hard it is to end the session at `now`: its strictness while the timer is running,
+    /// and nothing once it's done or if there's no timer.
+    pub fn lock(&self, now: i64) -> Option<Strictness> {
+        let timer = self.timer.as_ref()?;
+        let done_at = timer.done_at(self.started_at)?;
+        (now < done_at).then_some(timer.strictness)
+    }
+}
+
 /// Why a session ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -54,18 +64,22 @@ pub struct Session {
 pub enum EndReason {
     /// The user ended it.
     Stopped,
+    /// The user ended a Hard session early with an emergency pass.
+    EmergencyPass,
 }
 
 impl EndReason {
     pub fn as_str(self) -> &'static str {
         match self {
             EndReason::Stopped => "stopped",
+            EndReason::EmergencyPass => "emergencyPass",
         }
     }
 
     pub fn parse(value: &str) -> Option<Self> {
         match value {
             "stopped" => Some(EndReason::Stopped),
+            "emergencyPass" => Some(EndReason::EmergencyPass),
             _ => None,
         }
     }
@@ -224,6 +238,16 @@ mod tests {
             assert_eq!(record.timer_minutes, None);
             assert_eq!((record.focused_ms, record.overtime_ms), (40 * MIN, 0));
         }
+    }
+
+    #[test]
+    fn is_locked_only_while_the_timer_runs() {
+        let mut hard = session(Some(25));
+        hard.timer.as_mut().unwrap().strictness = Strictness::Hard;
+        assert_eq!(hard.lock(1_000_000 + 24 * MIN), Some(Strictness::Hard));
+        assert_eq!(hard.lock(1_000_000 + 25 * MIN), None);
+        assert_eq!(session(Some(0)).lock(1_000_000), None);
+        assert_eq!(session(None).lock(1_000_000), None);
     }
 
     #[test]

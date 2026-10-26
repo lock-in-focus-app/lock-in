@@ -5,6 +5,7 @@ mod error;
 mod hosts;
 mod link;
 mod session;
+mod settings;
 mod store;
 mod timer;
 mod tray;
@@ -47,8 +48,8 @@ pub(crate) fn start_session(app: &AppHandle, profile_id: &str) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn end_session(app: &AppHandle) -> Result<()> {
-    engine(app).end_session(now_ms(), EndReason::Stopped)?;
+pub(crate) fn end_session(app: &AppHandle, reason: EndReason) -> Result<()> {
+    engine(app).end_session(now_ms(), reason)?;
     changed(app);
     Ok(())
 }
@@ -59,7 +60,7 @@ pub(crate) fn changed(app: &AppHandle) {
     // main thread) never waits on a lock another thread holds.
     let (snapshot, session) = {
         let engine = engine(app);
-        (engine.snapshot(), engine.session().cloned())
+        (engine.snapshot(now_ms()), engine.session().cloned())
     };
     let _ = app.emit("snapshot", &snapshot);
     link::broadcast(app);
@@ -170,7 +171,7 @@ pub fn run() {
             let dir = link::data_dir().ok_or("no data folder")?;
             create_private_dir(&dir)?;
             let engine = Engine::load(Store::open(&dir.join("lock-in.db"))?)?;
-            let snapshot = engine.snapshot();
+            let snapshot = engine.snapshot(now_ms());
             let session = engine.session().cloned();
             app.manage(Mutex::new(engine));
             app.manage(TimerTask::default());
@@ -209,6 +210,8 @@ pub fn run() {
             commands::start_session,
             commands::end_session,
             commands::set_profile_timer,
+            commands::use_emergency_pass,
+            commands::set_settings,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lock In")
