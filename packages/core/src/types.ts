@@ -37,7 +37,62 @@ export interface Profile {
   id: string;
   name: string;
   sites: SiteRule[];
+  /** How redirected sites behave. Missing fields fall back to the defaults. */
+  redirect?: {
+    destinations?: RedirectDestination[];
+    gate?: Partial<GateSettings>;
+    links?: SavedLink[];
+  };
 }
+
+/** The pages a redirected site can send you to. */
+export type RedirectDestination = 'gate' | 'quote' | 'link' | 'stuck';
+
+/** What happens to a site's open tabs once its pass runs out. */
+export type PassExpiry = 'nothing' | 'pause' | 'redirect';
+
+/** How long Continue stays disabled on the intention gate. */
+export type GateWait =
+  | { mode: 'fixed'; seconds: number }
+  /** Starts short and grows with each attempt at the same site today, up to a cap. */
+  | { mode: 'escalating'; startSeconds: number; stepSeconds: number; maxSeconds: number };
+
+export interface GateSettings {
+  /** Whether Continue needs a typed reason. */
+  requireReason: boolean;
+  wait: GateWait;
+  /** How long a pass to a redirected site lasts. */
+  passMinutes: number;
+  onPassExpiry: PassExpiry;
+}
+
+/** One of the user's own links, e.g. their draft or reading list. */
+export interface SavedLink {
+  id: string;
+  title: string;
+  url: string;
+}
+
+/** How a profile handles redirected sites. */
+export interface RedirectSettings {
+  /** Which pages to show. One is picked at random for each visit. */
+  destinations: RedirectDestination[];
+  gate: GateSettings;
+  links: SavedLink[];
+}
+
+export interface Quote {
+  text: string;
+  author?: string;
+}
+
+/** A quote the user added themselves. */
+export interface OwnQuote extends Quote {
+  id: string;
+}
+
+/** The one-tap answer to "why are you here?" on redirect pages. */
+export type WhyReason = 'bored' | 'stuck' | 'tired' | 'curious';
 
 /** Toggle values keyed by recipe id, then toggle id. */
 export type ToggleOverrides = Record<string, Record<string, boolean>>;
@@ -54,12 +109,16 @@ export interface Session {
   passes?: Record<string, number>;
 }
 
-/** One trip to the intention gate, kept for the attempt counter and, later, insights. */
+/** One trip to a redirected site, kept for the attempt counter and, later, insights. */
 export interface GateVisit {
   id: string;
   recipeId: string;
   /** Epoch milliseconds. */
   at: number;
+  /** The page the visit was sent to. */
+  destination?: RedirectDestination;
+  /** The user's one-tap answer to "why are you here?". */
+  why?: WhyReason;
   /** What the user said they came for, if they typed anything. */
   intention?: string;
   /** Whether they used a pass to continue to the site. */

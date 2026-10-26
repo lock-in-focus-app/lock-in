@@ -14,7 +14,7 @@ export default defineConfig({
     // warn that Lock In can block content on every page.
     permissions: ['storage', 'activeTab', 'alarms', 'declarativeNetRequestWithHostAccess'],
     host_permissions: recipeSites,
-    // Redirected sites are sent to the intention gate, so they need to be able to load it.
-    web_accessible_resources: [{ resources: ['gate.html'], matches: recipeSites }],
+    // Redirected sites are sent to the redirect page, so they need to be able to load it.
+    web_accessible_resources: [{ resources: ['redirect.html'], matches: recipeSites }],
   },
 });

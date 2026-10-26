@@ -1,12 +1,18 @@
 import {
   findRule,
+  redirectSettingsFor,
   withGateVisit,
   withGateVisitContinued,
+  withGateVisitWhy,
   withPass,
   withProfileToggle,
+  withRedirectSettings,
   withSessionOverridesSaved,
   withSessionToggle,
+  type RedirectDestination,
+  type RedirectSettings,
   type SiteRecipe,
+  type WhyReason,
 } from '@lock-in/core';
 
 // Every change to sessions and profiles goes through these actions. Today they save to
@@ -56,9 +62,14 @@ export async function saveSessionChanges(recipeId: string): Promise<void> {
   ]);
 }
 
-/** Records a trip to the intention gate and returns its id. */
-export async function recordGateVisit(recipeId: string): Promise<string> {
-  const visit = { id: crypto.randomUUID(), recipeId, at: Date.now() };
+/** Changes how a profile handles redirected sites. */
+export async function setRedirectSettings(profileId: string, settings: RedirectSettings): Promise<void> {
+  await profiles.setValue(withRedirectSettings(await profiles.getValue(), profileId, settings));
+}
+
+/** Records a trip to a redirected site and returns its id. */
+export async function recordGateVisit(recipeId: string, destination: RedirectDestination): Promise<string> {
+  const visit = { id: crypto.randomUUID(), recipeId, at: Date.now(), destination };
   await gateVisits.setValue(withGateVisit(await gateVisits.getValue(), visit));
   return visit.id;
 }
@@ -68,12 +79,32 @@ export async function recordGateVisit(recipeId: string): Promise<string> {
  * redirecting it, so the caller can navigate straight there.
  */
 export async function continueToSite(visitId: string, recipeId: string, intention: string): Promise<void> {
-  const [session, visits] = await Promise.all([activeSession.getValue(), gateVisits.getValue()]);
+  const [session, profileList, visits] = await Promise.all([
+    activeSession.getValue(),
+    profiles.getValue(),
+    gateVisits.getValue(),
+  ]);
   if (!session) return;
 
+  const { passMinutes } = redirectSettingsFor(profileList.find((p) => p.id === session.profileId)).gate;
   await storage.setItems([
-    { item: activeSession, value: withPass(session, recipeId, Date.now()) },
+    { item: activeSession, value: withPass(session, recipeId, Date.now(), passMinutes) },
     { item: gateVisits, value: withGateVisitContinued(visits, visitId, intention) },
   ]);
   await syncRedirectsNow();
+}
+
+/** Saves the one-tap answer to "why are you here?" on a visit. */
+export async function setVisitWhy(visitId: string, why: WhyReason | undefined): Promise<void> {
+  await gateVisits.setValue(withGateVisitWhy(await gateVisits.getValue(), visitId, why));
+}
+
+export async function addOwnQuote(text: string, author: string): Promise<void> {
+  const quote = { id: crypto.randomUUID(), text: text.trim(), ...(author.trim() ? { author: author.trim() } : {}) };
+  if (!quote.text) return;
+  await ownQuotes.setValue([...(await ownQuotes.getValue()), quote]);
+}
+
+export async function removeOwnQuote(id: string): Promise<void> {
+  await ownQuotes.setValue((await ownQuotes.getValue()).filter((quote) => quote.id !== id));
 }

@@ -6,13 +6,21 @@ import { recipes } from '@lock-in/recipes';
 // session, and anything that needs them current right away asks it to sync.
 
 const syncMessage = 'lock-in:sync-redirects';
+const closeTabMessage = 'lock-in:close-tab';
 export const passAlarm = 'lock-in:pass-expiry';
+
+/**
+ * The page a redirected visit lands on. The original URL goes after the # so the page can
+ * send the user on. `expired` marks a tab sent back because its pass ran out.
+ */
+export function redirectPageUrl(target: string, options: { expired?: boolean } = {}): string {
+  return `${browser.runtime.getURL('/redirect.html')}${options.expired ? '?expired' : ''}#${target}`;
+}
 
 /** Rebuilds the redirect rules for the current session and schedules the next pass expiry. */
 export async function syncRedirects(): Promise<void> {
   const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
   const now = Date.now();
-  const gate = browser.runtime.getURL('/gate.html');
 
   const regexes = redirectedRecipes({ session, profiles: profileList, recipes, now })
     .flatMap((recipe) => recipe.matches)
@@ -21,8 +29,8 @@ export async function syncRedirects(): Promise<void> {
     id: index + 1,
     action: {
       type: 'redirect' as Browser.declarativeNetRequest.RuleActionType,
-      // \0 is the full original URL, which the gate needs to send the user on.
-      redirect: { regexSubstitution: `${gate}#\\0` },
+      // \0 is the full original URL.
+      redirect: { regexSubstitution: redirectPageUrl('\\0') },
     },
     condition: {
       regexFilter,
@@ -49,4 +57,13 @@ export async function syncRedirectsNow(): Promise<void> {
 
 export function isSyncRequest(message: unknown): boolean {
   return (message as { type?: unknown } | null)?.type === syncMessage;
+}
+
+/** Asks the background to close the tab this is called from (content scripts can't). */
+export async function closeThisTab(): Promise<void> {
+  await browser.runtime.sendMessage({ type: closeTabMessage });
+}
+
+export function isCloseTabRequest(message: unknown): boolean {
+  return (message as { type?: unknown } | null)?.type === closeTabMessage;
 }

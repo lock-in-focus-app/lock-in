@@ -28,10 +28,11 @@ The tests never touch the real sites. They load a copy of the build with its sit
 
 ## How it works
 
-- `utils/state.ts`: the active session, profiles and intention-gate visits, kept in `storage.local` and shared by every part of the extension.
+- `utils/state.ts`: the active session, profiles, redirect visits and your own quotes, kept in `storage.local` and shared by every part of the extension.
 - `utils/actions.ts`: every change to that state goes through here, so the desktop app can take over later without the UI changing.
 - `entrypoints/popup/`: start and end sessions, and change a site's toggles for this session or for a profile.
-- `entrypoints/content.ts`: runs on recipe sites at `document_start` and injects the recipe CSS for the active session. It updates live when a session starts or ends.
-- `entrypoints/background.ts` and `utils/redirects.ts`: turn the session's *Redirected* sites into `declarativeNetRequest` rules, so the browser itself sends those visits to the gate with no extension code running per request. The rules are rebuilt when the session or profiles change and when a pass runs out.
-- `entrypoints/gate/`: the intention gate. It asks what you came for, counts today's attempts, holds Continue behind a countdown, and then gives that one site a 5-minute pass.
-- Recipes live in `packages/recipes`, and the logic for matching, CSS, redirects and passes lives in `packages/core`.
+- `entrypoints/options/`: settings for how each profile handles redirected sites, your links and your quotes.
+- `entrypoints/content.ts`: runs on recipe sites at `document_start` and injects the recipe CSS for the active session. It updates live when a session starts or ends. On redirected sites it also handles tabs that were already open, or whose pass ran out: it pauses them with an overlay (`utils/pauseOverlay.ts`) or sends them back, depending on the profile.
+- `entrypoints/background.ts` and `utils/redirects.ts`: turn the session's *Redirected* sites into `declarativeNetRequest` rules, so the browser itself sends those visits to the redirect page with no extension code running per request. The rules are rebuilt when the session or profiles change and when a pass runs out.
+- `entrypoints/redirect/`: where redirected visits land. It counts today's attempts, asks "what brought you here?", and shows one of the profile's destinations at random: the intention gate (a countdown, then a pass to that one site), a quote, one of your links, or the "I'm stuck" page.
+- Recipes live in `packages/recipes` and quotes in `packages/quotes`. The logic for matching, CSS, redirects, passes and settings lives in `packages/core`.

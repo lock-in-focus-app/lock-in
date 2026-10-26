@@ -1,19 +1,38 @@
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch, openPopup, setStored, stored, text, urls, visibility, wait, type TestBrowser } from './harness';
+import {
+  controlPage,
+  launch,
+  openPopup,
+  redirectPage,
+  setProfileRedirect,
+  setStored,
+  stored,
+  text,
+  urls,
+  visibility,
+  wait,
+  type TestBrowser,
+} from './harness';
 
 // One browser for the whole file; each test picks up where the last one left off.
 describe('redirects and the intention gate', () => {
   let t: TestBrowser;
   let tab: Page;
-  let gate: string;
+  const gate = (target: string) => redirectPage(t, target);
 
   const gateText = () => tab.$eval('main', (main) => (main as HTMLElement).innerText);
   const continueButton = () => tab.$eval('button.continue', (b) => ({ disabled: b.disabled, label: b.textContent!.trim() }));
 
   beforeAll(async () => {
     t = await launch();
-    gate = `chrome-extension://${t.extensionId}/gate.html`;
+    // Always show the gate, with a short fixed wait, so the test knows what to expect.
+    const control = await controlPage(t);
+    await setProfileRedirect(control, 'deep-work', {
+      destinations: ['gate'],
+      gate: { wait: { mode: 'fixed', seconds: 3 } },
+    });
+    await control.close();
     tab = await t.browser.newPage();
     await tab.goto(urls.other);
   });
@@ -33,7 +52,7 @@ describe('redirects and the intention gate', () => {
 
     await tab.goto(urls.reddit);
     await tab.waitForSelector('h1');
-    expect(tab.url()).toBe(`${gate}#${urls.reddit}`);
+    expect(tab.url()).toBe(gate(urls.reddit));
     expect(await gateText()).toContain('What did you come here for?');
     expect(await gateText()).toContain('First try at Reddit today');
     expect(await gateText()).toContain('Lock In · Deep Work');
@@ -76,7 +95,7 @@ describe('redirects and the intention gate', () => {
     await tab.goto(urls.reddit);
     expect(tab.url()).toBe(urls.reddit);
     await tab.goto(urls.x);
-    expect(tab.url()).toBe(`${gate}#${urls.x}`);
+    expect(tab.url()).toBe(gate(urls.x));
   });
 
   it('goes back to the previous page from "Back to focus"', async () => {
@@ -92,7 +111,7 @@ describe('redirects and the intention gate', () => {
 
     await wait(3000);
     await tab.goto(urls.reddit);
-    expect(tab.url()).toBe(`${gate}#${urls.reddit}`);
+    expect(tab.url()).toBe(gate(urls.reddit));
   });
 
   it('stops redirecting when the session ends', async () => {

@@ -3,6 +3,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { starterProfiles, type Profile } from '@lock-in/core';
 import puppeteer, { type Browser, type Extension, type Page } from 'puppeteer';
 
 // Browser tests load the real extension build into Chrome for Testing and point it at
@@ -92,6 +93,29 @@ export function visibility(page: Page, ids: string[]): Promise<Record<string, bo
     return { ...visible, grayscale: getComputedStyle(document.documentElement).filter.includes('grayscale') };
   }, ids);
 }
+
+/** An extension page left open in the background, for reading and writing storage. */
+export async function controlPage({ browser, extensionId }: TestBrowser): Promise<Page> {
+  const page = await browser.newPage();
+  await page.goto(`chrome-extension://${extensionId}/popup.html`);
+  return page;
+}
+
+/** Replaces a profile's redirect settings. */
+export async function setProfileRedirect(extensionPage: Page, profileId: string, redirect: Profile['redirect']): Promise<void> {
+  const list: Profile[] = (await stored(extensionPage)).profiles ?? starterProfiles;
+  await setStored(extensionPage, { profiles: list.map((p) => (p.id === profileId ? { ...p, redirect } : p)) });
+}
+
+/** Starts a session without going through the popup. */
+export async function startSession(extensionPage: Page, profileId: string): Promise<void> {
+  await setStored(extensionPage, { activeSession: { id: 'e2e', profileId, startedAt: Date.now() } });
+  await wait(300);
+}
+
+/** The URL a redirected visit lands on. */
+export const redirectPage = ({ extensionId }: TestBrowser, target: string, expired = false) =>
+  `chrome-extension://${extensionId}/redirect.html${expired ? '?expired' : ''}#${target}`;
 
 /** Writes straight to the extension's local storage, e.g. to fast-forward a pass. */
 export async function setStored(extensionPage: Page, values: Record<string, unknown>): Promise<void> {

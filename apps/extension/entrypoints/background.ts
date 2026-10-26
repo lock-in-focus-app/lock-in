@@ -12,7 +12,11 @@ export default defineBackground(() => {
     if (alarm.name === passAlarm) void sync();
   });
 
-  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (isCloseTabRequest(message) && sender.tab?.id !== undefined) {
+      void browser.tabs.remove(sender.tab.id);
+      return;
+    }
     if (!isSyncRequest(message)) return;
     void sync().then(() => sendResponse());
     return true;

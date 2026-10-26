@@ -40,6 +40,11 @@ function describe(profile: Profile): string {
     .join(', ');
 }
 
+function openSettings() {
+  void browser.runtime.openOptionsPage();
+  window.close();
+}
+
 function start(profile: Profile) {
   now.value = Date.now();
   void startSession(profile.id);
@@ -51,6 +56,7 @@ function start(profile: Profile) {
     <header>
       <span class="star" aria-hidden="true">✦</span>
       <h1>Lock In</h1>
+      <button class="settings" type="button" @click="openSettings">Settings</button>
     </header>
 
     <section v-if="session" class="active">
@@ -107,6 +113,20 @@ h1 {
 
 .star {
   color: var(--glow);
+}
+
+.settings {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: none;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.settings:hover {
+  background: var(--sky-raised);
+  color: var(--starlight);
 }
 
 .label {

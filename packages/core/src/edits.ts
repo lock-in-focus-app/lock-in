@@ -1,4 +1,4 @@
-import type { Profile, Session, SiteRecipe, SiteRule } from './types';
+import type { Profile, RedirectSettings, Session, SiteRecipe, SiteRule } from './types';
 
 // Pure, immutable edits to profiles and sessions. The extension (and later the desktop
 // app) persists whatever these return.
@@ -44,6 +44,11 @@ export function withProfileToggle(
           ),
         },
   );
+}
+
+/** Replaces how a profile handles redirected sites. */
+export function withRedirectSettings(profiles: readonly Profile[], profileId: string, settings: RedirectSettings): Profile[] {
+  return profiles.map((profile) => (profile.id === profileId ? { ...profile, redirect: settings } : profile));
 }
 
 /** Copies a session's overrides for one site into its profile, then clears them from the session. */

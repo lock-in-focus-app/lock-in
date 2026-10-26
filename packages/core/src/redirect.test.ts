@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   attemptsToday,
+  checkOpenPage,
   hasPass,
   nextPassExpiry,
   redirectedRecipes,
   withGateVisit,
   withGateVisitContinued,
+  withGateVisitWhy,
   withPass,
 } from './redirect';
 import type { GateVisit, Profile, Session, SiteRecipe } from './types';
@@ -103,5 +105,52 @@ describe('gate visits', () => {
   it('leaves out empty intentions and trims long ones', () => {
     expect(withGateVisitContinued([visit('a', 'reddit', today)], 'a', '   ')[0]).not.toHaveProperty('intention');
     expect(withGateVisitContinued([visit('a', 'reddit', today)], 'a', 'x'.repeat(500))[0]!.intention).toHaveLength(200);
+  });
+});
+
+describe('withGateVisitWhy', () => {
+  const visits: GateVisit[] = [{ id: 'a', recipeId: 'reddit', at: now }];
+
+  it('records, changes and clears the answer', () => {
+    const bored = withGateVisitWhy(visits, 'a', 'bored');
+    expect(bored[0]!.why).toBe('bored');
+    expect(withGateVisitWhy(bored, 'a', 'stuck')[0]!.why).toBe('stuck');
+    expect(withGateVisitWhy(bored, 'a', undefined)[0]).toEqual(visits[0]);
+  });
+});
+
+describe('checkOpenPage', () => {
+  const url = 'https://www.reddit.com/r/all';
+  const withExpiry = (onPassExpiry: 'nothing' | 'pause' | 'redirect'): Profile[] => [
+    { ...profiles[0]!, redirect: { gate: { onPassExpiry } } },
+  ];
+
+  it('pauses pages that were open before the session by default', () => {
+    expect(checkOpenPage({ url, session, profiles, recipes, now })).toMatchObject({
+      action: 'pause',
+      recipe: { id: 'reddit' },
+      passExpired: false,
+    });
+  });
+
+  it('notes when a pass ran out', () => {
+    const expired = { ...session, passes: { reddit: now - 1 } };
+    expect(checkOpenPage({ url, session: expired, profiles, recipes, now })).toMatchObject({ passExpired: true });
+  });
+
+  it('follows the profile setting', () => {
+    expect(checkOpenPage({ url, session, profiles: withExpiry('redirect'), recipes, now }).action).toBe('redirect');
+    expect(checkOpenPage({ url, session, profiles: withExpiry('nothing'), recipes, now })).toEqual({ action: 'none' });
+  });
+
+  it('waits until a running pass ends', () => {
+    const passed = { ...session, passes: { reddit: now + minute } };
+    expect(checkOpenPage({ url, session: passed, profiles, recipes, now })).toEqual({ action: 'none', recheckAt: now + minute });
+  });
+
+  it('leaves other pages alone', () => {
+    expect(checkOpenPage({ url, session: null, profiles, recipes, now })).toEqual({ action: 'none' });
+    expect(checkOpenPage({ url: 'https://docs.com/', session, profiles, recipes, now })).toEqual({ action: 'none' });
+    expect(checkOpenPage({ url: 'https://example.org/', session, profiles, recipes, now })).toEqual({ action: 'none' });
   });
 });

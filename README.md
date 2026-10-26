@@ -12,7 +12,7 @@ Most blockers treat a site as all or nothing. Lock In gives every site one of th
 |---|---|
 | **Allowed** | Nothing changes. |
 | **Tamed** | The site still works, but the distracting parts are hidden: feeds, trending, suggested and promoted posts. Optionally grayscale. |
-| **Redirected** | Visits go to a Lock In page that asks what you came for, then lets you through for a few minutes if you still need it. |
+| **Redirected** | Visits go to a Lock In page instead: an intention gate that asks what you came for, a quote, one of your own links, or a 2-minute unstick. You can still get through for a few minutes if you need to. |
 
 What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. You can flip toggles from the extension popup for one session or save them to a profile.
 
@@ -28,7 +28,7 @@ apps/
 packages/
   core/        Shared types and logic: matching, recipes, profiles, sessions.
   recipes/     Built-in site recipes.
-  quotes/      Bundled quote packs (coming soon).
+  quotes/      Bundled quotes for the quote card.
 ```
 
 ## Getting started

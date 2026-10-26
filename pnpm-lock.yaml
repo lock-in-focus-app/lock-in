@@ -41,6 +41,9 @@ importers:
       '@lock-in/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@lock-in/quotes':
+        specifier: workspace:*
+        version: link:../../packages/quotes
       '@lock-in/recipes':
         specifier: workspace:*
         version: link:../../packages/recipes
@@ -97,7 +100,18 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@26.6.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))
 
-  packages/quotes: {}
+  packages/quotes:
+    dependencies:
+      '@lock-in/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@26.6.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))
 
   packages/recipes:
     dependencies:

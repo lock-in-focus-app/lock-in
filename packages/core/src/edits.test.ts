@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { withProfileToggle, withSessionOverridesSaved, withSessionToggle } from './edits';
+import { withProfileToggle, withRedirectSettings, withSessionOverridesSaved, withSessionToggle } from './edits';
+import { defaultRedirectSettings } from './settings';
 import type { Profile, Session, SiteRecipe } from './types';
 
 const recipe: SiteRecipe = {
@@ -81,5 +82,14 @@ describe('withSessionOverridesSaved', () => {
     const result = withSessionOverridesSaved(profiles, changed, 'missing');
     expect(result.profiles).toEqual(profiles);
     expect(result.session).toBe(changed);
+  });
+});
+
+describe('withRedirectSettings', () => {
+  it('replaces the settings of one profile only', () => {
+    const settings = { ...defaultRedirectSettings, destinations: ['quote' as const] };
+    const next = withRedirectSettings(profiles, 'other', settings);
+    expect(next[1]!.redirect).toEqual(settings);
+    expect(next[0]).toBe(profiles[0]);
   });
 });

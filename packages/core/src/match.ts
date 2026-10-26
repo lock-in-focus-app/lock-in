@@ -23,6 +23,16 @@ export function matchesPattern(pattern: string, url: string | URL): boolean {
   return globToRegExp(parsed.path).test(target.pathname + target.search);
 }
 
+/** Parses a URL, accepting only http and https, so a stored link can't run script. */
+export function parseHttpUrl(raw: string): URL | undefined {
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Converts a match pattern into an equivalent regular expression source, for APIs that
  * take a regex instead of a pattern (like declarativeNetRequest's `regexFilter`). Only

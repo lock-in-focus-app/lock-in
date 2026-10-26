@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@lock-in/core": "workspace:*",
+    "@lock-in/quotes": "workspace:*",
     "@lock-in/recipes": "workspace:*",
     "vue": "^3.5.29"
   },

@@ -17,6 +17,10 @@ export const starterProfiles: Profile[] = [
       { recipeId: 'reddit', level: 'redirected' },
       { recipeId: 'x', level: 'redirected' },
     ],
+    redirect: {
+      destinations: ['gate', 'quote', 'stuck'],
+      gate: { wait: { mode: 'escalating', startSeconds: 5, stepSeconds: 5, maxSeconds: 60 } },
+    },
   },
   {
     id: 'wind-down',

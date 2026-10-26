@@ -1,0 +1,54 @@
+/* Buttons shared by every redirect destination. */
+.primary,
+.secondary {
+  padding: 12px;
+  transition: background 150ms, filter 150ms, transform 150ms;
+}
+
+.primary {
+  background: var(--glow);
+  color: var(--sky);
+  font-weight: 600;
+}
+
+.primary:hover {
+  filter: brightness(1.08);
+}
+
+.secondary {
+  background: var(--sky-raised);
+}
+
+.secondary:not(:disabled):hover {
+  background: var(--sky-hover);
+}
+
+.secondary:disabled {
+  color: var(--dim);
+  cursor: default;
+}
+
+.primary:active,
+.secondary:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.quiet {
+  padding: 4px 0;
+  background: none;
+  color: var(--dim);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.quiet:hover {
+  color: var(--starlight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary,
+  .secondary {
+    transition: none;
+  }
+}
