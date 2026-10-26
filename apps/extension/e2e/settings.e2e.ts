@@ -7,6 +7,10 @@ describe('settings page', () => {
   let page: Page;
 
   const deepWork = async () => (await stored(page)).profiles!.find((p) => p.id === 'deep-work')!.redirect!;
+  // Each click works from what's on screen, so tests wait for one change to be saved (and
+  // drawn) before the next, as a person would. A slow CI runner can take a while.
+  const savedDestinations = (expected: string[]) =>
+    expect.poll(async () => (await deepWork()).destinations).toEqual(expected);
   const clickDestination = (label: string) =>
     page.$$eval(
       '.destinations label',
@@ -56,24 +60,24 @@ describe('settings page', () => {
 
   it('turns pages on and off', async () => {
     await clickDestination('Quote');
+    await savedDestinations(['gate', 'stuck']);
     await clickDestination('Your links');
-    await wait(150);
-    expect((await deepWork()).destinations).toEqual(['gate', 'link', 'stuck']);
+    await savedDestinations(['gate', 'link', 'stuck']);
     expect(await page.$eval('main', (main) => main.textContent)).toContain('Your links is skipped for now');
   });
 
   it('always leaves somewhere to land', async () => {
     await clickSwitch('Show the gate right away');
+    await savedDestinations(['link', 'stuck']);
     await clickDestination('Your links');
-    await wait(150);
-    expect((await deepWork()).destinations).toEqual(['stuck']);
+    await savedDestinations(['stuck']);
     expect(await page.$$eval('.destinations input:disabled', (inputs) => inputs.length)).toBe(1);
 
     // With the gate as the only choice, it's the switch that can't be turned off.
     await clickSwitch('Show the gate right away');
+    await savedDestinations(['gate', 'stuck']);
     await clickDestination("I'm stuck");
-    await wait(150);
-    expect((await deepWork()).destinations).toEqual(['gate']);
+    await savedDestinations(['gate']);
     expect(await switchState('Show the gate right away')).toEqual({ on: true, disabled: true });
     expect(await page.$eval('main', (main) => main.textContent)).toContain('every redirected visit goes straight to');
   });

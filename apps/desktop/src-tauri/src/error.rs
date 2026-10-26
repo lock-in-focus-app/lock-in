@@ -1,0 +1,63 @@
+use std::fmt;
+
+/// Everything that can go wrong in the app's core. Commands send these to the UI as text.
+#[derive(Debug)]
+pub enum Error {
+    Database(rusqlite::Error),
+    Json(serde_json::Error),
+    Io(std::io::Error),
+    Tauri(tauri::Error),
+    SessionRunning,
+    NoSession,
+    UnknownProfile,
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Database(error) => write!(f, "database error: {error}"),
+            Error::Json(error) => write!(f, "couldn't read saved data: {error}"),
+            Error::Io(error) => write!(f, "{error}"),
+            Error::Tauri(error) => write!(f, "{error}"),
+            Error::SessionRunning => f.write_str("a session is already running"),
+            Error::NoSession => f.write_str("no session is running"),
+            Error::UnknownProfile => f.write_str("that profile doesn't exist"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+// `?` converts library errors into ours through these.
+impl From<rusqlite::Error> for Error {
+    fn from(error: rusqlite::Error) -> Self {
+        Error::Database(error)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(error: serde_json::Error) -> Self {
+        Error::Json(error)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Error::Io(error)
+    }
+}
+
+impl From<tauri::Error> for Error {
+    fn from(error: tauri::Error) -> Self {
+        Error::Tauri(error)
+    }
+}
+
+// Tauri sends a command's error to the UI, so it has to be serializable.
+impl serde::Serialize for Error {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}

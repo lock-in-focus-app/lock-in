@@ -38,3 +38,44 @@ jobs:
         run: |
           pnpm --filter @lock-in/extension exec puppeteer browsers install chrome
           pnpm test:e2e
+
+  desktop:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # The Rust build embeds the window's built files, so build those first.
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - run: pnpm --filter @lock-in/desktop build
+        working-directory: .
+
+      # What Tauri needs to build on Linux: the system webview and the menu-bar (tray) library.
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+
+      - name: TypeScript types match the Rust ones
+        run: git diff --exit-code -- ../../../packages/core/src/generated

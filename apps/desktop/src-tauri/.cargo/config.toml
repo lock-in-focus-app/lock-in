@@ -1,0 +1,5 @@
+# Types marked #[ts(export)] are written to packages/core when `cargo test` runs, so the
+# TypeScript side always matches the Rust one. CI checks they're committed.
+[env]
+TS_RS_EXPORT_DIR = { value = "../../../packages/core/src/generated", relative = true }
+TS_RS_LARGE_INT = "number"
