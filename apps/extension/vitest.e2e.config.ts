@@ -6,7 +6,8 @@ export default defineConfig({
     include: ['e2e/**/*.e2e.ts'],
     testTimeout: 30_000,
     hookTimeout: 60_000,
-    // Each file runs its own Chrome; too many at once makes popups and timers flaky.
-    maxWorkers: 3,
+    // Each file runs its own Chrome; too many at once makes popups and timers flaky. GitHub's
+    // runners for private repos have 2 cores.
+    maxWorkers: process.env.CI ? 2 : 3,
   },
 });
