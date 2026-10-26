@@ -47,7 +47,7 @@ import MockRegion from '../MockRegion.vue';
             <div class="m-box banner" />
           </div>
         </MockRegion>
-        <p class="calm">Search, communities and threads still work</p>
+        <p class="m-calm">Search, communities and threads still work</p>
       </main>
     </div>
   </div>
@@ -98,12 +98,5 @@ import MockRegion from '../MockRegion.vue';
   height: 20px;
   margin-top: 4px;
   background: color-mix(in srgb, var(--accent) 35%, var(--surface-2));
-}
-
-.calm {
-  margin: 4px 0 0;
-  color: var(--dim);
-  font-size: 9px;
-  text-align: center;
 }
 </style>

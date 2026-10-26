@@ -1,5 +1,12 @@
 import type { Component } from 'vue';
+import FacebookHome from './FacebookHome.vue';
+import InstagramHome from './InstagramHome.vue';
+import LinkedInHome from './LinkedInHome.vue';
+import PinterestHome from './PinterestHome.vue';
+import PinterestPin from './PinterestPin.vue';
 import RedditHome from './RedditHome.vue';
+import TikTokHome from './TikTokHome.vue';
+import XHome from './XHome.vue';
 import YouTubeHome from './YouTubeHome.vue';
 import YouTubeWatch from './YouTubeWatch.vue';
 
@@ -38,6 +45,67 @@ export const mocks: Record<string, MockPage[]> = {
       address: 'youtube.com/watch',
       component: YouTubeWatch,
       toggles: ['hideRecommendations', 'hideEndScreen', 'hideComments', 'hideShorts'],
+    },
+  ],
+  x: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'x.com/home',
+      component: XHome,
+      toggles: ['hideHomeTimeline', 'hideTrending', 'hideWhoToFollow', 'hidePromoted'],
+    },
+  ],
+  instagram: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'instagram.com',
+      component: InstagramHome,
+      toggles: ['hideHomeFeed', 'hideExplore', 'hideReels'],
+    },
+  ],
+  tiktok: [
+    {
+      id: 'home',
+      label: 'For You',
+      address: 'tiktok.com',
+      component: TikTokHome,
+      toggles: ['hideForYou', 'hideExplore', 'hideLive'],
+    },
+  ],
+  facebook: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'facebook.com',
+      component: FacebookHome,
+      toggles: ['hideNewsFeed', 'hideReels'],
+    },
+  ],
+  linkedin: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'linkedin.com/feed',
+      component: LinkedInHome,
+      toggles: ['hideFeed', 'hideNews'],
+    },
+  ],
+  pinterest: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'pinterest.com',
+      component: PinterestHome,
+      toggles: ['hideHomeFeed', 'hideExplore', 'hideSearchSuggestions'],
+    },
+    {
+      id: 'pin',
+      label: 'Pin',
+      address: 'pinterest.com/pin',
+      component: PinterestPin,
+      toggles: ['hideMoreLikeThis', 'hideExplore'],
     },
   ],
 };

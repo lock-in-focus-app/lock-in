@@ -19,6 +19,7 @@
 }
 
 .mock .m-logo {
+  display: block;
   flex: none;
   width: 18px;
   height: 18px;
@@ -37,6 +38,7 @@
 }
 
 .mock .m-avatar {
+  display: block;
   flex: none;
   width: 14px;
   height: 14px;
@@ -85,6 +87,39 @@
   color: #10131f;
 }
 
+.mock .m-icon {
+  display: block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--ink);
+}
+
+.mock .m-icon.accent {
+  background: var(--accent);
+}
+
+/* A nav item: an icon and its label. */
+.mock .m-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-bottom: 7px;
+}
+
+.mock .m-row .m-line {
+  margin: 0;
+}
+
+/* What still works once the distracting parts are gone. */
+.mock .m-calm {
+  margin: 4px 0 0;
+  color: var(--dim);
+  font-size: 9px;
+  text-align: center;
+}
+
 /* Spacing lives inside regions, so a collapsed region leaves no gap behind. */
 .mock .m-stack > * > .inner {
   padding-bottom: 6px;
@@ -97,4 +132,28 @@
 
 .mock.youtube {
   --accent: #ff4d4d;
+}
+
+.mock.x {
+  --accent: #d6d9de;
+}
+
+.mock.instagram {
+  --accent: #e1306c;
+}
+
+.mock.tiktok {
+  --accent: #fe2c55;
+}
+
+.mock.facebook {
+  --accent: #4b8ff7;
+}
+
+.mock.linkedin {
+  --accent: #3d8bd9;
+}
+
+.mock.pinterest {
+  --accent: #f0334a;
 }

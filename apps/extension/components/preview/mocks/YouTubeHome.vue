@@ -32,7 +32,7 @@ import YouTubeGuide from './YouTubeGuide.vue';
             </div>
           </MockRegion>
         </MockRegion>
-        <p class="calm">Search and subscriptions still work</p>
+        <p class="m-calm">Search and subscriptions still work</p>
       </main>
     </div>
   </div>
@@ -83,12 +83,5 @@ import YouTubeGuide from './YouTubeGuide.vue';
 .short {
   aspect-ratio: 9 / 14;
   background: color-mix(in srgb, var(--accent) 25%, var(--surface-2));
-}
-
-.calm {
-  margin: 4px 0 0;
-  color: var(--dim);
-  font-size: 9px;
-  text-align: center;
 }
 </style>

@@ -1,6 +1,6 @@
 # Lock In — Product & Build Plan
 
-> **Status:** Phase 1 nearly done. The extension works on its own: sessions, profiles (with an editor), all four site levels with page rules, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Left in Phase 1: preview drawings for the remaining six sites (Reddit and YouTube are done), and checking each recipe on the real site. Then Phase 2, the desktop app.
+> **Status:** Phase 1 built. The extension works on its own: sessions, profiles (with an editor), all four site levels with page rules, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest, each with an animated preview in Settings. Left before calling Phase 1 done: checking each recipe on the real site. Then Phase 2, the desktop app.
 
 ## Context
 
@@ -75,7 +75,7 @@ A **recipe** defines what "tamed" means for one site: a list of toggles, each ma
   - Sites can have several pages (YouTube: Home and Video); pointing at a toggle that only matters on another page switches to it.
   - Grayscale cross-fades the whole mock.
   - Feedback is instant, with no page loads.
-  - Done: Reddit, YouTube. To do: X, Instagram, TikTok, Facebook, LinkedIn, Pinterest. Sites without a drawing just show their toggles.
+  - Every built-in site has one (Pinterest also has a Pin page). A browser test fails if a recipe gains a toggle that isn't drawn. Custom recipes without a drawing just show their toggles.
 - **Live mode** (for custom recipes and sites without a mock): the extension opens the real site with a small floating panel. Toggles apply to the real page instantly with the same animation. An **element picker**, like uBlock's "zapper", lets you hover → click to hide something, and it writes the selector into the recipe for you.
 - **Animation implementation:** native CSS spring easing (`linear()` easing curves) and CSS transitions, with no animation library, to stay lightweight. Animations are disabled under `prefers-reduced-motion`.
 
@@ -281,7 +281,7 @@ lock-in/
 - ✅ Profiles: CRUD + starter profiles, manual start/stop, four site levels including Restricted, settings page.
 - ✅ Redirect destinations: intention gate with countdown (fixed or escalating), quote card (with your own quotes), productive URL, stuck page. Passes, and what happens when they run out (nothing, pause or redirect).
 - ✅ Attempt counter + why-tap.
-- 🚧 Recipe editor with animated preview mocks: Reddit and YouTube done, six sites to go.
+- ✅ Recipe editor with animated preview mocks for all eight sites. (Editing a recipe's selectors, and live mode, come in Phase 5.)
 
 **Phase 2: Desktop app (Tauri)**
 - Menu-bar app, session engine, quiet timer + idle detection.

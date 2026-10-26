@@ -1,10 +1,25 @@
+import { starterProfiles } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch, wait, type TestBrowser } from './harness';
+import { launch, setStored, wait, type TestBrowser } from './harness';
 
-// Sites with a preview drawing. Every toggle that hides something should be drawn.
-const drawn = ['reddit', 'youtube'];
+// Writing as it ships, but with every site tamed so every drawing shows. Reddit and
+// YouTube keep their starter toggles, which the tests below rely on.
+const everySiteTamed = starterProfiles.map((profile) =>
+  profile.id !== 'writing'
+    ? profile
+    : {
+        ...profile,
+        sites: recipes.map(
+          (recipe) =>
+            profile.sites.find((site) => site.recipeId === recipe.id && site.level === 'tamed') ?? {
+              recipeId: recipe.id,
+              level: 'tamed' as const,
+            },
+        ),
+      },
+);
 
 describe('recipe previews in settings', () => {
   let t: TestBrowser;
@@ -28,12 +43,14 @@ describe('recipe previews in settings', () => {
     await page.setViewport({ width: 900, height: 1600 });
     await page.goto(`chrome-extension://${t.extensionId}/options.html`);
     await page.waitForSelector('[role=tab]');
+    await setStored(page, { profiles: everySiteTamed });
+    await wait(300);
   });
   afterAll(() => t?.close());
 
-  it('draws every toggle that hides something', async () => {
-    for (const id of drawn) {
-      const recipe = recipes.find((r) => r.id === id)!;
+  it('draws every toggle that hides something, on every site', async () => {
+    for (const recipe of recipes) {
+      expect(await page.$(`${row(recipe.name)} figure`), recipe.name).not.toBeNull();
       const pageCount = Math.max(1, (await page.$$(`${row(recipe.name)} .page-tabs button`)).length);
       const seen = new Set<string>();
       for (let n = 1; n <= pageCount; n++) {
@@ -79,14 +96,5 @@ describe('recipe previews in settings', () => {
     await wait(100);
     expect(await shownPage()).toBe('Video');
     expect((await regions('YouTube')).hideComments).toContain('highlighted');
-  });
-
-  it('leaves sites without a drawing as they were', async () => {
-    await page.$eval('[role=radiogroup][aria-label="Pinterest level"]', (group) =>
-      ([...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Tamed') as HTMLElement).click(),
-    );
-    await wait(150);
-    expect(await page.$(`${row('Pinterest')} [role=switch]`)).not.toBeNull();
-    expect(await page.$(`${row('Pinterest')} figure`)).toBeNull();
   });
 });

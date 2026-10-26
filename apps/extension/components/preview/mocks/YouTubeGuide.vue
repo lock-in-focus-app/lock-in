@@ -4,12 +4,12 @@ import MockRegion from '../MockRegion.vue';
 
 <template>
   <nav class="guide">
-    <span class="item"><span class="icon" /></span>
+    <span class="item"><span class="m-icon" /></span>
     <MockRegion toggle="hideShorts">
-      <span class="item"><span class="icon shorts" /></span>
+      <span class="item"><span class="m-icon accent" /></span>
     </MockRegion>
-    <span class="item"><span class="icon" /></span>
-    <span class="item"><span class="icon" /></span>
+    <span class="item"><span class="m-icon" /></span>
+    <span class="item"><span class="m-icon" /></span>
   </nav>
 </template>
 
@@ -23,17 +23,5 @@ import MockRegion from '../MockRegion.vue';
 .item {
   display: block;
   padding-bottom: 8px;
-}
-
-.icon {
-  display: block;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  background: var(--ink);
-}
-
-.icon.shorts {
-  background: var(--accent);
 }
 </style>
