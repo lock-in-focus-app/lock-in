@@ -16,11 +16,17 @@ import {
 const overlayText = (page: Page) =>
   page.evaluate(() => document.querySelector('lock-in-pause')?.shadowRoot?.textContent ?? null);
 
-const clickOverlay = (page: Page, label: string) =>
-  page.evaluate((wanted) => {
-    const buttons = document.querySelector('lock-in-pause')!.shadowRoot!.querySelectorAll('button');
-    [...buttons].find((b) => b.textContent === wanted)!.click();
-  }, label);
+const overlayButton = (wanted: string) =>
+  [...(document.querySelector('lock-in-pause')?.shadowRoot?.querySelectorAll('button') ?? [])].find(
+    (b) => b.textContent === wanted,
+  );
+
+// The cover goes up once a pass runs out, which can take a moment on a slow CI runner, so
+// this waits for the button before clicking it.
+const clickOverlay = async (page: Page, label: string) => {
+  await page.waitForFunction(`(${overlayButton})(${JSON.stringify(label)}) !== undefined`);
+  await page.evaluate(`(${overlayButton})(${JSON.stringify(label)}).click()`);
+};
 
 describe('open tabs and expired passes', () => {
   let t: TestBrowser;
@@ -61,8 +67,7 @@ describe('open tabs and expired passes', () => {
       await passEndingSoon();
       expect(await overlayText(tab)).toBeNull();
       await tab.bringToFront();
-      await wait(2000);
-      expect(await overlayText(tab)).toContain('Your pass for Reddit ran out');
+      await expect.poll(() => overlayText(tab), { timeout: 10_000 }).toContain('Your pass for Reddit ran out');
     });
 
     it('goes to the redirect page from "Still need it"', async () => {
@@ -75,7 +80,6 @@ describe('open tabs and expired passes', () => {
       await passEndingSoon();
       await tab.goto(urls.reddit);
       await tab.bringToFront();
-      await wait(2000);
       const closed = new Promise((resolve) => tab.once('close', resolve));
       await clickOverlay(tab, 'Close tab');
       await closed;
