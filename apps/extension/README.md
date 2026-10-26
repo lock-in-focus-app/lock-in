@@ -1,6 +1,6 @@
 # Lock In — browser extension
 
-Tames, blocks, or redirects distracting sites during focus sessions. It works on its own; the desktop app plugs in later.
+Tames, blocks, or redirects distracting sites during focus sessions. It works on its own, and links to the desktop app when that's installed.
 
 ## Develop
 
@@ -26,12 +26,15 @@ pnpm test:e2e
 
 This builds the extension and runs the browser tests in `e2e/` against Chrome for Testing. The first time, download that browser with `pnpm --filter @lock-in/extension exec puppeteer browsers install chrome`.
 
+`e2e/desktop.e2e.ts` links the extension to a fake desktop app (`e2e/fakeDesktopApp.ts`), registered as the Native Messaging host in the test browser's profile folder.
+
 The tests never touch the real sites. They load a copy of the build with its site patterns rewritten to `.test` domains (`www.reddit.test`, `x.test`), which Chrome resolves to a local server serving the pages in `e2e/fixtures/`.
 
 ## How it works
 
 - `utils/state.ts`: the active session, profiles, redirect visits and your own quotes, kept in `storage.local` and shared by every part of the extension.
-- `utils/actions.ts`: every change to that state goes through here, so the desktop app can take over later without the UI changing.
+- `utils/actions.ts`: every change to that state goes through here.
+- `utils/desktopLink.ts`: the link to the desktop app over Native Messaging. While linked, the profiles and the session stay in step with the app (and every other linked browser): each side sends its changes, stamped with when they were made, and the newest wins. Gate visits go to the app's log. Without the app it does nothing. The extension's ids are fixed (a public `key` in the Chrome manifest, a gecko id for Firefox) so the app knows which extension may connect.
 - `entrypoints/popup/`: start and end sessions, set the current site's level for a profile between sessions, and change its toggles for this session or for a profile.
 - `entrypoints/options/`: the settings page. Create, rename, duplicate, reorder and delete profiles; set each site to Allowed, Tamed, Redirected or Restricted; choose how redirected sites behave; and manage your links and quotes.
 - `entrypoints/content.ts`: runs on recipe sites at `document_start` and injects the recipe CSS for the active session. It updates live when a session starts or ends. It also catches single-page apps moving onto a redirected or restricted page (e.g. clicking a Short on YouTube), which the browser's redirect rules can't see. On redirected sites it also handles tabs that were already open, or whose pass ran out: it pauses them with an overlay (`utils/pauseOverlay.ts`) or sends them back, depending on the profile.

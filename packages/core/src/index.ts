@@ -62,3 +62,4 @@ export {
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';
 export { formatClock, timerStatus, type TimerStatus } from './timer';
+export { desktopHostName, linkProtocol, type FromDesktop, type Synced, type ToDesktop } from './link';

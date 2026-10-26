@@ -19,3 +19,16 @@ export const gateVisits = storage.defineItem<GateVisit[]>('local:gateVisits', {
 export const ownQuotes = storage.defineItem<OwnQuote[]>('local:ownQuotes', {
   fallback: [],
 });
+
+/**
+ * When the profiles and the session last changed, for the desktop app link. The newest
+ * change wins, whether it was made here, in the app, or in another browser.
+ */
+export const syncedAt = storage.defineItem<{ profiles: number; activeSession: number }>('local:syncedAt', {
+  fallback: { profiles: 0, activeSession: 0 },
+});
+
+/** Whether the desktop app is linked right now. Kept in session storage, so it starts off false. */
+export const desktopLinked = storage.defineItem<boolean>('session:desktopLinked', {
+  fallback: false,
+});
