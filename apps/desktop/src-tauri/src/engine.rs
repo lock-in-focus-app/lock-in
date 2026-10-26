@@ -3,11 +3,16 @@ use ts_rs::TS;
 
 use crate::error::{Error, Result};
 use crate::session::{EndReason, GateVisit, Profile, Session, SessionRecord, starter_profiles};
+use crate::settings::Settings;
 use crate::store::{Store, Synced};
-use crate::timer::TimerSettings;
+use crate::timer::{Strictness, TimerSettings};
 
 const PROFILES: &str = "profiles";
 const ACTIVE_SESSION: &str = "activeSession";
+const SETTINGS: &str = "settings";
+
+/// Emergency passes come back a week after they're used.
+const PASS_WEEK_MS: i64 = 7 * 24 * 60 * 60_000;
 
 /// The session engine: the source of truth for profiles and the running session. It knows
 /// nothing about windows or the menu bar; the app reacts to its changes.
@@ -15,6 +20,9 @@ pub struct Engine {
     store: Store,
     profiles: Synced<Vec<Profile>>,
     session: Synced<Option<Session>>,
+    settings: Settings,
+    /// When each emergency pass was used (epoch ms).
+    pass_uses: Vec<i64>,
 }
 
 /// Everything the UI shows, sent whenever it changes.
@@ -24,6 +32,9 @@ pub struct Engine {
 pub struct Snapshot {
     pub profiles: Vec<ProfileSummary>,
     pub session: Option<ActiveSession>,
+    pub settings: Settings,
+    /// Emergency passes left for the last 7 days.
+    pub passes_left: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -59,10 +70,17 @@ impl Engine {
             value: None,
             updated_at: 0,
         });
+        let settings = store
+            .load(SETTINGS)?
+            .map(|s: Synced<Settings>| s.value)
+            .unwrap_or_default();
+        let pass_uses = store.pass_uses()?;
         Ok(Self {
             store,
             profiles,
             session,
+            settings,
+            pass_uses,
         })
     }
 
@@ -74,7 +92,13 @@ impl Engine {
         self.profiles.value.iter().find(|p| p.id == id)
     }
 
-    pub fn snapshot(&self) -> Snapshot {
+    /// Emergency passes left at `now`. Each one used comes back a week later.
+    pub fn passes_left(&self, now: i64) -> u32 {
+        let used = self.pass_uses.iter().filter(|&&at| at > now - PASS_WEEK_MS).count();
+        self.settings.passes_per_week.saturating_sub(used as u32)
+    }
+
+    pub fn snapshot(&self, now: i64) -> Snapshot {
         Snapshot {
             profiles: self
                 .profiles
@@ -93,6 +117,8 @@ impl Engine {
                 started_at: s.started_at,
                 timer: s.timer.clone(),
             }),
+            settings: self.settings.clone(),
+            passes_left: self.passes_left(now),
         }
     }
 
@@ -122,9 +148,20 @@ impl Engine {
         Ok(self.session().expect("just started"))
     }
 
-    /// Ends the running session and logs it.
+    /// Ends the running session and logs it. A Hard session can only end before its timer is
+    /// done with an emergency pass; a pass isn't spent on any other session.
+    ///
+    /// Gentle and Medium sessions ask for their pause or typing in the window. They're there to
+    /// make you stop and think, not to stop you, so this doesn't check for them.
     pub fn end_session(&mut self, now: i64, reason: EndReason) -> Result<SessionRecord> {
         let session = self.session().ok_or(Error::NoSession)?;
+        let hard = session.lock(now) == Some(Strictness::Hard);
+        let reason = match reason {
+            EndReason::Stopped if hard => return Err(Error::Locked),
+            EndReason::EmergencyPass if !hard => EndReason::Stopped,
+            EndReason::EmergencyPass if self.passes_left(now) == 0 => return Err(Error::NoPassesLeft),
+            reason => reason,
+        };
         let record = SessionRecord::new(session, &self.profile_name(&session.profile_id), now, reason);
         let synced = Synced {
             value: None,
@@ -132,7 +169,29 @@ impl Engine {
         };
         self.store.end_session(&record, ACTIVE_SESSION, &synced)?;
         self.session = synced;
+        if reason == EndReason::EmergencyPass {
+            self.pass_uses.push(now);
+        }
         Ok(record)
+    }
+
+    /// Changes the app-wide settings. While a Hard session is running, passes per week can
+    /// only go down, or it would be an easy way out.
+    pub fn set_settings(&mut self, settings: Settings, now: i64) -> Result<()> {
+        let settings = settings.clamped();
+        let hard = self.session().and_then(|s| s.lock(now)) == Some(Strictness::Hard);
+        if hard && settings.passes_per_week > self.settings.passes_per_week {
+            return Err(Error::Locked);
+        }
+        self.store.save(
+            SETTINGS,
+            &Synced {
+                value: &settings,
+                updated_at: now,
+            },
+        )?;
+        self.settings = settings;
+        Ok(())
     }
 
     /// Changes a profile's timer, for every future session that uses it.
@@ -160,8 +219,10 @@ impl Engine {
     /// Takes the extension's profiles and session where they're newer than the app's.
     /// Returns whether anything changed.
     ///
-    /// A session that started in the extension gets its profile's timer here. A session the
-    /// extension ended (or replaced) is logged as ending when the extension changed it.
+    /// A session that started in the extension gets its profile's timer here. After that the
+    /// app owns the timer, so the extension can't change it. A session the extension ended
+    /// (or replaced) is logged as ending when the extension changed it, unless it's a Hard
+    /// session whose timer is still running: that one carries on, and goes back to the browser.
     pub fn apply_remote(
         &mut self,
         profiles: Option<Synced<Vec<Profile>>>,
@@ -180,10 +241,29 @@ impl Engine {
 
         if let Some(mut incoming) = session.filter(|s| s.updated_at.min(now) > self.session.updated_at) {
             incoming.updated_at = incoming.updated_at.min(now);
-            if let Some(new) = incoming.value.as_mut().filter(|s| s.timer.is_none()) {
-                new.timer = Some(self.profile(&new.profile_id).map(Profile::timer).unwrap_or_default());
-                // Newer than the extension's copy, so it takes the timer when this is sent back.
-                incoming.updated_at += 1;
+            let current = self.session().cloned();
+            let same = matches!((&current, &incoming.value), (Some(c), Some(n)) if c.id == n.id);
+
+            if !same && current.as_ref().and_then(|s| s.lock(now)) == Some(Strictness::Hard) {
+                // Newer than the browser's change, so the browser takes the session back.
+                self.session.updated_at = incoming.updated_at + 1;
+                self.store.save(ACTIVE_SESSION, &self.session)?;
+                return Ok(true);
+            }
+
+            if let Some(new) = incoming.value.as_mut() {
+                let timer = match &current {
+                    Some(c) if same && c.timer.is_some() => c.timer.clone(),
+                    _ => new
+                        .timer
+                        .clone()
+                        .or_else(|| Some(self.profile(&new.profile_id).map(Profile::timer).unwrap_or_default())),
+                };
+                if new.timer != timer {
+                    new.timer = timer;
+                    // Newer than the extension's copy, so it takes the timer when this is sent back.
+                    incoming.updated_at += 1;
+                }
             }
             let ended = match (&self.session.value, &incoming.value) {
                 (Some(previous), Some(new)) if previous.id == new.id => None,
@@ -237,7 +317,7 @@ mod tests {
     fn starts_with_the_starter_profiles() {
         let engine = engine();
         assert_eq!(engine.profiles.updated_at, 0);
-        let snapshot = engine.snapshot();
+        let snapshot = engine.snapshot(0);
         assert_eq!(snapshot.profiles.len(), 3);
         assert_eq!(snapshot.session, None);
     }
@@ -250,7 +330,7 @@ mod tests {
             session.timer.as_ref().map(|t| (t.minutes, t.on_end)),
             Some((45, TimerEnd::Silent))
         );
-        assert_eq!(engine.snapshot().session.unwrap().profile_name, "Writing");
+        assert_eq!(engine.snapshot(0).session.unwrap().profile_name, "Writing");
         assert!(matches!(
             engine.start_session("deep-work", 2_000),
             Err(Error::SessionRunning)
@@ -283,6 +363,7 @@ mod tests {
             minutes: 9_999,
             on_end: TimerEnd::Alert,
             show_since_done: true,
+            strictness: Strictness::Medium,
         };
         engine.set_profile_timer("deep-work", timer, 7).unwrap();
 
@@ -319,7 +400,7 @@ mod tests {
             )
             .unwrap();
         assert!(changed);
-        assert_eq!(engine.snapshot().profiles[0].name, "Essays");
+        assert_eq!(engine.snapshot(0).profiles[0].name, "Essays");
 
         // Older or equal changes are ignored.
         let stale = Synced {
@@ -327,7 +408,7 @@ mod tests {
             updated_at: 50,
         };
         assert!(!engine.apply_remote(Some(stale), None, 100).unwrap());
-        assert_eq!(engine.snapshot().profiles[0].name, "Essays");
+        assert_eq!(engine.snapshot(0).profiles[0].name, "Essays");
     }
 
     #[test]
@@ -420,6 +501,121 @@ mod tests {
         assert_eq!(visits[1].0, Some(session_id));
         assert_eq!(visits[1].1.why.as_deref(), Some("bored"));
         assert!(visits[1].1.continued);
+    }
+
+    /// An engine with Deep Work set to a 50-minute Hard timer.
+    fn hard_engine() -> Engine {
+        let mut engine = engine();
+        let timer = TimerSettings {
+            minutes: 50,
+            strictness: Strictness::Hard,
+            ..TimerSettings::default()
+        };
+        engine.set_profile_timer("deep-work", timer, 1).unwrap();
+        engine
+    }
+
+    #[test]
+    fn hard_sessions_end_early_only_with_a_pass() {
+        let mut engine = hard_engine();
+        engine.start_session("deep-work", 0).unwrap();
+        assert!(matches!(
+            engine.end_session(10 * MIN, EndReason::Stopped),
+            Err(Error::Locked)
+        ));
+        assert_eq!(engine.passes_left(10 * MIN), 2);
+
+        let record = engine.end_session(10 * MIN, EndReason::EmergencyPass).unwrap();
+        assert_eq!(record.end_reason, EndReason::EmergencyPass);
+        assert_eq!(engine.passes_left(10 * MIN), 1);
+
+        // Once the timer is done it ends like any other, and no pass is spent.
+        engine.start_session("deep-work", 20 * MIN).unwrap();
+        let record = engine.end_session(70 * MIN, EndReason::EmergencyPass).unwrap();
+        assert_eq!(record.end_reason, EndReason::Stopped);
+        assert_eq!(engine.passes_left(70 * MIN), 1);
+    }
+
+    #[test]
+    fn passes_run_out_and_come_back_a_week_later() {
+        let mut engine = hard_engine();
+        for start in [0, 10 * MIN] {
+            engine.start_session("deep-work", start).unwrap();
+            engine.end_session(start + MIN, EndReason::EmergencyPass).unwrap();
+        }
+        engine.start_session("deep-work", 20 * MIN).unwrap();
+        assert!(matches!(
+            engine.end_session(21 * MIN, EndReason::EmergencyPass),
+            Err(Error::NoPassesLeft)
+        ));
+        assert_eq!(engine.snapshot(21 * MIN).passes_left, 0);
+        assert_eq!(engine.passes_left(MIN + PASS_WEEK_MS), 1);
+
+        // Kept across restarts, since they're read from the session log.
+        let reloaded = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        assert_eq!(reloaded.passes_left(21 * MIN), 0);
+    }
+
+    #[test]
+    fn passes_per_week_only_go_down_during_a_hard_session() {
+        let mut engine = hard_engine();
+        engine.set_settings(Settings { passes_per_week: 99 }, 0).unwrap();
+        assert_eq!(
+            engine.snapshot(0).settings.passes_per_week,
+            crate::settings::MAX_PASSES_PER_WEEK
+        );
+
+        engine.start_session("deep-work", 0).unwrap();
+        engine.set_settings(Settings { passes_per_week: 1 }, MIN).unwrap();
+        assert!(matches!(
+            engine.set_settings(Settings { passes_per_week: 5 }, MIN),
+            Err(Error::Locked)
+        ));
+        engine.set_settings(Settings { passes_per_week: 5 }, 60 * MIN).unwrap();
+    }
+
+    #[test]
+    fn the_extension_cannot_end_a_hard_session_early() {
+        let mut engine = hard_engine();
+        let id = engine.start_session("deep-work", 1_000).unwrap().id.clone();
+        let ended = Synced {
+            value: None,
+            updated_at: 10 * MIN,
+        };
+        assert!(engine.apply_remote(None, Some(ended), 11 * MIN).unwrap());
+        let (_, session) = engine.synced();
+        assert_eq!(session.value.as_ref().map(|s| s.id.clone()), Some(id));
+        // Newer than the browser's change, so the browser takes it back.
+        assert_eq!(session.updated_at, 10 * MIN + 1);
+        assert_eq!(engine.session_log().unwrap(), vec![]);
+
+        // Once the timer is done, it can.
+        let ended = Synced {
+            value: None,
+            updated_at: 60 * MIN,
+        };
+        engine.apply_remote(None, Some(ended), 60 * MIN).unwrap();
+        assert_eq!(engine.session(), None);
+    }
+
+    #[test]
+    fn the_app_owns_a_running_session_timer() {
+        let mut engine = hard_engine();
+        engine.start_session("deep-work", 1_000).unwrap();
+        let mut softened = engine.session().cloned().unwrap();
+        softened.timer = Some(TimerSettings {
+            minutes: 0,
+            ..TimerSettings::default()
+        });
+        let incoming = Synced {
+            value: Some(softened),
+            updated_at: 2_000,
+        };
+        engine.apply_remote(None, Some(incoming), 3_000).unwrap();
+        let (_, session) = engine.synced();
+        let timer = session.value.as_ref().unwrap().timer.as_ref().unwrap();
+        assert_eq!((timer.minutes, timer.strictness), (50, Strictness::Hard));
+        assert_eq!(session.updated_at, 2_001);
     }
 
     #[test]

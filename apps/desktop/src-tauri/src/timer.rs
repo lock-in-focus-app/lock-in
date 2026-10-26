@@ -15,6 +15,21 @@ pub enum TimerEnd {
     Alert,
 }
 
+/// How hard it is to end a session before its timer is done. Once the timer is done, or if
+/// there isn't one, any session can be ended.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Strictness {
+    /// A short pause, then it can be ended.
+    #[default]
+    Gentle,
+    /// Ending it means typing out a line of random text.
+    Medium,
+    /// It can't be ended, except with an emergency pass.
+    Hard,
+}
+
 /// The quiet timer: a starting ramp, not a cage. It never ends the session.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -25,6 +40,10 @@ pub struct TimerSettings {
     pub on_end: TimerEnd,
     /// Whether a finished timer shows "Done · 37 min ago" instead of just "Done".
     pub show_since_done: bool,
+    /// How hard it is to end the session before the timer is done. Sessions saved before
+    /// this existed are Gentle.
+    #[serde(default)]
+    pub strictness: Strictness,
 }
 
 pub const MAX_MINUTES: u32 = 480;
@@ -35,6 +54,7 @@ impl Default for TimerSettings {
             minutes: 25,
             on_end: TimerEnd::Gentle,
             show_since_done: false,
+            strictness: Strictness::Gentle,
         }
     }
 }
@@ -52,10 +72,15 @@ impl TimerSettings {
             .and_then(Value::as_f64)
             .filter(|m| m.is_finite())
             .map_or(defaults.minutes, |m| m.round().clamp(0.0, MAX_MINUTES as f64) as u32);
+        // `T::deserialize` reads a value in place, so nothing is copied to check it.
         let on_end = saved
             .get("onEnd")
-            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .and_then(|v| TimerEnd::deserialize(v).ok())
             .unwrap_or(defaults.on_end);
+        let strictness = saved
+            .get("strictness")
+            .and_then(|v| Strictness::deserialize(v).ok())
+            .unwrap_or(defaults.strictness);
         let show_since_done = saved
             .get("showSinceDone")
             .and_then(Value::as_bool)
@@ -64,6 +89,7 @@ impl TimerSettings {
             minutes,
             on_end,
             show_since_done,
+            strictness,
         }
     }
 
@@ -92,14 +118,14 @@ mod tests {
             TimerSettings {
                 minutes: 45,
                 on_end: TimerEnd::Silent,
-                show_since_done: false
+                ..TimerSettings::default()
             }
         );
     }
 
     #[test]
     fn cleans_up_bad_values() {
-        let saved = json!({ "minutes": 9999.6, "onEnd": "explode", "showSinceDone": "yes" });
+        let saved = json!({ "minutes": 9999.6, "onEnd": "explode", "showSinceDone": "yes", "strictness": 3 });
         assert_eq!(
             TimerSettings::from_saved(Some(&saved)),
             TimerSettings {
@@ -109,6 +135,16 @@ mod tests {
         );
         assert_eq!(TimerSettings::from_saved(Some(&json!({ "minutes": -5 }))).minutes, 0);
         assert_eq!(TimerSettings::from_saved(Some(&json!("25"))), TimerSettings::default());
+    }
+
+    #[test]
+    fn reads_strictness() {
+        let saved = json!({ "minutes": 30, "strictness": "hard" });
+        assert_eq!(TimerSettings::from_saved(Some(&saved)).strictness, Strictness::Hard);
+        // A session saved before strictness existed.
+        let old: TimerSettings =
+            serde_json::from_value(json!({ "minutes": 30, "onEnd": "gentle", "showSinceDone": false })).unwrap();
+        assert_eq!(old.strictness, Strictness::Gentle);
     }
 
     #[test]

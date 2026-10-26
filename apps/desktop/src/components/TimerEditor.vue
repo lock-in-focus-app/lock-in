@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TimerEnd, TimerSettings } from '@lock-in/core';
+import type { Strictness, TimerEnd, TimerSettings } from '@lock-in/core';
 import NumberField from './NumberField.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
 
@@ -10,6 +10,12 @@ const endOptions: { id: TimerEnd; label: string }[] = [
   { id: 'silent', label: 'Nothing happens' },
   { id: 'gentle', label: 'Quiet notification' },
   { id: 'alert', label: 'Notification and sound' },
+];
+
+const strictnessOptions: { id: Strictness; label: string }[] = [
+  { id: 'gentle', label: 'After a short pause' },
+  { id: 'medium', label: 'After typing random text' },
+  { id: 'hard', label: 'Only with an emergency pass' },
 ];
 
 function save(patch: Partial<TimerSettings>) {
@@ -43,6 +49,18 @@ function save(patch: Partial<TimerSettings>) {
           <option v-for="option in endOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
         </select>
       </div>
+
+      <div class="row">
+        <span>Ending early</span>
+        <select
+          aria-label="Ending the session before the timer is done"
+          :value="timer.strictness"
+          @change="save({ strictness: ($event.target as HTMLSelectElement).value as Strictness })"
+        >
+          <option v-for="option in strictnessOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
+        </select>
+      </div>
+      <p class="row-help">Once the timer is done, the session ends with one click.</p>
 
       <ToggleSwitch
         label="Show time since done"

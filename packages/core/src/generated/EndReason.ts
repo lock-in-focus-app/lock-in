@@ -3,4 +3,4 @@
 /**
  * Why a session ended.
  */
-export type EndReason = "stopped";
+export type EndReason = "stopped" | "emergencyPass";
