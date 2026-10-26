@@ -24,6 +24,10 @@ const profile = computed(() =>
 );
 const rule = computed(() => findRule(profile.value, props.recipe.id));
 const values = computed(() => resolveToggles(props.recipe, rule.value, props.session?.overrides?.[props.recipe.id]));
+const passMinutesLeft = computed(() => {
+  const until = props.session?.passes?.[props.recipe.id] ?? 0;
+  return until > Date.now() ? Math.ceil((until - Date.now()) / 60_000) : 0;
+});
 const hasSessionChanges = computed(
   () => Object.keys(props.session?.overrides?.[props.recipe.id] ?? {}).length > 0,
 );
@@ -48,7 +52,12 @@ function set(toggleId: string, value: boolean) {
       </select>
     </label>
 
-    <p v-if="rule?.level !== 'tamed'" class="note">
+    <p v-if="rule?.level === 'redirected'" class="note">
+      {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile' }}<template v-if="passMinutesLeft">
+        · pass ends in {{ passMinutesLeft }} min</template>.
+    </p>
+
+    <p v-else-if="rule?.level !== 'tamed'" class="note">
       {{ recipe.name }} isn't tamed in {{ profile?.name ?? 'this profile' }}.
     </p>
 

@@ -1,5 +1,8 @@
 import {
   findRule,
+  withGateVisit,
+  withGateVisitContinued,
+  withPass,
   withProfileToggle,
   withSessionOverridesSaved,
   withSessionToggle,
@@ -51,4 +54,26 @@ export async function saveSessionChanges(recipeId: string): Promise<void> {
     { item: profiles, value: saved.profiles },
     { item: activeSession, value: saved.session },
   ]);
+}
+
+/** Records a trip to the intention gate and returns its id. */
+export async function recordGateVisit(recipeId: string): Promise<string> {
+  const visit = { id: crypto.randomUUID(), recipeId, at: Date.now() };
+  await gateVisits.setValue(withGateVisit(await gateVisits.getValue(), visit));
+  return visit.id;
+}
+
+/**
+ * Gives the session a pass to a redirected site. Resolves once the browser has stopped
+ * redirecting it, so the caller can navigate straight there.
+ */
+export async function continueToSite(visitId: string, recipeId: string, intention: string): Promise<void> {
+  const [session, visits] = await Promise.all([activeSession.getValue(), gateVisits.getValue()]);
+  if (!session) return;
+
+  await storage.setItems([
+    { item: activeSession, value: withPass(session, recipeId, Date.now()) },
+    { item: gateVisits, value: withGateVisitContinued(visits, visitId, intention) },
+  ]);
+  await syncRedirectsNow();
 }

@@ -50,4 +50,18 @@ export interface Session {
   startedAt: number;
   /** Toggles changed for this session only. They don't touch the profile unless saved. */
   overrides?: ToggleOverrides;
+  /** Redirected sites the user chose to continue to, keyed by recipe id. Each value is when the pass ends (epoch ms). */
+  passes?: Record<string, number>;
+}
+
+/** One trip to the intention gate, kept for the attempt counter and, later, insights. */
+export interface GateVisit {
+  id: string;
+  recipeId: string;
+  /** Epoch milliseconds. */
+  at: number;
+  /** What the user said they came for, if they typed anything. */
+  intention?: string;
+  /** Whether they used a pass to continue to the site. */
+  continued?: boolean;
 }

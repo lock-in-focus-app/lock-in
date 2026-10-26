@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- A stand-in for Reddit's home page, with one element for each thing the recipe hides. -->
+<html>
+  <head>
+    <title>Fake Reddit</title>
+    <style>
+      body { font: 16px sans-serif; background: #fff; }
+      p, div, faceplate-tracker, shreddit-ad-post { display: block; margin: 8px; padding: 12px; background: #ff4500; color: #fff; }
+      #keep { background: #0079d3; }
+    </style>
+  </head>
+  <body>
+    <shreddit-app pagetype="home">
+      <p id="keep">Header and search (stays)</p>
+      <div class="main-container" id="feed">Home feed (hidden)</div>
+      <faceplate-tracker noun="discovery_unit" id="suggested">Suggested posts (hidden)</faceplate-tracker>
+      <shreddit-ad-post id="ad">Promoted post (hidden)</shreddit-ad-post>
+    </shreddit-app>
+  </body>
+</html>

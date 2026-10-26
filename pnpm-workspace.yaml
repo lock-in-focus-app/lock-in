@@ -4,3 +4,5 @@ packages:
 
 allowBuilds:
   esbuild: false
+  # Its install script downloads Chrome. The browser tests fetch it explicitly instead.
+  puppeteer: false

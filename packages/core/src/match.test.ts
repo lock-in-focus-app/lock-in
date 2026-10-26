@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchesPattern } from './match';
+import { matchesPattern, matchPatternToRegex } from './match';
 
 describe('matchesPattern', () => {
   it('matches subdomains and the bare domain for *. hosts', () => {
@@ -27,5 +27,41 @@ describe('matchesPattern', () => {
   it('rejects malformed patterns and URLs', () => {
     expect(matchesPattern('reddit.com', 'https://reddit.com/')).toBe(false);
     expect(matchesPattern('*://*.reddit.com/*', 'not a url')).toBe(false);
+  });
+});
+
+describe('matchPatternToRegex', () => {
+  const regex = (pattern: string) => new RegExp(matchPatternToRegex(pattern)!);
+
+  it('agrees with matchesPattern', () => {
+    const patterns = ['*://*.reddit.com/*', 'https://x.com/*', '*://*.reddit.com/r/*', '*://*/*'];
+    const urls = [
+      'https://www.reddit.com/r/writing?sort=new',
+      'http://reddit.com/',
+      'https://old.reddit.com/user/me',
+      'https://notreddit.com/',
+      'https://reddit.com.evil.example/',
+      'https://x.com/home',
+      'http://x.com/home',
+      'https://www.x.com/home',
+    ];
+    for (const pattern of patterns) {
+      for (const url of urls) {
+        expect(regex(pattern).test(url), `${pattern} vs ${url}`).toBe(matchesPattern(pattern, url));
+      }
+    }
+  });
+
+  it('allows a port, like browsers do', () => {
+    expect(regex('*://*.reddit.com/*').test('http://www.reddit.com:8080/')).toBe(true);
+  });
+
+  it('escapes regex characters in the pattern', () => {
+    expect(regex('*://a+b.example/*').test('https://a+b.example/')).toBe(true);
+    expect(regex('*://a+b.example/*').test('https://aab.example/')).toBe(false);
+  });
+
+  it('returns null for malformed patterns', () => {
+    expect(matchPatternToRegex('reddit.com')).toBeNull();
   });
 });

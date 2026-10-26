@@ -23,6 +23,24 @@ export function matchesPattern(pattern: string, url: string | URL): boolean {
   return globToRegExp(parsed.path).test(target.pathname + target.search);
 }
 
+/**
+ * Converts a match pattern into an equivalent regular expression source, for APIs that
+ * take a regex instead of a pattern (like declarativeNetRequest's `regexFilter`). Only
+ * uses syntax that RE2 supports. Returns null for malformed patterns.
+ */
+export function matchPatternToRegex(pattern: string): string | null {
+  const parsed = parsePattern(pattern);
+  if (!parsed) return null;
+
+  const scheme = parsed.scheme === '*' ? 'https?' : parsed.scheme;
+  let host: string;
+  if (parsed.host === '*') host = '[^/:]+';
+  else if (parsed.host.startsWith('*.')) host = `([^/:]+\\.)?${escapeRegExp(parsed.host.slice(2))}`;
+  else host = escapeRegExp(parsed.host);
+
+  return `^${scheme}://${host}(:[0-9]+)?${globToRegExpSource(parsed.path)}$`;
+}
+
 function parsePattern(pattern: string): { scheme: string; host: string; path: string } | null {
   const match = /^(\*|https?):\/\/([^/]+)(\/.*)$/.exec(pattern);
   if (!match) return null;
@@ -40,6 +58,13 @@ function hostMatches(patternHost: string, hostname: string): boolean {
 }
 
 function globToRegExp(glob: string): RegExp {
-  const escaped = glob.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp(`^${escaped}$`);
+  return new RegExp(`^${globToRegExpSource(glob)}$`);
+}
+
+function globToRegExpSource(glob: string): string {
+  return glob.split('*').map(escapeRegExp).join('.*');
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
