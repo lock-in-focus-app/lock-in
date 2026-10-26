@@ -108,7 +108,7 @@ The timer is a *starting ramp*, not a cage.
   - *Gentle*: soft notification
   - *Alert*: sound + notification
 - **"Show time since done" setting** (off by default): when on, a finished timer shows "Done · 37 min ago" and keeps counting up, so you can see how much extra you did. When off, it simply shows "Done".
-- **Secret overtime bonus:** overtime is always tracked, whichever setting you choose. Minutes after the timer ends count **1.5×**. This is never announced. It shows up only as that session's star burning noticeably brighter in your sky, a little discovery for later.
+- **Secret overtime bonus:** overtime is always tracked, whichever setting you choose. Minutes after the timer ends count **1.5×**. This is never announced. It shows up only as that session's star twinkling a little brighter in your sky and as extra stardust (§5), a little discovery for later.
 - **Anti-gaming:** a session ends when you stop it, or automatically after N minutes of system idle (no keyboard or mouse). The idle tail isn't counted, so a forgotten timer doesn't farm overtime.
 
 ---
@@ -166,15 +166,68 @@ Satellites also count in insights, e.g. "You parked 12 thoughts this week instea
 ---
 
 ## 5. Rewards: the night sky
-- **Every session adds a star.** Longer sessions make bigger stars; overtime makes them secretly brighter (§2).
-- **Streaks connect stars into constellations.** A week of streak days draws one, and you can name it.
-- **Light pollution:** outside a session, the sky is washed out by a faint glow and haze. When you lock in, the pollution fades away and the sky is crisp for the whole session, while your new star forms. This is the brand metaphor made playable.
-- **"View sky" toggle:** you can always switch to a clear view to explore, name and admire your constellations, even outside a session. The pollution is mood, not a lock.
-- *Suggestions to consider:*
-  - **Afterglow:** after a session ends, the sky stays clear for a while (e.g. ~20% of the session length) before the haze creeps back in. This is a small reward for finishing.
-  - **Shooting stars** for milestones such as a streak record, a personal-best session, or the first constellation of a month.
-- **Your year becomes a sky:** zoom out to see months of constellations. Stats sit alongside: focus time, streaks, level, and the weekly report.
-- **Architecture:** a reward engine emits plain events (minutes, overtime minutes, streak days, distractions resisted, satellites parked). The sky is one swappable renderer over those events, so the community can build other "worlds" later.
+
+One big sky that keeps growing as you focus, a bit like Obsidian's graph view: you never start a new page, your constellations just build outward. Everything in it is earned by focusing, drawn by code and kept on your device.
+
+### Stars
+- **Every session adds a star, and every star twinkles.** Longer sessions make bigger, brighter stars, and overtime makes a star twinkle a little brighter still. That's the secret overtime bonus (§2), never announced.
+- **Color comes from the profile.** Each profile picks its star color, e.g. warm gold for Writing and blue-white for Deep Work, so the sky shows at a glance how you spend your time.
+- **Short sessions:** a star's size and brightness follow its minutes, so a 5-minute session is a faint speck next to a 90-minute one. Stardust and the chance of rare events count focused *minutes*, not sessions, so splitting one session into many earns nothing extra.
+- **Back-to-back sessions share a star.** A session under 30 minutes that starts within 10 minutes of the last one ending joins that star, which grows to match. Sessions of 30 minutes or more always get their own star.
+- **The smallest star is 5 minutes.** A lone session shorter than that (often an accidental start) leaves no star, though its minutes still count toward stardust.
+- **Missed days cost nothing.** The sky never loses anything, so there's no streak guilt.
+
+### Constellations and the Milky Way
+- **Streaks connect stars into constellations.** A week of streak days draws one, and you can name it. Each constellation's shape is unique to you.
+- **The Milky Way** fills in slowly as your total focus hours grow. It's also the zoomed-out view: from far away, older constellations fold into its glow.
+
+### Planets and moons
+- **A planet for every month you focus at all.** It's generated from a seed (colors, bands, rings), so no two people's planets look alike. Its size grows with that month's focus time. Planets drift slowly across the sky.
+- **Moons** are earned around that month's planet, from focus streaks and from rare events.
+
+### Comets: resisting a distraction
+- Leaving the intention gate for "Back to focus" instead of continuing can bring a comet.
+- **Don't reward the trip, reward the turn-around.** Only the first resist per site per day counts, and the daily chance doesn't grow with more visits, so going to a site just to resist it earns nothing. Comets stay rare enough to be a nice surprise, not a target. (General reasoning, not research: worth revisiting if it seems to pull people toward the sites.)
+
+### Rare events
+- Each finished session rolls a very small chance of something special, rising with the time you've focused today: a shooting star, a meteor shower, an aurora, a supernova. Personal bests (longest session, a streak record) can trigger one for sure.
+- The roll uses a random secret kept on the device, so events can't be predicted or replayed.
+- Later, some events leave a collectable for the observing spot.
+
+### Light pollution
+- Outside a session, the sky is washed out by a faint glow and haze. When you lock in, the pollution fades away and the sky is crisp for the whole session, while your new star forms. This is the brand metaphor made playable.
+- **Afterglow:** after a session ends, the sky stays clear for a while (about 20% of the session length) before the haze creeps back in.
+- **"View sky" toggle:** you can always switch to a clear view to explore, name and admire your constellations. The pollution is mood, not a lock.
+- Stats sit alongside the sky: focus time, streaks, and the weekly report.
+
+### Stardust
+- Focus earns stardust: 1 per focused minute, with overtime minutes worth 1.5× (unannounced). The idle tail isn't counted (§2).
+- It's shown as a running total from Phase 4 on. Nothing spends it yet; it's saved for the observing spot.
+- Stardust, like everything in the sky, is worked out from the session log rather than stored on its own, so older sessions count too once it ships. Phase 2's session log must therefore keep everything rewards need: start, end, focused minutes, overtime, idle tail, profile, and gate outcomes.
+
+### Later: the observing spot and companions
+- **Your spot** is the foreground at the bottom of the sky: a campsite, rooftop, lighthouse or lake shore that you build up over time (tent → cabin → observatory) and decorate with things bought with stardust or found in rare events.
+- **The town on the horizon** is where the light pollution comes from. When you lock in, its windows go dark one by one.
+- **Companions:** small, cute characters who keep you company during sessions, e.g. watching through the telescope while you focus and dozing off when you go idle.
+- This needs an art style and a set of assets, so it comes after the sky itself. Style still to decide. One option is dark silhouettes against the sky with small glowing details, which matches the icon and keeps each asset cheap to draw.
+
+### What to protect
+- **No paywall, ever.** Everything is earned by focusing.
+- **Calm, not a slot machine.** Rare things should feel like discoveries.
+- **Drawn by code, not image packs.** It keeps the app small and gives every sky its own planets and shapes.
+- **Local only.** Nothing leaves the device unless you share a constellation (below).
+
+### Performance at scale
+The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly ten sessions a day for five years):
+- One canvas. Static layers (older stars, the Milky Way) are drawn once into off-screen images and only redrawn when you pan or zoom.
+- Only stars on screen twinkle, found with a spatial index. Zoomed out, detail folds into glow instead of drawing every star.
+- Each constellation's position is worked out once, when it forms, and saved. There's no physics simulation running like Obsidian's graph.
+- The sky only renders while its window is open and visible, and twinkling stops under `prefers-reduced-motion`.
+
+### Architecture
+- A reward engine turns the session log into plain events: minutes, overtime minutes, streak days, distractions resisted, satellites parked, rare events.
+- Given the same log and the device's secret, it always produces the same sky, so the sky rebuilds after an import or a sync.
+- The sky is one swappable renderer over those events, so the community can build other "worlds" later.
 
 ### Community sky (opt-in)
 - A **"Share this constellation"** button sends **only the shape**:
@@ -291,7 +344,7 @@ lock-in/
 - Menu-bar app, session engine, quiet timer + idle detection.
 - Strictness levels + emergency passes.
 - Native Messaging link + extension heartbeat: if the extension goes quiet during a session, warn → close that browser → count the session as broken, depending on strictness.
-- App rules, SQLite.
+- App rules, SQLite. The session log keeps everything the rewards will need later (§5), so stardust and the sky can be worked out from past sessions once they ship.
 
 **Phase 3: Satellites & insights**
 - Global-hotkey capture and the post-session return.
@@ -299,8 +352,9 @@ lock-in/
 - Session suggestions from apps.
 
 **Phase 4: The night sky**
-- Reward engine + sky renderer: light pollution outside sessions, a clear sky during them, the "View sky" toggle, constellations, secret overtime brightness.
-- Streaks and levels.
+- Reward engine + sky renderer (§5): twinkling stars colored by profile, light pollution outside sessions and a clear sky during them, the "View sky" toggle, constellations, the Milky Way.
+- Seeded planets and moons, comets for resisted distractions, rare events.
+- Streaks and stardust (earned and shown; nothing to spend it on yet).
 
 **Phase 5: Polish & release**
 - Recipe live mode + element picker.
@@ -313,6 +367,9 @@ lock-in/
 - Marketing website (§10) + community-worlds gallery.
 - Constellation sharing endpoint.
 - Self-hostable sync server, then optionally the hosted tier.
+
+**Later: the observing spot** (once the art style is chosen)
+- Your spot, the town on the horizon, decorations and companions, bought with stardust or found in rare events (§5).
 
 ---
 
