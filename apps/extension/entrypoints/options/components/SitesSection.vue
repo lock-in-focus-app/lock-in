@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { findRule, resolveToggles, type Profile } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
+import { ref } from 'vue';
 import LevelPicker from '@/components/LevelPicker.vue';
+import RecipePreview from '@/components/preview/RecipePreview.vue';
 import ToggleSwitch from '@/components/ToggleSwitch.vue';
 import PageRules from './PageRules.vue';
 
@@ -11,6 +13,12 @@ const props = defineProps<{ profile: Profile }>();
 const showsToggles = (recipeId: string) => {
   const rule = findRule(props.profile, recipeId);
   return rule?.level === 'tamed' || !!rule?.paths?.some((page) => page.level === 'tamed');
+};
+
+// The toggle being pointed at or focused, so the preview can outline what it hides.
+const pointing = ref<{ recipeId: string; toggleId: string }>();
+const point = (recipeId: string, toggleId?: string) => {
+  pointing.value = toggleId ? { recipeId, toggleId } : undefined;
 };
 </script>
 
@@ -34,12 +42,22 @@ const showsToggles = (recipeId: string) => {
       </div>
       <PageRules :profile="profile" :recipe="recipe" />
       <div v-if="showsToggles(recipe.id)" class="toggles">
+        <RecipePreview
+          :recipe-id="recipe.id"
+          :site-name="recipe.name"
+          :values="resolveToggles(recipe, findRule(profile, recipe.id))"
+          :highlight="pointing?.recipeId === recipe.id ? pointing.toggleId : undefined"
+        />
         <ToggleSwitch
           v-for="toggle in recipe.toggles"
           :key="toggle.id"
           :label="toggle.label"
           :model-value="resolveToggles(recipe, findRule(profile, recipe.id))[toggle.id] ?? false"
           @update:model-value="setProfileToggle(profile.id, recipe.id, toggle.id, $event)"
+          @mouseenter="point(recipe.id, toggle.id)"
+          @mouseleave="point(recipe.id)"
+          @focus="point(recipe.id, toggle.id)"
+          @blur="point(recipe.id)"
         />
       </div>
     </li>

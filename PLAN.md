@@ -1,6 +1,6 @@
 # Lock In — Product & Build Plan
 
-> **Status:** Phase 1 nearly done. The extension works on its own: sessions, profiles (with an editor), all four site levels with page rules, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Left in Phase 1: the recipe editor, and checking each recipe on the real site. Then Phase 2, the desktop app.
+> **Status:** Phase 1 nearly done. The extension works on its own: sessions, profiles (with an editor), all four site levels with page rules, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Left in Phase 1: preview drawings for the remaining six sites (Reddit and YouTube are done), and checking each recipe on the real site. Then Phase 2, the desktop app.
 
 ## Context
 
@@ -68,13 +68,16 @@ A **recipe** defines what "tamed" means for one site: a list of toggles, each ma
 - **Tested twice.** Browser tests check each recipe against a stand-in page for the site. Sites change their HTML without notice, so each recipe also needs checking on the real site before a release.
 
 **The editor shows a version of the actual site and animates every toggle:**
-- **Preview mock**: each built-in recipe ships with a lightweight, stylized wireframe of the site, built as a Vue component. It is *our own drawing*, not copied site assets.
-  - Each region of the mock is tagged with the toggle id it represents.
-  - Flipping a toggle makes that region collapse with a quick, bouncy spring (scale + height + fade), and the rest of the page reflows smoothly (FLIP technique).
+- **Preview mock**: each built-in recipe ships with a lightweight, stylized wireframe of the site, built as a Vue component. It is *our own drawing*, not copied site assets. It sits above the site's toggles in Settings.
+  - Each region of the mock is tagged with the toggle id it represents (`<MockRegion toggle="hideShorts">`).
+  - Flipping a toggle makes that region collapse with a quick, bouncy spring (scale + height + fade), and the rest of the page reflows smoothly. The height animates through `grid-template-rows: 1fr → 0fr`, so the browser does the reflow and no FLIP script is needed.
+  - Pointing at (or focusing) a toggle outlines its region. If the region is already hidden, it comes back as a faint dashed ghost, so you can see what the toggle takes away.
+  - Sites can have several pages (YouTube: Home and Video); pointing at a toggle that only matters on another page switches to it.
   - Grayscale cross-fades the whole mock.
   - Feedback is instant, with no page loads.
+  - Done: Reddit, YouTube. To do: X, Instagram, TikTok, Facebook, LinkedIn, Pinterest. Sites without a drawing just show their toggles.
 - **Live mode** (for custom recipes and sites without a mock): the extension opens the real site with a small floating panel. Toggles apply to the real page instantly with the same animation. An **element picker**, like uBlock's "zapper", lets you hover → click to hide something, and it writes the selector into the recipe for you.
-- **Animation implementation:** native CSS spring easing (`linear()` easing curves) + Vue `<Transition>`/`<TransitionGroup>`, with no animation library, to stay lightweight. Animations are disabled under `prefers-reduced-motion`.
+- **Animation implementation:** native CSS spring easing (`linear()` easing curves) and CSS transitions, with no animation library, to stay lightweight. Animations are disabled under `prefers-reduced-motion`.
 
 ### Session Profiles (fully user-managed)
 A profile bundles:
@@ -234,7 +237,8 @@ lock-in/
     sync-server/    # Self-hostable Rust sync server (later)
   packages/
     core/           # Shared TS types, JSON schemas, session/reward logic
-    recipes/        # Built-in site recipes (JSON) + preview mock components
+    recipes/        # Built-in site recipes (JSON). Preview mocks live in the extension for now
+                    # (apps/extension/components/preview) and move here once the desktop app needs them.
     quotes/         # Bundled quote packs (JSON)
   LICENSE           # AGPL-3.0
   PLAN.md
@@ -277,7 +281,7 @@ lock-in/
 - ✅ Profiles: CRUD + starter profiles, manual start/stop, four site levels including Restricted, settings page.
 - ✅ Redirect destinations: intention gate with countdown (fixed or escalating), quote card (with your own quotes), productive URL, stuck page. Passes, and what happens when they run out (nothing, pause or redirect).
 - ✅ Attempt counter + why-tap.
-- Recipe editor with animated preview mocks.
+- 🚧 Recipe editor with animated preview mocks: Reddit and YouTube done, six sites to go.
 
 **Phase 2: Desktop app (Tauri)**
 - Menu-bar app, session engine, quiet timer + idle detection.
