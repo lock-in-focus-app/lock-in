@@ -9,6 +9,7 @@ export {
   withProfileDuplicated,
   withProfileMoved,
   withProfileRemoved,
+  withProfilesRemoved,
   withProfileRenamed,
   withPathRuleRemoved,
   withPathRules,

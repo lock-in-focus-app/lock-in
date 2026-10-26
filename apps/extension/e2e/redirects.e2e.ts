@@ -7,6 +7,7 @@ import {
   redirectPage,
   setProfileRedirect,
   setStored,
+  startSession,
   stored,
   text,
   urls,
@@ -131,5 +132,44 @@ describe('redirects and the intention gate', () => {
     expect(tab.url()).toBe(urls.reddit);
     await tab.goto(urls.x);
     expect(tab.url()).toBe(urls.x);
+  });
+});
+
+describe('redirects from other sites', () => {
+  let t: TestBrowser;
+
+  beforeAll(async () => {
+    t = await launch();
+    const control = await controlPage(t);
+    await startSession(control, 'deep-work');
+  });
+  afterAll(() => t?.close());
+
+  // Chrome only lets a visit be redirected to an extension page if the page it came from
+  // may load it. Links to Reddit live on every kind of site.
+  it('catches a link to a redirected site from anywhere', async () => {
+    const tab = await t.browser.newPage();
+    await tab.goto(urls.other);
+    await tab.evaluate((href) => {
+      const link = Object.assign(document.createElement('a'), { href, id: 'link', textContent: 'Reddit' });
+      document.body.append(link);
+    }, urls.reddit);
+    await Promise.all([tab.waitForNavigation(), tab.click('#link')]);
+    await tab.waitForSelector('main');
+    expect(tab.url()).toBe(redirectPage(t, urls.reddit));
+  });
+
+  it("doesn't let websites detect Lock In by loading its pages", async () => {
+    const tab = await t.browser.newPage();
+    await tab.goto(urls.other);
+    const loaded = await tab.evaluate(
+      (id) =>
+        fetch(`chrome-extension://${id}/redirect.html`).then(
+          () => true,
+          () => false,
+        ),
+      t.extensionId,
+    );
+    expect(loaded).toBe(false);
   });
 });

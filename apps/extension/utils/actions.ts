@@ -6,6 +6,7 @@ import {
   withProfileDuplicated,
   withProfileMoved,
   withProfileRemoved,
+  withProfilesRemoved,
   withProfileRenamed,
   withSiteLevel,
   withPathRuleRemoved,
@@ -91,6 +92,13 @@ export async function duplicateProfile(profileId: string): Promise<string> {
 export async function deleteProfile(profileId: string): Promise<void> {
   if ((await activeSession.getValue())?.profileId === profileId) return;
   await profiles.setValue(withProfileRemoved(await profiles.getValue(), profileId));
+}
+
+/** Deletes several profiles at once, skipping the one the running session uses. At least one is always kept. */
+export async function deleteProfiles(profileIds: string[]): Promise<void> {
+  const running = (await activeSession.getValue())?.profileId;
+  const ids = profileIds.filter((id) => id !== running);
+  await profiles.setValue(withProfilesRemoved(await profiles.getValue(), ids));
 }
 
 export async function renameProfile(profileId: string, name: string): Promise<void> {

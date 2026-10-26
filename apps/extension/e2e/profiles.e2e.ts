@@ -167,3 +167,73 @@ describe('profile editor', () => {
     expect(await popup.$$eval('[role=switch]', (els) => els.length)).toBe(0);
   });
 });
+
+describe('managing profiles', () => {
+  let t: TestBrowser;
+  let page: Page;
+  let control: Page;
+
+  const clickButton = (label: string) =>
+    page.$$eval(
+      'button',
+      (buttons, wanted) => (buttons.find((b) => b.textContent!.trim() === wanted) as HTMLElement).click(),
+      label,
+    );
+  const button = (prefix: string) =>
+    page.$$eval(
+      'button',
+      (buttons, wanted) => {
+        const found = buttons.find((b) => b.textContent!.trim().startsWith(wanted)) as HTMLButtonElement;
+        return { label: found.textContent!.trim(), disabled: found.disabled };
+      },
+      prefix,
+    );
+  const names = async () => ((await stored(control)).profiles ?? []).map((p) => p.name);
+
+  beforeAll(async () => {
+    t = await launch();
+    control = await controlPage(t);
+    page = await t.browser.newPage();
+    await page.setViewport({ width: 900, height: 1200 });
+    await page.goto(`chrome-extension://${t.extensionId}/options.html`);
+    await page.waitForSelector('[role=tab]');
+  });
+  afterAll(() => t?.close());
+
+  it('keeps at least one profile', async () => {
+    await clickButton('Manage');
+    await wait(100);
+    await clickButton('Select all');
+    await wait(100);
+    expect(await button('Delete')).toEqual({ label: 'Delete 3', disabled: true });
+    expect(await page.$eval('main', (main) => main.textContent)).toContain('At least one profile has to stay');
+    await clickButton('Clear');
+  });
+
+  it('deletes several at once, but not the running one', async () => {
+    await startSession(control, 'writing');
+    await wait(200);
+    expect(
+      await page.$eval('input[aria-label="Select Writing"]', (input) => (input as HTMLInputElement).disabled),
+    ).toBe(true);
+
+    await clickButton('Select all');
+    await wait(100);
+    expect(await button('Delete')).toEqual({ label: 'Delete 2', disabled: false });
+    await clickButton('Delete 2');
+    await wait(100);
+    expect(await page.$eval('[role=alert]', (el) => el.textContent)).toContain(
+      "Delete 2 profiles? This can't be undone.",
+    );
+    await page.click('.confirm-delete');
+    await wait(200);
+    expect(await names()).toEqual(['Writing']);
+  });
+
+  it('goes back to editing when done', async () => {
+    await clickButton('Done');
+    await wait(100);
+    expect(await page.$$eval('[role=tab]', (tabs) => tabs.map((tab) => tab.textContent!.trim()))).toEqual(['Writing']);
+    expect(await page.$('input[aria-label="Profile name"]')).not.toBeNull();
+  });
+});

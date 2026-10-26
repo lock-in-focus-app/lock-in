@@ -18,6 +18,22 @@ describe('settings page', () => {
       label,
     );
 
+  const clickSwitch = (label: string) =>
+    page.$$eval(
+      '[role=switch]',
+      (els, wanted) => (els.find((el) => el.querySelector('.label')!.textContent === wanted) as HTMLElement).click(),
+      label,
+    );
+  const switchState = (label: string) =>
+    page.$$eval(
+      '[role=switch]',
+      (els, wanted) => {
+        const el = els.find((e) => e.querySelector('.label')!.textContent === wanted) as HTMLButtonElement;
+        return { on: el.getAttribute('aria-checked') === 'true', disabled: el.disabled };
+      },
+      label,
+    );
+
   beforeAll(async () => {
     t = await launch();
     page = await t.browser.newPage();
@@ -30,30 +46,40 @@ describe('settings page', () => {
   });
   afterAll(() => t?.close());
 
-  it("shows the profile's destinations", async () => {
+  it("shows the profile's redirect pages, and the gate on its own", async () => {
     const checked = await page.$$eval('.destinations label', (labels) =>
       labels.filter((l) => l.querySelector('input')!.checked).map((l) => l.querySelector('.name')!.textContent),
     );
-    expect(checked).toEqual(['Intention gate', 'Quote', "I'm stuck"]);
+    expect(checked).toEqual(['Quote', "I'm stuck"]);
+    expect(await switchState('Show the gate right away')).toEqual({ on: true, disabled: false });
   });
 
-  it('turns destinations on and off', async () => {
+  it('turns pages on and off', async () => {
     await clickDestination('Quote');
     await clickDestination('Your links');
     await wait(150);
     expect((await deepWork()).destinations).toEqual(['gate', 'link', 'stuck']);
+    expect(await page.$eval('main', (main) => main.textContent)).toContain('Your links is skipped for now');
   });
 
-  it('keeps at least one destination', async () => {
-    await clickDestination('Intention gate');
+  it('always leaves somewhere to land', async () => {
+    await clickSwitch('Show the gate right away');
     await clickDestination('Your links');
     await wait(150);
     expect((await deepWork()).destinations).toEqual(['stuck']);
     expect(await page.$$eval('.destinations input:disabled', (inputs) => inputs.length)).toBe(1);
+
+    // With the gate as the only choice, it's the switch that can't be turned off.
+    await clickSwitch('Show the gate right away');
+    await clickDestination("I'm stuck");
+    await wait(150);
+    expect((await deepWork()).destinations).toEqual(['gate']);
+    expect(await switchState('Show the gate right away')).toEqual({ on: true, disabled: true });
+    expect(await page.$eval('main', (main) => main.textContent)).toContain('every redirected visit goes straight to');
   });
 
   it('saves gate settings', async () => {
-    await page.click('[role=switch]');
+    await clickSwitch('Require a reason to continue');
     await page.select('select[aria-label="When a pass runs out"]', 'redirect');
     await page.select('select[aria-label="Wait before Continue"]', 'fixed');
     await wait(100);

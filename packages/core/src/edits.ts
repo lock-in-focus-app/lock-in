@@ -105,7 +105,13 @@ export function withProfileDuplicated(profiles: readonly Profile[], profileId: s
 }
 
 export function withProfileRemoved(profiles: readonly Profile[], profileId: string): Profile[] {
-  return profiles.filter((p) => p.id !== profileId);
+  return withProfilesRemoved(profiles, [profileId]);
+}
+
+/** Removes several profiles at once. There's always at least one left: removing every profile does nothing. */
+export function withProfilesRemoved(profiles: readonly Profile[], profileIds: readonly string[]): Profile[] {
+  const kept = profiles.filter((p) => !profileIds.includes(p.id));
+  return kept.length > 0 ? kept : [...profiles];
 }
 
 /** Renames a profile. Blank names are ignored. */

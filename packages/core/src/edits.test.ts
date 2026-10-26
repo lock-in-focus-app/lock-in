@@ -6,6 +6,7 @@ import {
   withProfileDuplicated,
   withProfileMoved,
   withProfileRemoved,
+  withProfilesRemoved,
   withProfileRenamed,
   withProfileToggle,
   withRedirectSettings,
@@ -126,6 +127,13 @@ describe('managing profiles', () => {
 
   it('removes a profile', () => {
     expect(ids(withProfileRemoved(profiles, 'focus'))).toEqual(['other']);
+  });
+
+  it('removes several profiles, but never the last one', () => {
+    const three = [...profiles, { id: 'mine', name: 'Mine', sites: [] }];
+    expect(ids(withProfilesRemoved(three, ['focus', 'mine']))).toEqual(['other']);
+    expect(ids(withProfilesRemoved(three, ['focus', 'other', 'mine']))).toEqual(['focus', 'other', 'mine']);
+    expect(ids(withProfilesRemoved(three, []))).toEqual(['focus', 'other', 'mine']);
   });
 
   it('renames a profile, ignoring blank names and trimming long ones', () => {

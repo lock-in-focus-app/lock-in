@@ -12,7 +12,7 @@ Most blockers treat a site as all or nothing. Lock In gives every site one of fo
 |---|---|
 | **Allowed** | Nothing changes. |
 | **Tamed** | The site still works, but the distracting parts are hidden: feeds, trending, suggested and promoted posts. Optionally grayscale. |
-| **Redirected** | Visits go to a Lock In page instead: an intention gate that asks what you came for, a quote, one of your own links, or a 2-minute unstick. You can still get through for a few minutes if you need to. |
+| **Redirected** | Visits go to a Lock In page instead: a quote, one of your own links, or a 2-minute unstick. To get through anyway, the intention gate asks what you came for, holds Continue for a few seconds, then gives you a few minutes on that site. |
 | **Restricted** | Blocked, with no way through until the session ends. |
 
 **Page rules** give part of a site its own level, like redirecting YouTube Shorts while the rest of YouTube is tamed, or allowing `reddit.com/r/writing` while the rest of Reddit is redirected.

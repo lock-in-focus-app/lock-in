@@ -117,6 +117,10 @@ The timer is a *starting ramp*, not a cage.
 
 When a site is *Redirected*, the extension intercepts the navigation and sends you to one of the destinations below. Each profile chooses which ones it uses; if several are enabled, one is **picked at random** (each equally likely for now; per-destination weights may come later). The pages are bundled inside the extension, so they load instantly and work offline.
 
+The intention gate (1) is the way through, so Settings gives it its own section: a "Show the gate right away" switch decides whether visits can land straight on it, and the other pages (2–4) each link to it with "Still need it?". At least one page is picked, or the switch is on, so a visit always has somewhere to land.
+
+Links to a redirected site can come from anywhere (a search result, a chat), and Chrome only redirects to an extension page if the page the visit came from may load it. So the redirect page is open to every site, with `use_dynamic_url` so websites can't load it directly to detect Lock In.
+
 1. **Intention gate**: "What did you come here for?" The **"Continue to site" button stays disabled behind a countdown**, so you have to pause and think. Three settings per profile keep it flexible without becoming a settings maze:
    - **Require a reason**: on/off. When on, you must type why you're going; when off, you just sit with the question during the countdown.
    - **Wait time**: either *fixed* (e.g. 10–15s) or *escalating* (starts at a few seconds and grows with each attempt at that site today, capped).
@@ -278,7 +282,7 @@ lock-in/
 - ✅ Standalone: sessions run from the extension popup, with no desktop app needed (the app plugs in later via Native Messaging).
 - ✅ Recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest: tame, grayscale, redirect. (Still to do: check each on the real site.)
 - ✅ Page rules (§1), including redirecting Shorts and Reels players inside single-page apps.
-- ✅ Profiles: CRUD + starter profiles, manual start/stop, four site levels including Restricted, settings page.
+- ✅ Profiles: CRUD + starter profiles, manual start/stop, four site levels including Restricted, settings page with a Manage mode for deleting several profiles at once.
 - ✅ Redirect destinations: intention gate with countdown (fixed or escalating), quote card (with your own quotes), productive URL, stuck page. Passes, and what happens when they run out (nothing, pause or redirect).
 - ✅ Attempt counter + why-tap.
 - ✅ Recipe editor with animated preview mocks for all eight sites. (Editing a recipe's selectors, and live mode, come in Phase 5.)

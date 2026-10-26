@@ -33,24 +33,6 @@ const elapsed = computed(() => {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
 });
 
-function describe(profile: Profile): string {
-  return (
-    profile.sites
-      .map((site) => {
-        const recipe = recipes.find((r) => r.id === site.recipeId);
-        const name = recipe?.name ?? site.recipeId;
-        const pages = site.paths?.length
-          ? ` · ${site.paths.length} page rule${site.paths.length === 1 ? '' : 's'}`
-          : '';
-        if (site.level === 'tamed' && site.toggles?.grayscale) return `${name} tamed · grayscale${pages}`;
-        if (site.level === 'allowed') return pages ? `${name}${pages}` : '';
-        return `${name} ${site.level}${pages}`;
-      })
-      .filter(Boolean)
-      .join(', ') || 'Everything allowed'
-  );
-}
-
 function openSettings() {
   void browser.runtime.openOptionsPage();
   window.close();
@@ -82,7 +64,7 @@ function start(profile: Profile) {
         <li v-for="profile in profileList" :key="profile.id">
           <button class="profile" type="button" @click="start(profile)">
             <span class="name">{{ profile.name }}</span>
-            <span class="summary">{{ describe(profile) }}</span>
+            <span class="summary">{{ profileSummary(profile) }}</span>
           </button>
         </li>
       </ul>

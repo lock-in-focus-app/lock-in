@@ -19,11 +19,20 @@ const props = defineProps<{ profile: Profile }>();
 
 const settings = computed(() => redirectSettingsFor(props.profile));
 
-const destinations: { id: RedirectDestination; label: string; detail: string }[] = [
-  { id: 'gate', label: 'Intention gate', detail: 'Asks what you came for, then lets you through after a short wait.' },
-  { id: 'quote', label: 'Quote', detail: 'A quote from the built-in pack or your own.' },
-  { id: 'link', label: 'Your links', detail: 'One of the links below, like your draft or to-do list.' },
-  { id: 'stuck', label: "I'm stuck", detail: 'A 2-minute unstick: name it, shrink it, stretch, breathe.' },
+// The pages a redirected visit can land on. The intention gate is set up in its own
+// section: it's the way through, which every one of these links to.
+const pages: { id: Exclude<RedirectDestination, 'gate'>; label: string; detail: string }[] = [
+  { id: 'quote', label: 'Quote', detail: 'A quote to pull you back, from the built-in pack or your own.' },
+  {
+    id: 'link',
+    label: 'Your links',
+    detail: 'Opens one of your own links instead, like the draft you meant to write. Add them under Your links.',
+  },
+  {
+    id: 'stuck',
+    label: "I'm stuck",
+    detail: 'For when you reached for the site because the work got hard: a 2-minute unstick.',
+  },
 ];
 
 const expiryOptions: { id: PassExpiry; label: string }[] = [
@@ -48,6 +57,13 @@ function toggleDestination(id: RedirectDestination, on: boolean) {
   const current = settings.value.destinations;
   save({ destinations: redirectDestinations.filter((d) => (d === id ? on : current.includes(d))) });
 }
+
+// A redirected visit has to land somewhere: on one of the pages, or straight on the gate.
+const gateRightAway = computed(() => settings.value.destinations.includes('gate'));
+const pagesPicked = computed(() => settings.value.destinations.filter((d) => d !== 'gate'));
+const isLastChoice = (id: RedirectDestination) =>
+  settings.value.destinations.length === 1 && settings.value.destinations.includes(id);
+const linksMissing = computed(() => settings.value.destinations.includes('link') && settings.value.links.length === 0);
 
 const linkTitle = ref('');
 const linkUrl = ref('');
@@ -74,14 +90,17 @@ function removeLink(id: string) {
 
 <template>
   <h2>Redirected sites</h2>
-  <p class="help">When {{ profile.name }} redirects a site, show one of these at random.</p>
+  <p class="help">
+    When {{ profile.name }} redirects a site, you land on a Lock In page instead. Pick which pages can show up; one is
+    chosen at random each visit. Every page has a "Still need it?" link to the intention gate below.
+  </p>
   <ul class="list destinations">
-    <li v-for="d in destinations" :key="d.id">
+    <li v-for="d in pages" :key="d.id">
       <label>
         <input
           type="checkbox"
           :checked="settings.destinations.includes(d.id)"
-          :disabled="settings.destinations.length === 1 && settings.destinations.includes(d.id)"
+          :disabled="isLastChoice(d.id)"
           @change="toggleDestination(d.id, ($event.target as HTMLInputElement).checked)"
         />
         <span>
@@ -91,15 +110,37 @@ function removeLink(id: string) {
       </label>
     </li>
   </ul>
-  <p class="help small">Every page has a "Still need it?" link that goes to the intention gate.</p>
+  <p v-if="linksMissing" class="help small">You haven't added any links yet, so Your links is skipped for now.</p>
+  <p v-else-if="!pagesPicked.length" class="help small">
+    None picked, so every redirected visit goes straight to the intention gate.
+  </p>
 
   <h2>Intention gate</h2>
+  <p class="help">
+    The way through a redirected site. It asks what you came for and holds Continue for a few seconds, so opening the
+    site becomes a choice instead of a habit. Continuing gives you a short pass to that one site. Restricted sites have
+    no gate.
+  </p>
   <div class="rows">
+    <ToggleSwitch
+      label="Show the gate right away"
+      :model-value="gateRightAway"
+      :disabled="isLastChoice('gate')"
+      @update:model-value="toggleDestination('gate', $event)"
+    />
+    <p class="row-help">
+      <template v-if="isLastChoice('gate')">Pick a page above to turn this off.</template>
+      <template v-else>
+        On: some visits land straight on the gate, mixed in with the pages above. Off: you always see a page first.
+      </template>
+    </p>
+
     <ToggleSwitch
       label="Require a reason to continue"
       :model-value="settings.gate.requireReason"
       @update:model-value="saveGate({ requireReason: $event })"
     />
+    <p class="row-help">Continue stays off until you type what you came for. Answers stay on this device.</p>
 
     <div class="row">
       <span>Wait before Continue</span>
@@ -159,6 +200,8 @@ function removeLink(id: string) {
       </div>
     </template>
 
+    <p class="row-help">"Longer each try" starts short and grows with every visit to the same site today.</p>
+
     <div class="row">
       <span>Pass length</span>
       <NumberField
@@ -170,6 +213,7 @@ function removeLink(id: string) {
         @update:model-value="saveGate({ passMinutes: $event })"
       />
     </div>
+    <p class="row-help">How long the site stays open after you continue. Other redirected sites stay redirected.</p>
 
     <div class="row">
       <span>When a pass runs out</span>
@@ -182,10 +226,16 @@ function removeLink(id: string) {
       </select>
     </div>
   </div>
-  <p class="help small">This also applies to tabs that were already open when the session started.</p>
+  <p class="help small">
+    Pausing covers the tab until you choose to keep going or close it. This also applies to tabs that were already open
+    when the session started.
+  </p>
 
   <h2>Your links</h2>
-  <p class="help">Shown when "Your links" is picked for {{ profile.name }}.</p>
+  <p class="help">
+    Places you'd rather be: the draft you're meant to be writing, your to-do list, flashcards or reading list. When Your
+    links is picked above, a redirected visit can open one of these instead of the site.
+  </p>
   <ul v-if="settings.links.length" class="list items">
     <li v-for="link in settings.links" :key="link.id">
       <span>
@@ -238,5 +288,11 @@ function removeLink(id: string) {
 .row.sub {
   padding-left: 16px;
   color: var(--dim);
+}
+
+.row-help {
+  margin: -4px 0 8px;
+  color: var(--dim);
+  font-size: 12px;
 }
 </style>

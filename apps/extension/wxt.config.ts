@@ -14,7 +14,9 @@ export default defineConfig({
     // warn that Lock In can block content on every page.
     permissions: ['storage', 'activeTab', 'alarms', 'declarativeNetRequestWithHostAccess'],
     host_permissions: recipeSites,
-    // Redirected sites are sent to the redirect page, so they need to be able to load it.
-    web_accessible_resources: [{ resources: ['redirect.html'], matches: recipeSites }],
+    // Redirected visits land on the redirect page. Chrome only allows that if the page the
+    // visit came *from* may load it, and a link to Reddit can be on any site, so every site
+    // may. use_dynamic_url stops websites from loading it directly to detect Lock In.
+    web_accessible_resources: [{ resources: ['redirect.html'], matches: ['<all_urls>'], use_dynamic_url: true }],
   },
 });

@@ -112,6 +112,12 @@
   margin: 0;
 }
 
+/* A nav icon in a sidebar column 18px wide, with its spacing inside it. */
+.mock .m-slot {
+  display: block;
+  padding-bottom: 9px;
+}
+
 /* What still works once the distracting parts are gone. */
 .mock .m-calm {
   margin: 4px 0 0;
@@ -123,6 +129,19 @@
 /* Spacing lives inside regions, so a collapsed region leaves no gap behind. */
 .mock .m-stack > * > .inner {
   padding-bottom: 6px;
+}
+
+/* Outlines hug what's drawn, leaving out the spacing below it. */
+.mock .m-stack > .region {
+  --region-outline: -2px -2px 4px -2px;
+}
+
+.mock .region:has(> .inner > .m-slot:only-child) {
+  --region-outline: -3px 1px 6px -3px;
+}
+
+.mock .region:has(> .inner > .m-row:only-child) {
+  --region-outline: -2px -2px 5px -2px;
 }
 
 /* A hint of each site's colour, so the drawing reads as that site at a glance. */

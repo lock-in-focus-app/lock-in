@@ -55,7 +55,8 @@ const highlighted = computed(() => preview.highlight.value === props.toggle);
 /* Pointing at a toggle outlines what it hides. If it's hidden already, it comes back as a faint ghost. */
 .region::after {
   position: absolute;
-  inset: -2px;
+  /* Set by the drawing so the outline hugs what's drawn, not the spacing around it. */
+  inset: var(--region-outline, -2px);
   border: 2px solid var(--glow);
   border-radius: 8px;
   content: '';

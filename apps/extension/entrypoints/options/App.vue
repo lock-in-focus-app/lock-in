@@ -52,6 +52,26 @@ async function reset() {
   await resetStarterProfiles();
   confirmingReset.value = false;
 }
+
+// Manage mode: tick several profiles and delete them in one go.
+const managing = ref(false);
+const picked = ref<string[]>([]);
+const confirmingBulk = ref(false);
+const deletable = computed(() => (profileList.value ?? []).filter((p) => p.id !== session.value?.profileId));
+// At least one profile always stays.
+const keepsOne = computed(() => picked.value.length < (profileList.value?.length ?? 0));
+
+function startManaging() {
+  managing.value = true;
+  picked.value = [];
+  confirmingBulk.value = false;
+}
+
+async function deletePicked() {
+  await deleteProfiles(picked.value);
+  picked.value = [];
+  confirmingBulk.value = false;
+}
 </script>
 
 <template>
@@ -59,10 +79,15 @@ async function reset() {
     <header>
       <p class="brand"><span class="star" aria-hidden="true">✦</span> Lock In</p>
       <h1>Settings</h1>
+      <p class="help intro">
+        A profile is a set of rules for a focus session: which sites stay as they are, which are tamed, and which are
+        redirected or restricted. Pick a profile to edit it. Changes save as you go, and apply straight away if the
+        profile is running.
+      </p>
     </header>
 
     <section v-if="profileList && profile">
-      <div class="profiles">
+      <div v-if="!managing" class="profiles">
         <div class="tabs" role="tablist" aria-label="Profiles">
           <button
             v-for="p in profileList"
@@ -77,9 +102,55 @@ async function reset() {
           </button>
         </div>
         <button type="button" class="new" @click="createProfile().then((id) => select(id, true))">+ New profile</button>
+        <button v-if="!managing" type="button" class="text-button" @click="startManaging">Manage</button>
       </div>
 
-      <div class="profile">
+      <div v-if="managing" class="manage">
+        <h2>Manage profiles</h2>
+        <p class="help">
+          Tick the profiles you don't use any more to delete them together. The running profile can't be deleted, and at
+          least one profile always stays.
+        </p>
+        <ul class="list items">
+          <li v-for="p in profileList" :key="p.id">
+            <label class="pick">
+              <input
+                v-model="picked"
+                type="checkbox"
+                :value="p.id"
+                :disabled="!deletable.includes(p)"
+                :aria-label="`Select ${p.name}`"
+              />
+              <span>
+                <span class="name">{{ p.name }}</span>
+                <span class="detail">{{ deletable.includes(p) ? profileSummary(p) : 'Running now' }}</span>
+              </span>
+            </label>
+          </li>
+        </ul>
+        <div v-if="!confirmingBulk" class="actions">
+          <button type="button" class="text-button" @click="picked = deletable.map((p) => p.id)">Select all</button>
+          <button type="button" class="text-button" :disabled="!picked.length" @click="picked = []">Clear</button>
+          <button
+            type="button"
+            class="text-button danger"
+            :disabled="!picked.length || !keepsOne"
+            :title="keepsOne ? undefined : 'At least one profile has to stay'"
+            @click="confirmingBulk = true"
+          >
+            Delete {{ picked.length || '' }}
+          </button>
+          <button type="button" class="text-button done" @click="managing = false">Done</button>
+        </div>
+        <div v-else class="actions confirm" role="alert">
+          <span>Delete {{ picked.length }} profile{{ picked.length === 1 ? '' : 's' }}? This can't be undone.</span>
+          <button type="button" class="text-button" @click="confirmingBulk = false">Cancel</button>
+          <button type="button" class="text-button danger confirm-delete" @click="deletePicked">Delete</button>
+        </div>
+        <p v-if="!keepsOne" class="help small">At least one profile has to stay. Untick one to delete the rest.</p>
+      </div>
+
+      <div v-if="!managing" class="profile">
         <label class="name-field">
           <span>Name</span>
           <input
@@ -130,10 +201,12 @@ async function reset() {
         </div>
       </div>
 
-      <p v-if="isRunning" class="help small">{{ profile.name }} is running now, so changes apply right away.</p>
+      <template v-if="!managing">
+        <p v-if="isRunning" class="help small">{{ profile.name }} is running now, so changes apply right away.</p>
 
-      <SitesSection :profile="profile" />
-      <RedirectSection :profile="profile" />
+        <SitesSection :profile="profile" />
+        <RedirectSection :profile="profile" />
+      </template>
     </section>
 
     <section>
@@ -174,9 +247,39 @@ main {
 }
 
 h1 {
-  margin: 4px 0 24px;
+  margin: 4px 0 8px;
   font-size: 28px;
   font-weight: 500;
+}
+
+.intro {
+  margin-bottom: 24px;
+}
+
+.manage {
+  margin-top: 8px;
+}
+
+.pick {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.pick input {
+  margin-top: 3px;
+  accent-color: var(--glow);
+}
+
+.manage .actions {
+  margin-top: 8px;
+}
+
+.done {
+  margin-left: auto;
+  color: var(--glow);
 }
 
 .profiles {

@@ -9,9 +9,9 @@ import MockRegion from '../MockRegion.vue';
       <div class="m-search small" />
       <div class="tabs">
         <span class="tab"><span class="m-icon accent" /></span>
-        <MockRegion toggle="hideReels" axis="x"
-          ><span class="tab"><span class="m-icon" /></span
-        ></MockRegion>
+        <MockRegion toggle="hideReels" axis="x" class="tab-region">
+          <span class="tab"><span class="m-icon" /></span>
+        </MockRegion>
         <span class="tab"><span class="m-icon" /></span>
         <span class="tab"><span class="m-icon" /></span>
       </div>
@@ -77,6 +77,10 @@ import MockRegion from '../MockRegion.vue';
 .tab {
   display: block;
   padding: 0 9px;
+}
+
+.tab-region {
+  --region-outline: -3px 6px -3px 6px;
 }
 
 .body {
