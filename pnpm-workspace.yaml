@@ -6,3 +6,9 @@ allowBuilds:
   esbuild: false
   # Its install script downloads Chrome. The browser tests fetch it explicitly instead.
   puppeteer: false
+
+auditConfig:
+  ignoreGhsas:
+    # node-forge's RSA signature check, reached only through Nuxt's dev server (listhen), which
+    # uses node-forge to make a local HTTPS certificate, not to check signatures. No fix yet.
+    - GHSA-86w9-cpqp-85rv
