@@ -37,8 +37,11 @@ export function parseHttpUrl(raw: string): URL | undefined {
  * Converts a match pattern into an equivalent regular expression source, for APIs that
  * take a regex instead of a pattern (like declarativeNetRequest's `regexFilter`). Only
  * uses syntax that RE2 supports. Returns null for malformed patterns.
+ *
+ * `pathSource` replaces the pattern's own path with a regex for the path and query, to
+ * match only some pages of the pattern's hosts.
  */
-export function matchPatternToRegex(pattern: string): string | null {
+export function matchPatternToRegex(pattern: string, pathSource?: string): string | null {
   const parsed = parsePattern(pattern);
   if (!parsed) return null;
 
@@ -48,7 +51,7 @@ export function matchPatternToRegex(pattern: string): string | null {
   else if (parsed.host.startsWith('*.')) host = `([^/:]+\\.)?${escapeRegExp(parsed.host.slice(2))}`;
   else host = escapeRegExp(parsed.host);
 
-  return `^${scheme}://${host}(:[0-9]+)?${globToRegExpSource(parsed.path)}$`;
+  return `^${scheme}://${host}(:[0-9]+)?${pathSource ?? globToRegExpSource(parsed.path)}$`;
 }
 
 function parsePattern(pattern: string): { scheme: string; host: string; path: string } | null {

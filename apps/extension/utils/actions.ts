@@ -8,6 +8,8 @@ import {
   withProfileRemoved,
   withProfileRenamed,
   withSiteLevel,
+  withPathRuleRemoved,
+  withPathRules,
   withStarterProfilesReset,
   withGateVisit,
   withGateVisitContinued,
@@ -103,6 +105,16 @@ export async function moveProfile(profileId: string, offset: number): Promise<vo
 /** Sets whether a profile allows, tames, redirects or restricts a site. */
 export async function setSiteLevel(profileId: string, recipeId: string, level: SiteLevel): Promise<void> {
   await profiles.setValue(withSiteLevel(await profiles.getValue(), profileId, recipeId, level));
+}
+
+/** Adds page rules to a site, or changes the level of ones it has. Invalid paths are skipped. */
+export async function setPageLevel(profileId: string, recipeId: string, paths: string[], level: SiteLevel): Promise<void> {
+  await profiles.setValue(withPathRules(await profiles.getValue(), profileId, recipeId, paths, level));
+}
+
+/** Removes a page rule, so the page follows its site's level again. */
+export async function removePageRule(profileId: string, recipeId: string, path: string): Promise<void> {
+  await profiles.setValue(withPathRuleRemoved(await profiles.getValue(), profileId, recipeId, path));
 }
 
 /** Restores the starter profiles to how they shipped. The user's own profiles are kept. */

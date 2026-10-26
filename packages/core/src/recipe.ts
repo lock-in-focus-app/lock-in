@@ -1,4 +1,5 @@
-import { matchesPattern } from './match';
+import { matchesPattern, parseHttpUrl } from './match';
+import { levelFor } from './paths';
 import type { Profile, Session, SiteRecipe, SiteRule } from './types';
 
 /**
@@ -65,10 +66,10 @@ export function cssForPage(options: {
 
   const profile = profiles.find((p) => p.id === session.profileId);
   const recipe = findRecipe(recipes, url);
-  if (!profile || !recipe) return '';
+  const pathname = parseHttpUrl(String(url))?.pathname;
+  if (!profile || !recipe || levelFor(profile, recipe.id, pathname) !== 'tamed') return '';
 
   const rule = profile.sites.find((site) => site.recipeId === recipe.id);
-  if (rule?.level !== 'tamed') return '';
 
   return buildRecipeCss(recipe, resolveToggles(recipe, rule, session.overrides?.[recipe.id]));
 }

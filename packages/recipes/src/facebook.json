@@ -2,6 +2,10 @@
   "id": "facebook",
   "name": "Facebook",
   "matches": ["*://*.facebook.com/*"],
+  "pages": [
+    { "label": "Reels", "paths": ["/reel", "/reels"] },
+    { "label": "Watch", "paths": ["/watch"] }
+  ],
   "source": "Generated-class fallbacks for the News Feed and stories from News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator",
   "toggles": [
     {

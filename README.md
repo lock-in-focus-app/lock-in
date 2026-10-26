@@ -2,7 +2,7 @@
 
 A free, open-source focus app. Social media is light pollution: when you lock in, the noise fades and you can finally see the stars.
 
-> **Status:** early development. The browser extension works on its own today; the desktop app comes next. See [PLAN.md](PLAN.md) for the full roadmap.
+> **Status:** early development. The browser extension works on its own today (sessions, profiles, recipes for eight sites, page rules and redirects); the desktop app comes next. See [PLAN.md](PLAN.md) for the full roadmap.
 
 ## Tame, don't just block
 
@@ -14,6 +14,8 @@ Most blockers treat a site as all or nothing. Lock In gives every site one of fo
 | **Tamed** | The site still works, but the distracting parts are hidden: feeds, trending, suggested and promoted posts. Optionally grayscale. |
 | **Redirected** | Visits go to a Lock In page instead: an intention gate that asks what you came for, a quote, one of your own links, or a 2-minute unstick. You can still get through for a few minutes if you need to. |
 | **Restricted** | Blocked, with no way through until the session ends. |
+
+**Page rules** give part of a site its own level, like redirecting YouTube Shorts while the rest of YouTube is tamed, or allowing `reddit.com/r/writing` while the rest of Reddit is redirected.
 
 What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. There are built-in recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. You can flip toggles from the extension popup for one session or save them to a profile.
 

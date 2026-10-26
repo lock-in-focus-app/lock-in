@@ -2,6 +2,11 @@
   "id": "tiktok",
   "name": "TikTok",
   "matches": ["*://*.tiktok.com/*"],
+  "pages": [
+    { "label": "For You", "paths": ["/", "/foryou"] },
+    { "label": "Explore", "paths": ["/explore"] },
+    { "label": "LIVE", "paths": ["/live"] }
+  ],
   "toggles": [
     {
       "id": "hideForYou",

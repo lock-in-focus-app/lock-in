@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   withNewProfile,
+  withPathRuleRemoved,
+  withPathRules,
   withProfileDuplicated,
   withProfileMoved,
   withProfileRemoved,
@@ -158,5 +160,43 @@ describe('managing profiles', () => {
     expect(ids(reset)).toEqual(['focus', 'other', 'mine', 'fresh']);
     expect(reset[0]).toEqual(starters[0]);
     expect(reset[0]).not.toBe(starters[0]);
+  });
+});
+
+describe('page rules', () => {
+  const paths = (list: Profile[], profileId = 'focus', recipeId = 'example') =>
+    list.find((p) => p.id === profileId)!.sites.find((s) => s.recipeId === recipeId)?.paths;
+
+  it('adds tidied paths, skipping invalid ones and duplicates', () => {
+    const edited = withPathRules(profiles, 'focus', 'example', ['shorts/', '/Shorts', '/a?b', '/'], 'redirected');
+    expect(paths(edited)).toEqual([
+      { path: '/shorts', level: 'redirected' },
+      { path: '/', level: 'redirected' },
+    ]);
+    expect(paths(edited, 'other')).toBeUndefined();
+  });
+
+  it('changes the level of a path it already has', () => {
+    const added = withPathRules(profiles, 'focus', 'example', ['/shorts'], 'redirected');
+    expect(paths(withPathRules(added, 'focus', 'example', ['/SHORTS'], 'restricted'))).toEqual([
+      { path: '/shorts', level: 'restricted' },
+    ]);
+  });
+
+  it('adds an Allowed rule for a site the profile did not mention', () => {
+    const edited = withPathRules(profiles, 'focus', 'x', ['/explore'], 'redirected');
+    expect(edited[0]!.sites.at(-1)).toEqual({ recipeId: 'x', level: 'allowed', paths: [{ path: '/explore', level: 'redirected' }] });
+  });
+
+  it('removes a path, dropping the list once it is empty', () => {
+    const added = withPathRules(profiles, 'focus', 'example', ['/shorts', '/explore'], 'redirected');
+    const one = withPathRuleRemoved(added, 'focus', 'example', '/shorts');
+    expect(paths(one)).toEqual([{ path: '/explore', level: 'redirected' }]);
+    expect(withPathRuleRemoved(one, 'focus', 'example', '/explore')[0]!.sites[0]).toEqual(rule);
+  });
+
+  it('keeps page rules when the site level changes', () => {
+    const added = withPathRules(profiles, 'focus', 'example', ['/shorts'], 'redirected');
+    expect(paths(withSiteLevel(added, 'focus', 'example', 'allowed'))).toEqual([{ path: '/shorts', level: 'redirected' }]);
   });
 });

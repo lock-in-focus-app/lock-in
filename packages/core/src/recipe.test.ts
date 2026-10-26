@@ -115,4 +115,15 @@ describe('cssForPage', () => {
   it('returns nothing when the session profile no longer exists', () => {
     expect(cssForPage({ url: page, session, profiles: [], recipes: [recipe] })).toBe('');
   });
+
+  it('follows page rules', () => {
+    const paged: Profile = {
+      id: 'focus',
+      name: 'Focus',
+      sites: [{ recipeId: 'example', level: 'allowed', paths: [{ path: '/feed', level: 'tamed' }] }],
+    };
+    const css = (url: string) => cssForPage({ url, session, profiles: [paged], recipes: [recipe] });
+    expect(css('https://www.example.com/feed/latest')).toContain('#feed');
+    expect(css('https://www.example.com/settings')).toBe('');
+  });
 });

@@ -27,8 +27,29 @@ export interface SiteRecipe {
   /** Browser match patterns, e.g. "*://*.reddit.com/*". */
   matches: string[];
   toggles: RecipeToggle[];
+  /** Pages people often want handled differently, offered as one-click page rules (e.g. YouTube Shorts). */
+  pages?: SuggestedPages[];
   /** Where the selectors came from, for attribution. */
   source?: string;
+}
+
+/** A named group of paths, e.g. "For You" on TikTok is both "/" and "/foryou". */
+export interface SuggestedPages {
+  label: string;
+  paths: string[];
+}
+
+/**
+ * A different level for some pages of a site, e.g. redirecting YouTube's /shorts while
+ * the rest of YouTube is tamed.
+ */
+export interface PathRule {
+  /**
+   * "/" is the home page only. Any other path also covers everything under it, and `*`
+   * matches within one part of the path. Matching ignores case.
+   */
+  path: string;
+  level: SiteLevel;
 }
 
 /** How one site is treated by a profile. */
@@ -37,6 +58,8 @@ export interface SiteRule {
   level: SiteLevel;
   /** Overrides for the recipe's toggle defaults, keyed by toggle id. */
   toggles?: Record<string, boolean>;
+  /** Pages that don't follow the site's level. The most specific match wins. */
+  paths?: PathRule[];
 }
 
 /** A reusable session setup, e.g. "Writing" or "Wind Down". */

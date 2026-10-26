@@ -1,4 +1,4 @@
-import { isSafeSelector, pagePathAttribute } from '@lock-in/core';
+import { isSafeSelector, normalizePath, pagePathAttribute } from '@lock-in/core';
 import { describe, expect, it } from 'vitest';
 import { recipes } from './index';
 
@@ -17,6 +17,13 @@ describe.each(recipes)('$name recipe', (recipe) => {
     const selectors = recipe.toggles.flatMap((toggle) => toggle.selectors ?? []);
     const misplaced = selectors.filter((selector) => selector.includes(pagePathAttribute) && !selector.startsWith('html'));
     expect(misplaced).toEqual([]);
+  });
+
+  it('suggests pages with tidy, valid paths', () => {
+    for (const page of recipe.pages ?? []) {
+      expect(page.paths.length, page.label).toBeGreaterThan(0);
+      for (const path of page.paths) expect(normalizePath(path), page.label).toBe(path);
+    }
   });
 
   it('gives every toggle something to do', () => {

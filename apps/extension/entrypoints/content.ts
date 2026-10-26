@@ -1,4 +1,4 @@
-import { checkOpenPage, cssForPage, pagePathAttribute } from '@lock-in/core';
+import { checkOpenPage, cssForPage, findRecipe, pagePathAttribute, siteAccess, type Profile, type Session } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 
 export default defineContentScript({
@@ -11,38 +11,50 @@ export default defineContentScript({
     style.dataset.lockIn = '';
     document.documentElement.append(style);
 
-    // Recipes can hide things on some pages only by matching the path kept on <html>.
-    // It's only there while the site is tamed, and follows single-page app navigation.
-    let path = location.pathname;
-    const markPath = () => {
-      if (style.textContent) document.documentElement.setAttribute(pagePathAttribute, path);
-      else document.documentElement.removeAttribute(pagePathAttribute);
-    };
-    ctx.addEventListener(window, 'wxt:locationchange', ({ newUrl }) => {
-      path = newUrl.pathname;
-      markPath();
-    });
+    // The session and profiles are kept here and updated by storage events, so moving
+    // between pages doesn't read storage.
+    let session: Session | null = null;
+    let profileList: Profile[] = [];
+    let url = new URL(location.href);
 
     let removeOverlay: (() => void) | undefined;
     let overlayKey = '';
     let recheck: number | undefined;
 
-    const apply = async () => {
-      const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
-      style.textContent = cssForPage({ url: location.href, session, profiles: profileList, recipes });
-      markPath();
+    const apply = (navigated = false) => {
+      style.textContent = cssForPage({ url, session, profiles: profileList, recipes });
 
-      // Redirected and restricted sites only get this far if the tab was already open.
-      const check = checkOpenPage({ url: location.href, session, profiles: profileList, recipes, now: Date.now() });
+      // Recipes can hide things on some pages only by matching the path kept on <html>.
+      // It's only there while the page is tamed.
+      if (style.textContent) document.documentElement.setAttribute(pagePathAttribute, url.pathname);
+      else document.documentElement.removeAttribute(pagePathAttribute);
+
+      // Single-page apps change pages without loading one, so the browser's redirect rules
+      // never see it. Moving onto a redirected or restricted page is caught here instead.
+      if (navigated) {
+        const recipe = findRecipe(recipes, url);
+        const access = recipe
+          ? siteAccess({ session, profiles: profileList, recipeId: recipe.id, path: url.pathname, now: Date.now() })
+          : 'open';
+        if (access !== 'open') {
+          // Let the site finish its own navigation first, so Back returns to the page before.
+          const target = url.href;
+          ctx.setTimeout(() => location.replace(redirectPageUrl(target)), 0);
+          return;
+        }
+      }
+
+      // Redirected and restricted pages only get this far if the tab was already open.
+      const check = checkOpenPage({ url, session, profiles: profileList, recipes, now: Date.now() });
       clearTimeout(recheck);
 
       if (check.action === 'none') {
         removeOverlay?.();
         removeOverlay = undefined;
         overlayKey = '';
-        if (check.recheckAt) recheck = ctx.setTimeout(apply, check.recheckAt - Date.now() + 250);
+        if (check.recheckAt) recheck = ctx.setTimeout(() => apply(), check.recheckAt - Date.now() + 250);
       } else if (check.action === 'redirect') {
-        location.replace(redirectPageUrl(location.href, { expired: check.passExpired }));
+        location.replace(redirectPageUrl(url.href, { expired: check.passExpired }));
       } else {
         const restricted = check.action === 'block';
         const reason = restricted ? 'restricted' : check.passExpired ? 'expired' : 'open-before';
@@ -56,18 +68,34 @@ export default defineContentScript({
           siteName: check.recipe.name,
           profileName: check.profile.name,
           reason,
-          onStillNeed: restricted ? undefined : () => location.assign(redirectPageUrl(location.href)),
+          onStillNeed: restricted ? undefined : () => location.assign(redirectPageUrl(url.href)),
           onClose: () => void closeThisTab(),
         });
       }
     };
 
-    void apply();
-    const unwatchSession = activeSession.watch(apply);
-    const unwatchProfiles = profiles.watch(apply);
+    void Promise.all([activeSession.getValue(), profiles.getValue()]).then(([s, p]) => {
+      session = s;
+      profileList = p;
+      apply();
+    });
+    const unwatchSession = activeSession.watch((value) => {
+      session = value;
+      apply();
+    });
+    const unwatchProfiles = profiles.watch((value) => {
+      profileList = value;
+      apply();
+    });
+    // Fired as single-page apps navigate, before the new page shows.
+    ctx.addEventListener(window, 'wxt:locationchange', ({ newUrl }) => {
+      const pageChanged = newUrl.pathname !== url.pathname;
+      url = newUrl;
+      if (pageChanged) apply(true);
+    });
     // Timers in background tabs can run late, so check again whenever the tab comes back.
     ctx.addEventListener(document, 'visibilitychange', () => {
-      if (document.visibilityState === 'visible') void apply();
+      if (document.visibilityState === 'visible') apply();
     });
     ctx.onInvalidated(() => {
       unwatchSession();

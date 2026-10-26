@@ -11,8 +11,11 @@ const activeProfile = computed(() => profileList.value?.find((p) => p.id === ses
 
 // activeTab lets the popup read the current tab's URL when the user opens it.
 const siteRecipe = ref<SiteRecipe>();
+const sitePath = ref('/');
 void browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-  if (tab?.url) siteRecipe.value = findRecipe(recipes, tab.url);
+  if (!tab?.url) return;
+  siteRecipe.value = findRecipe(recipes, tab.url);
+  sitePath.value = new URL(tab.url).pathname;
 });
 
 // Ticks once a second, only while the popup is open.
@@ -32,13 +35,15 @@ const elapsed = computed(() => {
 
 function describe(profile: Profile): string {
   return profile.sites
-    .filter((site) => site.level !== 'allowed')
     .map((site) => {
       const recipe = recipes.find((r) => r.id === site.recipeId);
       const name = recipe?.name ?? site.recipeId;
-      if (site.level === 'tamed' && site.toggles?.grayscale) return `${name} tamed · grayscale`;
-      return `${name} ${site.level}`;
+      const pages = site.paths?.length ? ` · ${site.paths.length} page rule${site.paths.length === 1 ? '' : 's'}` : '';
+      if (site.level === 'tamed' && site.toggles?.grayscale) return `${name} tamed · grayscale${pages}`;
+      if (site.level === 'allowed') return pages ? `${name}${pages}` : '';
+      return `${name} ${site.level}${pages}`;
     })
+    .filter(Boolean)
     .join(', ') || 'Everything allowed';
 }
 
@@ -82,6 +87,7 @@ function start(profile: Profile) {
     <SiteToggles
       v-if="siteRecipe && profileList && session !== undefined"
       :recipe="siteRecipe"
+      :path="sitePath"
       :profiles="profileList"
       :session="session"
     />

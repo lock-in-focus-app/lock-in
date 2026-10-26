@@ -1,6 +1,6 @@
 # Lock In — Product & Build Plan
 
-> **Status:** Phase 1 in progress. The extension runs sessions, profiles (with an editor), all four site levels, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Next: path rules, then the recipe editor.
+> **Status:** Phase 1 nearly done. The extension works on its own: sessions, profiles (with an editor), all four site levels with page rules, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Left in Phase 1: the recipe editor, and checking each recipe on the real site. Then Phase 2, the desktop app.
 
 ## Context
 
@@ -37,7 +37,11 @@ Each site has one of four levels, set per session profile:
 | **Redirected** | Sent to a redirect destination (§3) | x.com → intention gate |
 | **Restricted** | Blocked outright: no countdown, no pass, no way through until the session ends | Reddit during an exam-prep session |
 
-Paths can override their site (e.g. `reddit.com/r/writing` allowed, `/r/all` redirected). *Not built yet.* This is also how Shorts and Reels players get handled: a recipe can hide the links to them, but hiding a playing video with CSS doesn't stop its sound, so `/shorts/*` and `/reels/*` (and TikTok's For You page, which autoplays) need to be redirected rather than hidden.
+**Page rules** give part of a site its own level (e.g. `reddit.com/r/writing` allowed while the rest of Reddit is redirected, or YouTube tamed with `/shorts` redirected).
+- **Matching:** `/` is the home page only; any other path also covers everything under it (`/r/writing` includes its posts, but not `/r/writingprompts`). `*` matches within one part of the path. Matching ignores case, and the most specific (longest) rule wins.
+- **Why it matters for video:** a recipe can hide the links to Shorts and Reels, but hiding a playing video with CSS doesn't stop its sound. Redirecting `/shorts`, `/reels` or TikTok's For You page stops it properly.
+- **Two ways in:** full page loads are caught by the browser's redirect rules (an allow rule ranks above a site redirect, longer paths first). Single-page apps like YouTube change pages without loading one, so the content script also checks each in-site navigation, using the event the browser fires on URL changes. It costs one comparison per click, only on recipe sites, with no polling.
+- **Suggestions:** each recipe lists common pages (Shorts, Reels, Explore, For You…) offered as one-click "Redirect" buttons in settings while the rest of the site is open.
 
 ### Site Recipes (JSON) + live visual editor
 A **recipe** defines what "tamed" means for one site: a list of toggles, each mapped to CSS selectors and effects. Built-in recipes cover Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Users can edit them or create their own, and the community can contribute fixes when sites change their HTML.
@@ -81,9 +85,9 @@ A profile bundles:
 - redirect destinations
 
 You can create, edit, duplicate, delete, reorder, and import/export (JSON) profiles. The app ships with **starter profiles that show what's possible**. They're ordinary editable profiles, and "Reset starter profiles" restores them:
-- *Writing*: Reddit and YouTube tamed + grayscale; X, Instagram, TikTok and Facebook redirected; Discord closed
+- *Writing*: Reddit and YouTube tamed + grayscale (YouTube Shorts redirected); X, Instagram, TikTok and Facebook redirected; Discord closed
 - *Deep Work*: all social redirected (with a quote or unstick page some of the time, and an escalating wait), chat apps closed
-- *Wind Down*: Reddit, YouTube and Instagram tamed (no feeds, Shorts or recommendations), nothing else
+- *Wind Down*: Reddit, YouTube and Instagram tamed (no feeds or recommendations; Shorts and Reels redirected), nothing else
 
 ---
 
@@ -108,7 +112,7 @@ The timer is a *starting ramp*, not a cage.
 
 ## 3. Redirect destinations (handled by the extension)
 
-When a site is *Redirected*, the extension intercepts the navigation and sends you to one of the destinations below. Each profile chooses which ones it uses; if several are enabled, one is **picked at random by weight**. The pages are bundled inside the extension, so they load instantly and work offline.
+When a site is *Redirected*, the extension intercepts the navigation and sends you to one of the destinations below. Each profile chooses which ones it uses; if several are enabled, one is **picked at random** (each equally likely for now; per-destination weights may come later). The pages are bundled inside the extension, so they load instantly and work offline.
 
 1. **Intention gate**: "What did you come here for?" The **"Continue to site" button stays disabled behind a countdown**, so you have to pause and think. Three settings per profile keep it flexible without becoming a settings maze:
    - **Require a reason**: on/off. When on, you must type why you're going; when off, you just sit with the question during the countdown.
@@ -125,7 +129,7 @@ When a site is *Redirected*, the extension intercepts the navigation and sends y
 Every redirect page shows:
 - the **attempt counter**: "6th try at Reddit today"
 - the **one-tap "why?"**: bored / stuck / tired / curious
-- a **Satellites quick-capture box** (§4)
+- a **Satellites quick-capture box** (§4, comes with Satellites in Phase 3)
 
 **Quotes & privacy:** the bundled and custom quote packs are the default. Optionally, the extension can fetch a *batch* (~50) from a public quote API **once a day** in the background and cache it. That way no request is ever tied to a specific redirect, and quotes still work offline. Redirect events (site, time, attempt #, why-tap, intention text) are sent to the desktop app over Native Messaging for stats and insights. The quotes themselves never need to make that round trip.
 
@@ -262,14 +266,15 @@ lock-in/
 ## 9. Roadmap
 
 **Phase 0: Setup** (you scaffold)
-- pnpm monorepo, AGPL-3.0 license, `packages/core` schemas, lint/format/test, CI.
+- ✅ pnpm monorepo, AGPL-3.0 license, shared types in `packages/core`, unit tests, in-repo browser tests, CI on every push.
+- Lint/format and JSON schemas for recipes and profiles (still to do; schemas matter once import/export lands).
 
 **Phase 1: Extension MVP** *(replaces your manual SocialFocus toggling first)*
-- Standalone: sessions run from the extension popup, with no desktop app needed (the app plugs in later via Native Messaging).
+- ✅ Standalone: sessions run from the extension popup, with no desktop app needed (the app plugs in later via Native Messaging).
 - ✅ Recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest: tame, grayscale, redirect. (Still to do: check each on the real site.)
-- Path rules (§1), including redirecting Shorts and Reels players.
-- ✅ Profiles: CRUD + starter profiles, manual start/stop, four site levels including Restricted.
-- ✅ Redirect destinations: intention gate with countdown, quote card, productive URL, stuck page.
+- ✅ Page rules (§1), including redirecting Shorts and Reels players inside single-page apps.
+- ✅ Profiles: CRUD + starter profiles, manual start/stop, four site levels including Restricted, settings page.
+- ✅ Redirect destinations: intention gate with countdown (fixed or escalating), quote card (with your own quotes), productive URL, stuck page. Passes, and what happens when they run out (nothing, pause or redirect).
 - ✅ Attempt counter + why-tap.
 - Recipe editor with animated preview mocks.
 
@@ -315,10 +320,12 @@ lock-in/
 ---
 
 ## 11. Verification (Phase 1–2)
-- **Extension:** run `wxt dev` for Chrome and Firefox. In a *Writing* session:
-  - the Reddit home feed is hidden while threads and search still work
+- **Extension, automated:** `pnpm test` (core logic) and `pnpm test:e2e` (the real extension in Chrome, against stand-in pages for each site) run in CI on every push. They cover sessions, popup toggles, every recipe, page rules (including single-page navigation), redirects and the gate, every destination, pass expiry, restricted sites, settings and the profile editor.
+- **Extension, by hand:** run `wxt dev` for Chrome and Firefox. In a *Writing* session:
+  - each recipe hides what it says on the **real** site (stand-in pages can't catch a site changing its HTML), while threads, search and messages still work
   - grayscale is applied
   - x.com goes to the intention gate, whose Continue button counts down and grants a 5-minute pass that later expires
+  - clicking a Short from a YouTube video goes to the gate, and Back returns to the video
   - the attempt counter goes up
 - End the session: everything returns to normal.
 - **Recipe editor:** each toggle animates the preview mock instantly. Exported JSON matches the schema in `packages/core`.

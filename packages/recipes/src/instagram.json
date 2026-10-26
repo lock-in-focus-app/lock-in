@@ -2,6 +2,10 @@
   "id": "instagram",
   "name": "Instagram",
   "matches": ["*://*.instagram.com/*"],
+  "pages": [
+    { "label": "Reels", "paths": ["/reels"] },
+    { "label": "Explore", "paths": ["/explore"] }
+  ],
   "source": "Suggested-accounts selector adapted from News Feed Eradicator by Jordan West (AGPL-3.0), https://github.com/jordwest/news-feed-eradicator",
   "toggles": [
     {

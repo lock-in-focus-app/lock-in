@@ -1,3 +1,4 @@
+import { maxPathRules, normalizePath } from './paths';
 import type { Profile, RedirectSettings, Session, SiteLevel, SiteRecipe, SiteRule } from './types';
 
 // Pure, immutable edits to profiles and sessions. The extension (and later the desktop
@@ -132,6 +133,63 @@ export function withSiteLevel(profiles: readonly Profile[], profileId: string, r
         ? profile.sites.map((site) => (site.recipeId === recipeId ? { ...site, level } : site))
         : [...profile.sites, { recipeId, level }],
     };
+  });
+}
+
+/**
+ * Adds page rules to a site in a profile, or changes the level of ones it already has.
+ * Paths are tidied first and invalid ones skipped. A profile with no rule for the site
+ * gets one, left at Allowed, so only the pages change.
+ */
+export function withPathRules(
+  profiles: readonly Profile[],
+  profileId: string,
+  recipeId: string,
+  paths: readonly string[],
+  level: SiteLevel,
+): Profile[] {
+  const cleaned = paths
+    .flatMap((path) => normalizePath(path) ?? [])
+    .filter((path, index, list) => list.findIndex((other) => samePath(other, path)) === index);
+  if (cleaned.length === 0) return [...profiles];
+
+  return withSite(profiles, profileId, recipeId, (site) => {
+    const updated = (site.paths ?? []).map((rule) =>
+      cleaned.some((path) => samePath(path, rule.path)) ? { ...rule, level } : rule,
+    );
+    const added = cleaned
+      .filter((path) => !updated.some((rule) => samePath(rule.path, path)))
+      .map((path) => ({ path, level }));
+    return { ...site, paths: [...updated, ...added].slice(0, maxPathRules) };
+  });
+}
+
+/** Removes a page rule, so the page follows the site's level again. */
+export function withPathRuleRemoved(profiles: readonly Profile[], profileId: string, recipeId: string, path: string): Profile[] {
+  return withSite(profiles, profileId, recipeId, (site) => {
+    const { paths: _previous, ...rest } = site;
+    const paths = (site.paths ?? []).filter((rule) => !samePath(rule.path, path));
+    return paths.length > 0 ? { ...rest, paths } : rest;
+  });
+}
+
+/** Paths match without regard to case, so "/Shorts" and "/shorts" are the same rule. */
+function samePath(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
+}
+
+/** Applies a change to one site's rule in one profile, adding an Allowed rule first if there isn't one. */
+function withSite(
+  profiles: readonly Profile[],
+  profileId: string,
+  recipeId: string,
+  change: (site: SiteRule) => SiteRule,
+): Profile[] {
+  return profiles.map((profile) => {
+    if (profile.id !== profileId) return profile;
+    const exists = profile.sites.some((site) => site.recipeId === recipeId);
+    const sites = exists ? profile.sites : [...profile.sites, { recipeId, level: 'allowed' as const }];
+    return { ...profile, sites: sites.map((site) => (site.recipeId === recipeId ? change(site) : site)) };
   });
 }
 

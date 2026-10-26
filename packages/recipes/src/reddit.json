@@ -2,6 +2,9 @@
   "id": "reddit",
   "name": "Reddit",
   "matches": ["*://*.reddit.com/*"],
+  "pages": [
+    { "label": "r/all & Popular", "paths": ["/r/all", "/r/popular"] }
+  ],
   "source": "Feed, trending and suggested-post selectors adapted from UBlock-Filters-for-Social-Media by Bevíz László (MIT): https://github.com/BevizLaszlo/UBlock-Filters-for-Social-Media",
   "toggles": [
     {

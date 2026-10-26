@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { findRule, resolveToggles, type Profile, type Session, type SiteRecipe } from '@lock-in/core';
+import { findPathRule, findRule, resolveToggles, type Profile, type Session, type SiteRecipe } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
 import LevelPicker from './LevelPicker.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
@@ -8,6 +8,8 @@ const props = defineProps<{
   recipe: SiteRecipe;
   profiles: Profile[];
   session: Session | null;
+  /** The current tab's path, for page rules. */
+  path: string;
 }>();
 
 // Outside a session there's no "current" profile, so let the user pick which one to edit.
@@ -24,6 +26,9 @@ const profile = computed(() =>
   props.profiles.find((p) => p.id === (props.session ? props.session.profileId : editingId.value)),
 );
 const rule = computed(() => findRule(profile.value, props.recipe.id));
+const pageRule = computed(() => findPathRule(rule.value?.paths, props.path));
+// Toggles show whenever this page, or the site as a whole, is tamed.
+const showsToggles = computed(() => (pageRule.value?.level ?? rule.value?.level) === 'tamed' || rule.value?.level === 'tamed');
 const values = computed(() => resolveToggles(props.recipe, rule.value, props.session?.overrides?.[props.recipe.id]));
 const passMinutesLeft = computed(() => {
   const until = props.session?.passes?.[props.recipe.id] ?? 0;
@@ -63,7 +68,11 @@ function set(toggleId: string, value: boolean) {
       @update:model-value="setSiteLevel(profile.id, recipe.id, $event)"
     />
 
-    <template v-if="session">
+    <p v-if="pageRule" class="note">
+      This page follows the {{ pageRule.path === '/' ? 'home page' : pageRule.path }} rule: {{ pageRule.level }}.
+    </p>
+
+    <template v-if="session && !pageRule">
       <p v-if="rule?.level === 'redirected'" class="note">
         {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile' }}<template v-if="passMinutesLeft">
           · pass ends in {{ passMinutesLeft }} min</template>.
@@ -77,7 +86,7 @@ function set(toggleId: string, value: boolean) {
     </template>
 
     <ToggleSwitch
-      v-for="toggle in rule?.level === 'tamed' ? recipe.toggles : []"
+      v-for="toggle in showsToggles ? recipe.toggles : []"
       :key="toggle.id"
       :label="toggle.label"
       :model-value="values[toggle.id] ?? false"

@@ -4,13 +4,14 @@ import {
   checkOpenPage,
   hasPass,
   nextPassExpiry,
-  redirectedRecipes,
+  redirectRules,
   siteAccess,
   withGateVisit,
   withGateVisitContinued,
   withGateVisitWhy,
   withPass,
 } from './redirect';
+import type { RedirectRule } from './redirect';
 import type { GateVisit, Profile, Session, SiteRecipe } from './types';
 
 const site = (id: string): SiteRecipe => ({ id, name: id, matches: [`*://*.${id}.com/*`], toggles: [] });
@@ -32,22 +33,72 @@ const now = 1_000_000;
 const minute = 60_000;
 const session: Session = { id: 's1', profileId: 'deep', startedAt: 0 };
 
-describe('redirectedRecipes', () => {
-  const ids = (list: SiteRecipe[]) => list.map((r) => r.id);
+describe('redirectRules', () => {
+  const blocks = (rules: RedirectRule[], url: string) => {
+    const matching = rules.filter((rule) => new RegExp(rule.regexFilter, 'i').test(url));
+    const top = matching.sort((a, b) => b.priority - a.priority)[0];
+    return top?.action === 'redirect';
+  };
 
-  it("returns the profile's redirected sites", () => {
-    expect(ids(redirectedRecipes({ session, profiles, recipes, now }))).toEqual(['reddit', 'x']);
+  it("redirects the profile's redirected sites", () => {
+    const rules = redirectRules({ session, profiles, recipes, now });
+    expect(blocks(rules, 'https://www.reddit.com/r/all')).toBe(true);
+    expect(blocks(rules, 'https://x.com/home')).toBe(true);
+    expect(blocks(rules, 'https://docs.com/')).toBe(false);
   });
 
   it('redirects nothing without a session or profile', () => {
-    expect(redirectedRecipes({ session: null, profiles, recipes, now })).toEqual([]);
-    expect(redirectedRecipes({ session, profiles: [], recipes, now })).toEqual([]);
+    expect(redirectRules({ session: null, profiles, recipes, now })).toEqual([]);
+    expect(redirectRules({ session, profiles: [], recipes, now })).toEqual([]);
   });
 
   it('leaves out sites with a running pass', () => {
     const passed = { ...session, passes: { reddit: now + minute } };
-    expect(ids(redirectedRecipes({ session: passed, profiles, recipes, now }))).toEqual(['x']);
-    expect(ids(redirectedRecipes({ session: passed, profiles, recipes, now: now + minute }))).toEqual(['reddit', 'x']);
+    expect(blocks(redirectRules({ session: passed, profiles, recipes, now }), 'https://reddit.com/')).toBe(false);
+    expect(blocks(redirectRules({ session: passed, profiles, recipes, now: now + minute }), 'https://reddit.com/')).toBe(true);
+  });
+
+  describe('with page rules', () => {
+    const paged: Profile[] = [
+      {
+        id: 'deep',
+        name: 'Deep',
+        sites: [
+          {
+            recipeId: 'reddit',
+            level: 'redirected',
+            paths: [
+              { path: '/r/writing', level: 'allowed' },
+              { path: '/r/writing/comments', level: 'restricted' },
+            ],
+          },
+          { recipeId: 'x', level: 'tamed', paths: [{ path: '/', level: 'redirected' }, { path: '/explore', level: 'redirected' }] },
+        ],
+      },
+    ];
+    const rules = (s: Session = session) => redirectRules({ session: s, profiles: paged, recipes, now });
+
+    it('lets the most specific rule win', () => {
+      expect(blocks(rules(), 'https://reddit.com/r/all')).toBe(true);
+      expect(blocks(rules(), 'https://reddit.com/r/writing')).toBe(false);
+      expect(blocks(rules(), 'https://reddit.com/r/Writing/?sort=new')).toBe(false);
+      expect(blocks(rules(), 'https://reddit.com/r/writing/comments/abc')).toBe(true);
+      expect(blocks(rules(), 'https://reddit.com/r/writingprompts')).toBe(true);
+    });
+
+    it('redirects only the listed pages of an open site', () => {
+      expect(blocks(rules(), 'https://x.com/')).toBe(true);
+      expect(blocks(rules(), 'https://x.com/?s=1')).toBe(true);
+      expect(blocks(rules(), 'https://x.com/explore/tabs/news')).toBe(true);
+      expect(blocks(rules(), 'https://x.com/home')).toBe(false);
+      expect(blocks(rules(), 'https://x.com/someone/status/1')).toBe(false);
+    });
+
+    it('opens redirected pages with a pass, but not restricted ones', () => {
+      const passed = { ...session, passes: { reddit: now + minute } };
+      expect(blocks(rules(passed), 'https://reddit.com/r/all')).toBe(false);
+      expect(blocks(rules(passed), 'https://reddit.com/r/writing/comments/abc')).toBe(true);
+    });
   });
 });
 
@@ -162,7 +213,7 @@ describe('restricted sites', () => {
 
   it('stay shut even with a pass', () => {
     expect(siteAccess({ session: passed, profiles: restricted, recipeId: 'reddit', now })).toBe('restricted');
-    expect(redirectedRecipes({ session: passed, profiles: restricted, recipes, now }).map((r) => r.id)).toEqual(['reddit']);
+    expect(redirectRules({ session: passed, profiles: restricted, recipes, now })).toMatchObject([{ action: 'redirect' }]);
   });
 
   it('open up when the session ends', () => {

@@ -10,6 +10,8 @@ export {
   withProfileMoved,
   withProfileRemoved,
   withProfileRenamed,
+  withPathRuleRemoved,
+  withPathRules,
   withProfileToggle,
   withRedirectSettings,
   withSessionOverridesSaved,
@@ -23,14 +25,16 @@ export {
   hasPass,
   maxIntentionLength,
   nextPassExpiry,
-  redirectedRecipes,
+  redirectRules,
   siteAccess,
   withGateVisit,
   withGateVisitContinued,
   withGateVisitWhy,
   withPass,
   type OpenPageCheck,
+  type RedirectRule,
 } from './redirect';
+export { findPathRule, levelFor, maxPathLength, maxPathRules, normalizePath, pathMatches, pathRegexSource } from './paths';
 export { defaultRedirectSettings, defaultWaits, redirectDestinations, redirectSettingsFor, waitSecondsFor } from './settings';
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';

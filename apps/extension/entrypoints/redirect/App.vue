@@ -55,7 +55,7 @@ onMounted(async () => {
 
   const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
   const profile = profileList.find((p) => p.id === session?.profileId);
-  const access = siteAccess({ session, profiles: profileList, recipeId: recipe.id, now: Date.now() });
+  const access = siteAccess({ session, profiles: profileList, recipeId: recipe.id, path: target.pathname, now: Date.now() });
 
   if (!profile || access === 'open') {
     // The session ended or a pass started since this tab was sent here. Make sure the

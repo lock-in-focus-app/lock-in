@@ -1,4 +1,4 @@
-import { matchPatternToRegex, nextPassExpiry, redirectedRecipes } from '@lock-in/core';
+import { nextPassExpiry, redirectRules } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 
 // Redirects are declarativeNetRequest rules: the browser matches them itself, so no
@@ -22,18 +22,21 @@ export async function syncRedirects(): Promise<void> {
   const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
   const now = Date.now();
 
-  const regexes = redirectedRecipes({ session, profiles: profileList, recipes, now })
-    .flatMap((recipe) => recipe.matches)
-    .flatMap((pattern) => matchPatternToRegex(pattern) ?? []);
-  const addRules = regexes.map((regexFilter, index) => ({
+  const addRules = redirectRules({ session, profiles: profileList, recipes, now }).map((rule, index) => ({
     id: index + 1,
-    action: {
-      type: 'redirect' as Browser.declarativeNetRequest.RuleActionType,
-      // \0 is the full original URL.
-      redirect: { regexSubstitution: redirectPageUrl('\\0') },
-    },
+    priority: rule.priority,
+    action:
+      rule.action === 'redirect'
+        ? {
+            type: 'redirect' as Browser.declarativeNetRequest.RuleActionType,
+            // \0 is the full original URL.
+            redirect: { regexSubstitution: redirectPageUrl('\\0') },
+          }
+        : { type: 'allow' as Browser.declarativeNetRequest.RuleActionType },
     condition: {
-      regexFilter,
+      regexFilter: rule.regexFilter,
+      // Page rules ignore case, like the rest of Lock In's path matching.
+      isUrlFilterCaseSensitive: false,
       resourceTypes: ['main_frame' as Browser.declarativeNetRequest.ResourceType],
     },
   }));

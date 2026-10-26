@@ -3,15 +3,23 @@ import { findRule, resolveToggles, type Profile } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import LevelPicker from '@/components/LevelPicker.vue';
 import ToggleSwitch from '@/components/ToggleSwitch.vue';
+import PageRules from './PageRules.vue';
 
-defineProps<{ profile: Profile }>();
+const props = defineProps<{ profile: Profile }>();
+
+// Toggles matter whenever any part of the site is tamed, even if only one page is.
+const showsToggles = (recipeId: string) => {
+  const rule = findRule(props.profile, recipeId);
+  return rule?.level === 'tamed' || !!rule?.paths?.some((page) => page.level === 'tamed');
+};
 </script>
 
 <template>
   <h2>Sites</h2>
   <p class="help">
     Tamed hides the distracting parts. Redirected sends you to a Lock In page you can get through for a few minutes.
-    Restricted has no way through until the session ends.
+    Restricted has no way through until the session ends. Page rules give part of a site its own level, like
+    redirecting YouTube Shorts while the rest of YouTube is tamed.
   </p>
   <ul class="list sites">
     <li v-for="recipe in recipes" :key="recipe.id">
@@ -24,7 +32,8 @@ defineProps<{ profile: Profile }>();
           @update:model-value="setSiteLevel(profile.id, recipe.id, $event)"
         />
       </div>
-      <div v-if="findRule(profile, recipe.id)?.level === 'tamed'" class="toggles">
+      <PageRules :profile="profile" :recipe="recipe" />
+      <div v-if="showsToggles(recipe.id)" class="toggles">
         <ToggleSwitch
           v-for="toggle in recipe.toggles"
           :key="toggle.id"

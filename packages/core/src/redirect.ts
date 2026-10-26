@@ -1,7 +1,9 @@
 import { findRule } from './edits';
+import { matchPatternToRegex, parseHttpUrl } from './match';
+import { levelFor, pathRegexSource } from './paths';
 import { findRecipe } from './recipe';
 import { redirectSettingsFor } from './settings';
-import type { GateVisit, PassExpiry, Profile, Session, SiteRecipe, WhyReason } from './types';
+import type { GateVisit, PassExpiry, Profile, Session, SiteLevel, SiteRecipe, WhyReason } from './types';
 
 /** Longest intention we keep. */
 export const maxIntentionLength = 200;
@@ -14,37 +16,79 @@ export function hasPass(session: Session | null, recipeId: string, now: number):
   return (session?.passes?.[recipeId] ?? 0) > now;
 }
 
+type Access = 'open' | 'redirected' | 'restricted';
+
 /**
- * Whether a site is kept from loading right now. Redirected sites open up while they have
- * a pass; restricted sites stay shut until the session ends.
+ * Whether a site, or one page of it, is kept from loading right now. Redirected pages
+ * open up while the site has a pass; restricted ones stay shut until the session ends.
  */
 export function siteAccess(options: {
   session: Session | null;
   profiles: readonly Profile[];
   recipeId: string;
+  /** The page's path, so page rules apply. Leave it out for the site as a whole. */
+  path?: string;
   now: number;
-}): 'open' | 'redirected' | 'restricted' {
-  const { session, profiles, recipeId, now } = options;
+}): Access {
+  const { session, profiles, recipeId, path, now } = options;
   if (!session) return 'open';
+  return accessFor(levelFor(profiles.find((p) => p.id === session.profileId), recipeId, path), session, recipeId, now);
+}
 
-  const level = findRule(
-    profiles.find((p) => p.id === session.profileId),
-    recipeId,
-  )?.level;
+function accessFor(level: SiteLevel, session: Session, recipeId: string, now: number): Access {
   if (level === 'restricted') return 'restricted';
   if (level === 'redirected' && !hasPass(session, recipeId, now)) return 'redirected';
   return 'open';
 }
 
-/** The sites the active session keeps from loading right now: redirected ones without a pass, and restricted ones. */
-export function redirectedRecipes(options: {
+/** A declarativeNetRequest rule, before the extension fills in where redirects go. */
+export interface RedirectRule {
+  regexFilter: string;
+  /** Send the visit to the Lock In page, or let it load even though a broader rule redirects it. */
+  action: 'redirect' | 'allow';
+  /** Higher wins. Whole sites are 1; page rules rank above them, longer paths first. */
+  priority: number;
+}
+
+/**
+ * The rules that keep sites and pages from loading during the active session: redirected
+ * ones without a pass, and restricted ones. Page rules that open a page inside a closed
+ * site become allow rules, so the browser applies the same "most specific wins" order.
+ */
+export function redirectRules(options: {
   session: Session | null;
   profiles: readonly Profile[];
   recipes: readonly SiteRecipe[];
   now: number;
-}): SiteRecipe[] {
-  const { recipes, ...rest } = options;
-  return recipes.filter((recipe) => siteAccess({ ...rest, recipeId: recipe.id }) !== 'open');
+}): RedirectRule[] {
+  const { session, profiles, recipes, now } = options;
+  const profile = profiles.find((p) => p.id === session?.profileId);
+  if (!session || !profile) return [];
+
+  return recipes.flatMap((recipe) => {
+    const rule = findRule(profile, recipe.id);
+    if (!rule) return [];
+    const closed = (level: SiteLevel) => accessFor(level, session, recipe.id, now) !== 'open';
+    const pages = (rule.paths ?? []).map((page) => ({ path: page.path, closed: closed(page.level) }));
+    const siteClosed = closed(rule.level);
+    if (!siteClosed && !pages.some((page) => page.closed)) return [];
+
+    const regexes = (pathSource?: string) =>
+      recipe.matches.flatMap((pattern) => matchPatternToRegex(pattern, pathSource) ?? []);
+    const site: RedirectRule[] = siteClosed
+      ? regexes().map((regexFilter) => ({ regexFilter, action: 'redirect', priority: 1 }))
+      : [];
+    return [
+      ...site,
+      ...pages.flatMap((page) =>
+        regexes(`${pathRegexSource(page.path)}([?#].*)?`).map((regexFilter): RedirectRule => ({
+          regexFilter,
+          action: page.closed ? 'redirect' : 'allow',
+          priority: 2 + page.path.length,
+        })),
+      ),
+    ];
+  });
 }
 
 /** Gives the session a pass to one site, dropping any passes that have already run out. */
@@ -119,7 +163,7 @@ export function checkOpenPage(options: {
   const { url, session, profiles, recipes, now } = options;
   const profile = profiles.find((p) => p.id === session?.profileId);
   const recipe = findRecipe(recipes, url);
-  const level = findRule(profile, recipe?.id ?? '')?.level;
+  const level = recipe ? levelFor(profile, recipe.id, parseHttpUrl(String(url))?.pathname) : 'allowed';
   if (!session || !profile || !recipe || (level !== 'redirected' && level !== 'restricted')) return { action: 'none' };
 
   if (level === 'restricted') return { action: 'block', recipe, profile, passExpired: false };

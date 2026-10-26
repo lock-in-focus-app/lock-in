@@ -7,7 +7,12 @@ export const starterProfiles: Profile[] = [
     name: 'Writing',
     sites: [
       { recipeId: 'reddit', level: 'tamed', toggles: { grayscale: true } },
-      { recipeId: 'youtube', level: 'tamed', toggles: { grayscale: true } },
+      {
+        recipeId: 'youtube',
+        level: 'tamed',
+        toggles: { grayscale: true },
+        paths: [{ path: '/shorts', level: 'redirected' }],
+      },
       { recipeId: 'x', level: 'redirected' },
       { recipeId: 'instagram', level: 'redirected' },
       { recipeId: 'tiktok', level: 'redirected' },
@@ -37,8 +42,8 @@ export const starterProfiles: Profile[] = [
     name: 'Wind Down',
     sites: [
       { recipeId: 'reddit', level: 'tamed' },
-      { recipeId: 'youtube', level: 'tamed' },
-      { recipeId: 'instagram', level: 'tamed' },
+      { recipeId: 'youtube', level: 'tamed', paths: [{ path: '/shorts', level: 'redirected' }] },
+      { recipeId: 'instagram', level: 'tamed', paths: [{ path: '/reels', level: 'redirected' }] },
     ],
   },
 ];
