@@ -1,0 +1,19 @@
+{
+  "name": "lock-in",
+  "private": true,
+  "description": "Free, open-source focus app: block, tame, or redirect distractions and watch your night sky fill with stars.",
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:extension": "pnpm --filter @lock-in/extension dev",
+    "dev:extension:firefox": "pnpm --filter @lock-in/extension dev:firefox",
+    "dev:desktop": "pnpm --filter @lock-in/desktop tauri dev",
+    "dev:website": "pnpm --filter @lock-in/website dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}

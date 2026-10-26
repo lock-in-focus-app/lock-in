@@ -1,0 +1,56 @@
+# ── Dependencies ──────────────────────────────────────────
+node_modules/
+.pnpm-store/
+
+# ── Build output ──────────────────────────────────────────
+dist/
+dist-ssr/
+.output/
+coverage/
+*.tsbuildinfo
+
+# Rust / Tauri
+target/
+apps/desktop/src-tauri/gen/schemas/
+
+# WXT (extension)
+.wxt/
+web-ext.config.ts
+stats.html
+stats-*.json
+
+# Nuxt (website)
+.nuxt/
+.nitro/
+.data/
+.cache/
+
+# ── Secrets & signing keys (never commit these) ───────────
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.key
+*.p12
+*.p8
+*.mobileprovision
+*.crx
+.tauri/
+*.tauri-signing*
+
+# ── Logs ──────────────────────────────────────────────────
+logs/
+*.log
+
+# ── OS / editor ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.fleet/
+.vscode/*
+!.vscode/extensions.json
+*.sw?
+
+# ── Claude Code (personal settings only) ──────────────────
+.claude/settings.local.json

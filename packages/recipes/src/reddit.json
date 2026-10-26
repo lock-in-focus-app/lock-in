@@ -1,0 +1,49 @@
+{
+  "id": "reddit",
+  "name": "Reddit",
+  "matches": ["*://*.reddit.com/*"],
+  "source": "Feed, trending and suggested-post selectors adapted from UBlock-Filters-for-Social-Media by Bevíz László (MIT): https://github.com/BevizLaszlo/UBlock-Filters-for-Social-Media",
+  "toggles": [
+    {
+      "id": "hideFeeds",
+      "label": "Hide Home, Popular & Explore feeds",
+      "selectors": [
+        "shreddit-app[pagetype=\"home\"] .main-container",
+        "shreddit-app[pagetype=\"popular\"] #subgrid-container",
+        "shreddit-app[pagetype=\"all\"] .main-container",
+        "shreddit-app[pagetype=\"explore\"] #main-content",
+        "shreddit-app[pagetype=\"news\"] #main-content"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideTrending",
+      "label": "Hide trending searches",
+      "selectors": [
+        "#section_0_pipeline_1_trending_query",
+        "#section_0_pipeline_1_trending_query ~ *",
+        "#search-dropdown-results-container > div:has(svg[icon-name=\"trend\"])",
+        "#search-dropdown-results-container > div:has(svg[icon-name=\"trend\"]) ~ *"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideSuggested",
+      "label": "Hide suggested posts",
+      "selectors": ["faceplate-tracker[noun=\"discovery_unit\"]"],
+      "default": true
+    },
+    {
+      "id": "hidePromoted",
+      "label": "Hide promoted posts",
+      "selectors": ["shreddit-ad-post"],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}
