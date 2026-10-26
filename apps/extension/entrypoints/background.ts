@@ -21,4 +21,6 @@ export default defineBackground(() => {
     void sync().then(() => sendResponse());
     return true;
   });
+
+  linkDesktopApp();
 });

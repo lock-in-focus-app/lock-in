@@ -1,6 +1,9 @@
+pub mod bridge;
 mod commands;
 mod engine;
 mod error;
+mod hosts;
+mod link;
 mod session;
 mod store;
 mod timer;
@@ -59,6 +62,7 @@ pub(crate) fn changed(app: &AppHandle) {
         (engine.snapshot(), engine.session().cloned())
     };
     let _ = app.emit("snapshot", &snapshot);
+    link::broadcast(app);
     if let Err(error) = tray::refresh(app, &snapshot) {
         eprintln!("Lock In: couldn't update the menu bar: {error}");
     }
@@ -162,16 +166,30 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-            let dir = app.path().app_data_dir()?;
+            // The same folder Tauri would pick, worked out without Tauri so the bridge finds it too.
+            let dir = link::data_dir().ok_or("no data folder")?;
             create_private_dir(&dir)?;
             let engine = Engine::load(Store::open(&dir.join("lock-in.db"))?)?;
             let snapshot = engine.snapshot();
             let session = engine.session().cloned();
             app.manage(Mutex::new(engine));
             app.manage(TimerTask::default());
+            app.manage(link::Links::default());
 
             tray::create(app.handle(), &snapshot)?;
             schedule_timer(app.handle(), session, snapshot.session.map(|s| s.profile_name));
+            tauri::async_runtime::spawn(link::serve(app.handle().clone()));
+            match std::env::current_exe() {
+                Ok(executable) => {
+                    for result in hosts::install(&executable) {
+                        if let Err(error) = result {
+                            eprintln!("Lock In: couldn't link a browser: {error}");
+                        }
+                    }
+                }
+                Err(error) => eprintln!("Lock In: couldn't find its own executable: {error}"),
+            }
+
             open_window(app.handle())?;
             Ok(())
         })

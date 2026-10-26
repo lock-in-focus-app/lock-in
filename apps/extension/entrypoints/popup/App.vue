@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { findRecipe, type Profile, type SiteRecipe } from '@lock-in/core';
+import { findRecipe, formatClock, timerStatus, type Profile, type SiteRecipe } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import { computed, onUnmounted, ref } from 'vue';
 import SiteToggles from '@/components/SiteToggles.vue';
 
 const session = useStorageItem(activeSession);
 const profileList = useStorageItem(profiles);
+const linked = useStorageItem(desktopLinked);
 
 const activeProfile = computed(() => profileList.value?.find((p) => p.id === session.value?.profileId));
 
@@ -23,14 +24,14 @@ const now = ref(Date.now());
 const tick = setInterval(() => (now.value = Date.now()), 1000);
 onUnmounted(() => clearInterval(tick));
 
+// Sessions run by the desktop app have its quiet timer; the rest just count up.
 const elapsed = computed(() => {
   if (!session.value) return '';
-  const totalSeconds = Math.max(0, Math.floor((now.value - session.value.startedAt) / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+  const status = timerStatus(session.value, now.value);
+  if (status.state === 'running') return formatClock(status.remainingMs);
+  if (status.state === 'none') return formatClock(status.elapsedMs);
+  const since = Math.floor(status.sinceMs / 60_000);
+  return session.value.timer?.showSinceDone && since >= 1 ? `Done · ${since} min ago` : 'Done';
 });
 
 function openSettings() {
@@ -49,12 +50,13 @@ function start(profile: Profile) {
     <header>
       <span class="star" aria-hidden="true">✦</span>
       <h1>Lock In</h1>
+      <span v-if="linked" class="linked" title="Sessions stay in step with the Lock In app">App linked</span>
       <button class="settings" type="button" @click="openSettings">Settings</button>
     </header>
 
     <section v-if="session" class="active">
       <p class="label">Locked in · {{ activeProfile?.name ?? 'Unknown profile' }}</p>
-      <p class="elapsed">{{ elapsed }}</p>
+      <p class="elapsed" :class="{ done: elapsed.startsWith('Done') }">{{ elapsed }}</p>
       <button class="end" type="button" @click="endSession()">End session</button>
     </section>
 
@@ -107,6 +109,16 @@ h1 {
 
 .star {
   color: var(--glow);
+}
+
+.linked {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.linked + .settings {
+  margin-left: 0;
 }
 
 .settings {
@@ -175,6 +187,10 @@ ul {
   font-size: 40px;
   font-weight: 300;
   font-variant-numeric: tabular-nums;
+}
+
+.elapsed.done {
+  font-size: 28px;
 }
 
 .end {
