@@ -1,4 +1,4 @@
-import type { Settings, Snapshot, TimerSettings } from '@lock-in/core';
+import type { AppRule, InstalledApp, Settings, Snapshot, TimerSettings } from '@lock-in/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { onUnmounted, ref } from 'vue';
@@ -34,6 +34,12 @@ export const spendEmergencyPass = () => invoke<void>('use_emergency_pass');
 
 export const setProfileTimer = (profileId: string, timer: TimerSettings) =>
   invoke<void>('set_profile_timer', { profileId, timer });
+
+export const setProfileApps = (profileId: string, apps: AppRule[]) =>
+  invoke<void>('set_profile_apps', { profileId, apps });
+
+/** The apps that can be added to a profile. */
+export const installedApps = () => invoke<InstalledApp[]>('installed_apps');
 
 export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings });
 

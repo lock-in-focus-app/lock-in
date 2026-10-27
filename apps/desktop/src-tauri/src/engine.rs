@@ -1,6 +1,7 @@
 use serde::Serialize;
 use ts_rs::TS;
 
+use crate::apps::{self, AppRule};
 use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
 use crate::session::{EndReason, GateVisit, Profile, Session, SessionRecord, starter_profiles};
@@ -44,6 +45,8 @@ pub struct Snapshot {
     pub passes_left: u32,
     /// The browsers that have linked to the app, which are watched during sessions.
     pub browsers: Vec<KnownBrowser>,
+    /// Whether this system can hide another app's windows, for app rules.
+    pub can_hide_apps: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -53,6 +56,7 @@ pub struct ProfileSummary {
     pub id: String,
     pub name: String,
     pub timer: TimerSettings,
+    pub apps: Vec<AppRule>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -107,6 +111,11 @@ impl Engine {
         &self.settings
     }
 
+    /// The apps the profile with this id closes or hides during its sessions.
+    pub fn profile_apps(&self, id: &str) -> Vec<AppRule> {
+        self.profile(id).map(Profile::apps).unwrap_or_default()
+    }
+
     /// Whether the profile with this id tames any sites, so its sessions need the extension.
     pub fn profile_tames_sites(&self, id: &str) -> bool {
         self.profile(id).is_some_and(Profile::tames_sites)
@@ -140,6 +149,7 @@ impl Engine {
                     id: p.id.clone(),
                     name: p.name.clone(),
                     timer: p.timer(),
+                    apps: p.apps(),
                 })
                 .collect(),
             session: self.session().map(|s| ActiveSession {
@@ -153,10 +163,11 @@ impl Engine {
             settings: self.settings.clone(),
             passes_left: self.passes_left(now),
             browsers: self.browsers.clone(),
+            can_hide_apps: cfg!(target_os = "macos"),
         }
     }
 
-    fn profile_name(&self, id: &str) -> String {
+    pub fn profile_name(&self, id: &str) -> String {
         self.profile(id)
             .map_or_else(|| "Unknown profile".into(), |p| p.name.clone())
     }
@@ -300,6 +311,31 @@ impl Engine {
         )?;
         self.broken_session = Some(session_id.to_owned());
         Ok(true)
+    }
+
+    /// Changes the apps a profile closes or hides. While one of its Hard sessions is running,
+    /// they can only get stricter.
+    pub fn set_profile_apps(&mut self, profile_id: &str, apps: Vec<AppRule>, now: i64) -> Result<()> {
+        let mut apps = apps;
+        apps.truncate(apps::MAX_RULES);
+        let mut profiles = self.profiles.value.clone();
+        let profile = profiles
+            .iter_mut()
+            .find(|p| p.id == profile_id)
+            .ok_or(Error::UnknownProfile)?;
+        let running = self.session().filter(|s| s.profile_id == profile_id);
+        let hard = running.and_then(|s| s.lock(now)) == Some(Strictness::Hard);
+        if hard && apps::looser(&profile.apps(), &apps) {
+            return Err(Error::Locked);
+        }
+        profile.set_apps(&apps);
+        let synced = Synced {
+            value: profiles,
+            updated_at: now,
+        };
+        self.store.save(PROFILES, &synced)?;
+        self.profiles = synced;
+        Ok(())
     }
 
     /// Changes a profile's timer, for every future session that uses it.
@@ -836,6 +872,42 @@ mod tests {
         // The next session starts whole.
         engine.start_session("deep-work", 61 * MIN).unwrap();
         assert!(!engine.snapshot(61 * MIN).session.unwrap().broken);
+    }
+
+    #[test]
+    fn app_rules_only_get_stricter_during_a_hard_session() {
+        use crate::apps::AppAction;
+        let rule = |name: &str, action| AppRule {
+            name: name.into(),
+            path: format!("/Applications/{name}.app/Contents/MacOS/{name}"),
+            action,
+        };
+        let mut engine = hard_engine();
+        let discord = vec![rule("Discord", AppAction::Close)];
+        engine.set_profile_apps("deep-work", discord.clone(), 1).unwrap();
+        assert_eq!(engine.profile_apps("deep-work"), discord);
+        assert_eq!(engine.snapshot(1).profiles[1].apps, discord);
+        assert!(matches!(
+            engine.set_profile_apps("nope", vec![], 1),
+            Err(Error::UnknownProfile)
+        ));
+
+        engine.start_session("deep-work", 0).unwrap();
+        let more = vec![rule("Discord", AppAction::Close), rule("Steam", AppAction::Hide)];
+        engine.set_profile_apps("deep-work", more.clone(), MIN).unwrap();
+        for looser in [
+            vec![],
+            vec![rule("Discord", AppAction::Hide), rule("Steam", AppAction::Hide)],
+        ] {
+            assert!(matches!(
+                engine.set_profile_apps("deep-work", looser, MIN),
+                Err(Error::Locked)
+            ));
+        }
+        // Other profiles, and this one once the timer's done, can change freely.
+        engine.set_profile_apps("writing", vec![], MIN).unwrap();
+        engine.set_profile_apps("deep-work", vec![], 60 * MIN).unwrap();
+        assert_eq!(engine.profile_apps("deep-work"), vec![]);
     }
 
     #[test]

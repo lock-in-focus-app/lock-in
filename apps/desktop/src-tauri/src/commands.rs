@@ -3,6 +3,7 @@
 
 use tauri::AppHandle;
 
+use crate::apps::{AppRule, InstalledApp};
 use crate::engine::Snapshot;
 use crate::error::Result;
 use crate::session::EndReason;
@@ -51,4 +52,25 @@ pub fn forget_browser(app: AppHandle, path: String) -> Result<()> {
     crate::engine(&app).forget_browser(&path, crate::now_ms())?;
     crate::changed(&app);
     Ok(())
+}
+
+#[tauri::command]
+pub fn set_profile_apps(app: AppHandle, profile_id: String, apps: Vec<AppRule>) -> Result<()> {
+    crate::engine(&app).set_profile_apps(&profile_id, apps, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
+/// The apps that can be added to a profile, leaving out Lock In itself. Reading them touches
+/// the disk, so it runs off the main thread.
+#[tauri::command]
+pub async fn installed_apps() -> Vec<InstalledApp> {
+    let own = std::env::current_exe().ok();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut apps = crate::apps::installed();
+        apps.retain(|app| own.as_deref() != Some(std::path::Path::new(&app.path)));
+        apps
+    })
+    .await
+    .unwrap_or_default()
 }

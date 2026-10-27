@@ -2,7 +2,10 @@
 export type * from './types';
 // Types shared with the desktop app, generated from its Rust code.
 export type * from './generated/ActiveSession';
+export type * from './generated/AppAction';
+export type * from './generated/AppRule';
 export type * from './generated/EndReason';
+export type * from './generated/InstalledApp';
 export type * from './generated/KnownBrowser';
 export type * from './generated/ProfileSummary';
 export type * from './generated/SessionRecord';

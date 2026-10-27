@@ -1,5 +1,6 @@
-//! Finding and closing other programs, by the file they were started from. Lock In only ever
-//! looks for browsers that have linked to it, and only closes one during a session.
+//! Finding, closing and hiding other programs, by the file they were started from. Lock In
+//! only looks for browsers that have linked to it and the apps in a session's app rules, and
+//! only closes or hides them during a session.
 
 use std::path::{Path, PathBuf};
 
@@ -56,9 +57,14 @@ pub fn running(paths: &[PathBuf]) -> Vec<Running> {
         .collect()
 }
 
-/// Asks a program to quit, as the system does when it shuts down, so it can save its tabs.
-/// Returns whether the request was sent.
+/// Asks a program to quit, so it can save its work (and a browser its tabs) first. On macOS
+/// that's the same as choosing Quit from its menu; elsewhere, and for macOS programs that
+/// aren't apps, it's the signal the system sends at shutdown. Returns whether it was asked.
 pub fn quit(pid: u32) -> bool {
+    #[cfg(target_os = "macos")]
+    if let Some(asked) = with_app(pid, |app| app.terminate()) {
+        return asked;
+    }
     let pid = Pid::from_u32(pid);
     let mut system = System::new();
     system.refresh_processes_specifics(ProcessesToUpdate::Some(&[pid]), true, refresh_kind());
@@ -66,6 +72,25 @@ pub fn quit(pid: u32) -> bool {
         .process(pid)
         .and_then(|process| process.kill_with(Signal::Term))
         .unwrap_or(false)
+}
+
+/// Hides an app's windows, as if you'd pressed ⌘H in it. Returns whether it's hidden or was
+/// asked to hide. Only macOS has a way to do this for any app.
+pub fn hide(pid: u32) -> bool {
+    #[cfg(target_os = "macos")]
+    return with_app(pid, |app| app.isHidden() || app.hide()).unwrap_or(false);
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = pid;
+        false
+    }
+}
+
+/// Runs `f` with the app that has this process id, or returns None if it isn't an app.
+#[cfg(target_os = "macos")]
+fn with_app<T>(pid: u32, f: impl FnOnce(&objc2_app_kit::NSRunningApplication) -> T) -> Option<T> {
+    let pid = i32::try_from(pid).ok()?;
+    objc2_app_kit::NSRunningApplication::runningApplicationWithProcessIdentifier(pid).map(|app| f(&app))
 }
 
 /// "Google Chrome" for /Applications/Google Chrome.app/Contents/MacOS/Google Chrome, and
@@ -108,6 +133,38 @@ mod tests {
         assert!(quit(child.id()));
         use std::os::unix::process::ExitStatusExt;
         assert_eq!(child.wait().unwrap().signal(), Some(15));
+    }
+
+    /// Opens Calculator in the background, then hides and quits it the way app rules do. It
+    /// touches a real app, so it only runs when asked: `cargo test -- --ignored`.
+    #[cfg(target_os = "macos")]
+    #[test]
+    #[ignore]
+    fn hides_and_quits_a_real_app() {
+        let path = PathBuf::from("/System/Applications/Calculator.app/Contents/MacOS/Calculator");
+        let opened = std::process::Command::new("open")
+            .args(["-g", "-a", "Calculator"])
+            .status();
+        assert!(opened.unwrap().success());
+        let calculator = (0..50)
+            .find_map(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                running(std::slice::from_ref(&path)).pop()
+            })
+            .expect("Calculator opened");
+
+        // An app that's still launching can't be hidden yet; the session's next check would try again.
+        let hidden = (0..50).any(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            hide(calculator.pid)
+        });
+        assert!(hidden, "Calculator wasn't hidden");
+        assert!(quit(calculator.pid));
+        let gone = (0..50).any(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            find(calculator.pid).is_none()
+        });
+        assert!(gone, "Calculator didn't quit");
     }
 
     #[test]

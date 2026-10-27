@@ -1,3 +1,4 @@
+import type { AppRule } from './generated/AppRule';
 import type { TimerSettings } from './generated/TimerSettings';
 
 /**
@@ -71,6 +72,8 @@ export interface Profile {
   sites: SiteRule[];
   /** The quiet timer, run by the desktop app. Missing fields fall back to its defaults. */
   timer?: Partial<TimerSettings>;
+  /** Desktop apps closed or hidden during sessions, set in the desktop app. */
+  apps?: AppRule[];
   /** How redirected sites behave. Missing fields fall back to the defaults. */
   redirect?: {
     destinations?: RedirectDestination[];

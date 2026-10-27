@@ -35,9 +35,12 @@ uuid = { version = "1", features = ["v4"] }
 # Finding and closing browsers that run without the extension during a session.
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 
-# Reading the system's idle time. Both are already used inside Tauri, so they add no new crates.
+# Reading the system's idle time, quitting and hiding apps the way macOS does, and reading app
+# bundles. All are already used inside Tauri, so they add no new crates.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGEventSource", "CGEventTypes"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "libc", "NSRunningApplication"] }
+plist = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"

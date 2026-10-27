@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use ts_rs::TS;
 
+use crate::apps::AppRule;
 use crate::timer::{Strictness, TimerSettings};
 
 /// A profile, as the extension saves it. The app only reads a few fields; everything else
@@ -22,6 +23,22 @@ impl Profile {
     pub fn set_timer(&mut self, timer: &TimerSettings) {
         let value = serde_json::to_value(timer).expect("timer settings serialize");
         self.rest.insert("timer".into(), value);
+    }
+
+    /// The apps this profile closes or hides during its sessions. Ones that can't be read are
+    /// skipped.
+    pub fn apps(&self) -> Vec<AppRule> {
+        let saved = self.rest.get("apps").and_then(Value::as_array);
+        saved
+            .into_iter()
+            .flatten()
+            .filter_map(|rule| AppRule::deserialize(rule).ok())
+            .collect()
+    }
+
+    pub fn set_apps(&mut self, apps: &[AppRule]) {
+        let value = serde_json::to_value(apps).expect("app rules serialize");
+        self.rest.insert("apps".into(), value);
     }
 
     /// Whether the profile tames, redirects or restricts any site or page, so it needs the

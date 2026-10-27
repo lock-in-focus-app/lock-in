@@ -340,11 +340,11 @@ lock-in/
 - ✅ Attempt counter + why-tap.
 - ✅ Recipe editor with animated preview mocks for all eight sites. (Editing a recipe's selectors, and live mode, come in Phase 5.)
 
-**Phase 2: Desktop app (Tauri)**
-- Menu-bar app, session engine, quiet timer + idle detection.
-- Strictness levels + emergency passes.
-- Native Messaging link + extension heartbeat: if the extension goes quiet during a session, warn → close that browser → count the session as broken, depending on strictness.
-- App rules, SQLite. The session log keeps everything the rewards will need later (§5), so stardust and the sky can be worked out from past sessions once they ship.
+**Phase 2: Desktop app (Tauri)** *(macOS and Linux; Windows support comes later: Native Messaging registry entries, idle time, and finding the browser behind a bridge)*
+- ✅ Menu-bar app, session engine, quiet timer + idle detection.
+- ✅ Strictness levels + emergency passes.
+- ✅ Native Messaging link + extension heartbeat: if the extension goes quiet during a session, warn → close that browser → count the session as broken, depending on strictness. The app and extension each work alone, so it only watches sessions whose profile tames sites, and closing is opt-in in Settings.
+- ✅ App rules, SQLite. The session log keeps everything the rewards will need later (§5), so stardust and the sky can be worked out from past sessions once they ship. (App launches are spotted by a 10-second check during sessions for now, about 9 ms each; macOS's `NSWorkspace` launch notifications could replace it.)
 
 **Phase 3: Satellites & insights**
 - Global-hotkey capture and the post-session return.
