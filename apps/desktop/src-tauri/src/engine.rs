@@ -4,7 +4,7 @@ use ts_rs::TS;
 use crate::apps::{self, AppRule};
 use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
-use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteState};
+use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteRecord, SatelliteState};
 use crate::session::{EndReason, GateVisit, Profile, Session, SessionRecord, starter_profiles, truncate};
 use crate::settings::Settings;
 use crate::store::{Store, Synced};
@@ -54,6 +54,21 @@ pub struct Snapshot {
     /// Satellites in orbit, back or on the task list, and tasks ticked off in the last day,
     /// oldest first.
     pub satellites: Vec<Satellite>,
+}
+
+/// Everything logged between two times, for the weekly report. The window works the report
+/// out from it (packages/core/src/insights.ts), since it knows the local time zone.
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Activity {
+    /// The sessions that started in that time, oldest first.
+    pub sessions: Vec<SessionRecord>,
+    pub gate_visits: Vec<GateVisit>,
+    /// The satellites launched in that time, and what became of them.
+    pub satellites: Vec<SatelliteRecord>,
+    /// When anything was first logged (epoch ms), so the report knows how far back to go.
+    pub first_logged_at: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -539,9 +554,20 @@ impl Engine {
     }
 
     /// The session log, oldest first.
-    #[allow(dead_code)] // Read by insights and the night sky once they land.
+    #[allow(dead_code)] // Read by the night sky once it lands.
     pub fn session_log(&self) -> Result<Vec<SessionRecord>> {
         self.store.sessions()
+    }
+
+    /// Everything logged from `from` up to (not including) `to`, for the weekly report.
+    pub fn activity(&self, from: i64, to: i64) -> Result<Activity> {
+        let gate_visits = self.store.gate_visits_between(from, to)?;
+        Ok(Activity {
+            sessions: self.store.sessions_between(from, to)?,
+            gate_visits: gate_visits.into_iter().map(|(_, visit)| visit).collect(),
+            satellites: self.store.satellites_launched_between(from, to)?,
+            first_logged_at: self.store.first_logged_at()?,
+        })
     }
 }
 
@@ -1258,5 +1284,45 @@ mod tests {
 
         let reloaded = Engine::load(store, 0).unwrap();
         assert_eq!(satellites(&reloaded), vec![("keep me", SatelliteState::Orbiting)]);
+    }
+
+    #[test]
+    fn gathers_activity_for_the_weekly_report() {
+        let mut engine = engine();
+        assert_eq!(engine.activity(0, i64::MAX).unwrap().first_logged_at, None);
+
+        let visit = |id: &str, at: i64| -> GateVisit {
+            serde_json::from_value(serde_json::json!({ "id": id, "recipeId": "reddit", "at": at })).unwrap()
+        };
+        engine.start_session("writing", 10 * MIN).unwrap();
+        engine.launch_satellite("last week", 11 * MIN).unwrap();
+        engine.end_session(40 * MIN, EndReason::Stopped).unwrap();
+        engine.record_gate_visit(visit("last week", 41 * MIN)).unwrap();
+
+        engine.start_session("writing", 100 * MIN).unwrap();
+        engine.record_gate_visit(visit("this week", 110 * MIN)).unwrap();
+        engine.launch_satellite("this week", 120 * MIN).unwrap();
+        engine.end_session(130 * MIN, EndReason::Stopped).unwrap();
+        let id = satellite_id(&engine, "this week");
+        engine.act_on_satellite(&id, SatelliteAction::Task, 131 * MIN).unwrap();
+
+        let activity = engine.activity(100 * MIN, 200 * MIN).unwrap();
+        assert_eq!(activity.first_logged_at, Some(10 * MIN));
+        assert_eq!(activity.sessions.len(), 1);
+        assert_eq!(activity.sessions[0].started_at, 100 * MIN);
+        assert_eq!(activity.gate_visits.len(), 1);
+        assert_eq!(activity.gate_visits[0].id, "this week");
+        assert_eq!(
+            activity.satellites,
+            vec![SatelliteRecord {
+                launched_at: 120 * MIN,
+                state: SatelliteState::Task,
+                state_at: 131 * MIN,
+                snoozes: 0,
+                tasked_at: Some(131 * MIN),
+            }]
+        );
+        // The end is left out, so weeks side by side don't share anything.
+        assert_eq!(engine.activity(0, 100 * MIN).unwrap().sessions.len(), 1);
     }
 }

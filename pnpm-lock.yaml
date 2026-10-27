@@ -38,6 +38,9 @@ importers:
       '@lock-in/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@lock-in/recipes':
+        specifier: workspace:*
+        version: link:../../packages/recipes
       '@tauri-apps/api':
         specifier: ^2
         version: 2.12.3

@@ -259,15 +259,12 @@ The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly te
 
 Insights are all computed locally.
 
-## 7. Other features
-- **Session suggestions from apps** (off by default): opening an app or site you've linked to a profile, e.g. Obsidian → *Writing*, shows a small prompt: "Obsidian opened — start *Writing*?" with three choices:
-  - **Start**
-  - **Not now**
-  - **Snooze** for 30 min / 1 h / 3 h
+**In the desktop app:** "Your week" in the header, between sessions, opens the report for the week in local time, starting on the first day of the week set on the computer (read from macOS's Language & Region settings, or the language's default elsewhere), with arrows back to earlier weeks. Clicking the week's title opens a calendar to jump to any week, with a dot on each day that had a session. The app's Rust core only reads the log for a range of dates; the report itself is worked out in `packages/core/src/insights.ts`, which knows the local time zone and can be shared with the extension later. It shows focus by day and profile with the change on last week; trips to redirected sites by hour, site and "why", how often you went back to focus, and grouped intentions; what became of the satellites launched; and up to three suggestions, each only when there's enough data behind it (a reason a site keeps pulling you in, the time of day focus goes best, a timer that fits how long sessions really run). The extension on its own keeps only a week of gate visits and no session log, so it has no report yet.
 
-  It never starts a session silently. Calendar-based suggestions come later.
+## 7. Other features
+- **Lock In observes; it doesn't interject.** It works quietly in the background and collects what happens, for the weekly report and the sky. It never prompts you to start a session or nudges you outside what you set up yourself. (Session suggestions from apps, e.g. "Obsidian opened — start *Writing*?", were considered and dropped for this reason.)
 - **App rules**: close or hide desktop apps (Discord, Steam, Slack) during a session.
-- **Session intention + reflection**: a one-line goal at the start, "did you do it?" at the end.
+- **Session intention + reflection**: a one-line goal at the start, and "did you do it?" on the page that waits after the session ends (never a pop-up).
 - **Allowlist-only mode**: block everything except the listed sites.
 - **Earn your scroll** (opt-in): focus time earns a guilt-free budget of tamed-site time.
 
@@ -361,17 +358,18 @@ lock-in/
 **Phase 3: Satellites & insights**
 - ✅ Satellites (§4) in the desktop app: the Alt+P box, menu-bar capture, the post-session return, and the task list.
 - ✅ Satellites in the extension: capture from the popup and redirect pages, sent to the app when linked and kept by the extension when it runs alone.
-- Weekly report.
-- Session suggestions from apps.
+- ✅ Weekly report (§6) in the desktop app.
 
 **Phase 4: The night sky**
 - Reward engine + sky renderer (§5): twinkling stars colored by profile, light pollution outside sessions and a clear sky during them, the "View sky" toggle, constellations, the Milky Way.
 - Seeded planets and moons, comets for resisted distractions, rare events.
 - Streaks and stardust (earned and shown; nothing to spend it on yet).
 - Satellites in the sky: the ones in orbit and on the task list drawn as small satellites circling.
+- The week's constellation in the weekly report: the stars formed that week drawn softly behind the report's header and week title, like a hero image behind a page header.
 
 **Phase 5: Polish & release**
 - UI redesign: the floating-card look from the reference images, and the satellites' dreamy orbiting look, first-use tooltip and animation (§4). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
+- Richer report charts if the plain CSS bars stop being enough, e.g. focus across many weeks or a day-by-hour heatmap. A chart library such as [vue-data-ui](https://vue-data-ui.graphieros.com/docs) could do these; weigh its size against the performance budget (§8) first.
 - A short tutorial for new users, in the app and the extension: a skippable walkthrough of starting a session, profiles and site levels, the redirect page, launching and reviewing satellites (Alt+P and the popup), and linking the app to the browser. It can be replayed from Settings.
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).

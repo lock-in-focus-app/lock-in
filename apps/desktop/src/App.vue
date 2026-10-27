@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppRule, SatelliteAction, SatelliteState, Settings, TimerSettings } from '@lock-in/core';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
   actOnSatellite,
   endSession,
@@ -19,10 +19,20 @@ import SatellitesBack from './components/SatellitesBack.vue';
 import SatellitesView from './components/SatellitesView.vue';
 import SessionView from './components/SessionView.vue';
 import SettingsView from './components/SettingsView.vue';
+import WeekReport from './components/WeekReport.vue';
 
 const snapshot = useSnapshot();
 const error = ref('');
-const showSettings = ref(false);
+// The dashboard, or Settings or the weekly report in its place.
+const view = ref<'dashboard' | 'settings' | 'week'>('dashboard');
+const toggle = (to: 'settings' | 'week') => (view.value = view.value === to ? 'dashboard' : to);
+// The report waits between sessions, so starting one goes back to the dashboard.
+watch(
+  () => snapshot.value?.session?.id,
+  (id) => {
+    if (id && view.value === 'week') view.value = 'dashboard';
+  },
+);
 
 const satellites = (state: SatelliteState) => snapshot.value?.satellites.filter((s) => s.state === state) ?? [];
 const back = computed(() => satellites('back'));
@@ -48,20 +58,29 @@ async function run(action: () => Promise<void>) {
     <header>
       <span class="star" aria-hidden="true">✦</span>
       <h1>Lock In</h1>
-      <button class="settings" type="button" :aria-pressed="showSettings" @click="showSettings = !showSettings">
+      <button
+        v-if="snapshot && !snapshot.session"
+        class="view"
+        type="button"
+        :aria-pressed="view === 'week'"
+        @click="toggle('week')"
+      >
+        Your week
+      </button>
+      <button class="view" type="button" :aria-pressed="view === 'settings'" @click="toggle('settings')">
         Settings
       </button>
     </header>
 
     <SettingsView
-      v-if="snapshot && showSettings"
+      v-if="snapshot && view === 'settings'"
       :settings="snapshot.settings"
       :passes-left="snapshot.passesLeft"
       :browsers="snapshot.browsers"
       :session-running="!!snapshot.session"
       @update:settings="(settings: Settings) => run(() => setSettings(settings))"
       @forget-browser="(path: string) => run(() => forgetBrowser(path))"
-      @close="showSettings = false"
+      @close="view = 'dashboard'"
     />
     <template v-else-if="snapshot?.session">
       <SessionView
@@ -73,6 +92,7 @@ async function run(action: () => Promise<void>) {
       <!-- Only how many are in orbit, not what they say, so they don't pull you back in. -->
       <SatelliteLaunch class="satellites" session-running :in-orbit="orbiting.length" @launch="launch" />
     </template>
+    <WeekReport v-else-if="snapshot && view === 'week'" />
     <template v-else-if="snapshot">
       <!-- Satellites wait here after a session, with nothing popping up to break the flow. -->
       <SatellitesBack v-if="back.length" :satellites="back" @act="act" />
@@ -116,8 +136,7 @@ h1 {
   color: var(--glow);
 }
 
-.settings {
-  margin-left: auto;
+.view {
   padding: 2px 8px;
   border-radius: 6px;
   background: none;
@@ -125,8 +144,12 @@ h1 {
   font-size: 12px;
 }
 
-.settings:hover,
-.settings[aria-pressed='true'] {
+.view:first-of-type {
+  margin-left: auto;
+}
+
+.view:hover,
+.view[aria-pressed='true'] {
   background: var(--sky-raised);
   color: var(--starlight);
 }
