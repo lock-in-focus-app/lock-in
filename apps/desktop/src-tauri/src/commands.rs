@@ -44,3 +44,11 @@ pub fn set_settings(app: AppHandle, settings: Settings) -> Result<()> {
     crate::changed(&app);
     Ok(())
 }
+
+/// Stops watching a browser during sessions. Only between sessions.
+#[tauri::command]
+pub fn forget_browser(app: AppHandle, path: String) -> Result<()> {
+    crate::engine(&app).forget_browser(&path, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}

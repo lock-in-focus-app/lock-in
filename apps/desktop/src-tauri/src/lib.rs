@@ -1,10 +1,12 @@
 pub mod bridge;
+mod browsers;
 mod commands;
 mod engine;
 mod error;
 mod hosts;
 mod idle;
 mod link;
+mod processes;
 mod session;
 mod settings;
 mod store;
@@ -19,6 +21,7 @@ use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 
+use browsers::{Action, BrowserWatch, Response};
 use engine::Engine;
 use error::Result;
 use idle::IdleWatch;
@@ -56,8 +59,8 @@ pub(crate) fn end_session(app: &AppHandle, reason: EndReason) -> Result<()> {
     Ok(())
 }
 
-/// Tells the window and the menu bar about a change, and schedules the session's timer and
-/// idle check.
+/// Tells the window and the menu bar about a change, and schedules the session's timer, idle
+/// check and browser check.
 pub(crate) fn changed(app: &AppHandle) {
     // Copy what's needed and let go of the engine first, so the menu bar (which runs on the
     // main thread) never waits on a lock another thread holds.
@@ -75,7 +78,95 @@ pub(crate) fn changed(app: &AppHandle) {
         session.as_ref().map(|s| s.id.clone()),
         snapshot.settings.idle_minutes,
     );
+    watch_browsers(app, session.as_ref().map(|s| s.id.clone()));
     schedule_timer(app, session, snapshot.session.map(|s| s.profile_name));
+}
+
+/// The running session's check on its browsers, and the session it's for.
+#[derive(Default)]
+struct BrowserTask(Mutex<Option<(String, JoinHandle<()>)>>);
+
+/// Checks every few seconds while a session runs for known browsers running without the
+/// extension, and acts on them as the session's strictness says (browsers.rs).
+fn watch_browsers(app: &AppHandle, session_id: Option<String>) {
+    let task = app.state::<BrowserTask>();
+    let mut task = task.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    // Unlike the timer, it keeps going through changes to the same session, which happen
+    // all the time while browsers sync, so its count towards closing a browser isn't lost.
+    if task.as_ref().map(|(id, _)| id) == session_id.as_ref() {
+        return;
+    }
+    if let Some((_, previous)) = task.take() {
+        previous.abort();
+    }
+    let Some(session_id) = session_id else { return };
+
+    let app = app.clone();
+    let id = session_id.clone();
+    let handle = tauri::async_runtime::spawn(async move {
+        let mut watch = BrowserWatch::default();
+        loop {
+            tokio::time::sleep(Duration::from_millis(browsers::CHECK_EVERY_MS as u64)).await;
+            let now = now_ms();
+            let (paths, lock) = {
+                let engine = engine(&app);
+                let Some(session) = engine.session().filter(|s| s.id == id) else {
+                    return;
+                };
+                let paths: Vec<_> = engine.browsers().iter().map(|b| b.path.clone().into()).collect();
+                (paths, session.lock(now))
+            };
+            if paths.is_empty() {
+                continue;
+            }
+            let running = tauri::async_runtime::spawn_blocking(move || processes::running(&paths))
+                .await
+                .unwrap_or_default();
+            let linked = link::linked_browsers(&app);
+            for action in watch.check(now, &running, &linked, lock) {
+                act_on_browser(&app, &id, action);
+            }
+        }
+    });
+    *task = Some((session_id, handle));
+}
+
+fn act_on_browser(app: &AppHandle, session_id: &str, action: Action) {
+    let (title, body) = match action {
+        Action::Warn { name, response } => {
+            let then = match response {
+                Response::Warn => "to keep sites tamed there.".to_string(),
+                Response::Close => format!("or {name} will close in a minute."),
+                Response::CloseAndBreak => {
+                    format!("or {name} will close in a minute and this session will count as broken.")
+                }
+            };
+            (
+                format!("Lock In isn't running in {name}"),
+                format!("Turn the Lock In extension back on, {then}"),
+            )
+        }
+        Action::Close { pid, name, breaks } => {
+            if !processes::quit(pid) {
+                eprintln!("Lock In: couldn't close {name}");
+                return;
+            }
+            let mut body = format!("The Lock In extension was off. Turn it on before opening {name} again.");
+            if breaks {
+                let broken = engine(app).break_session(session_id, now_ms());
+                match broken {
+                    Ok(true) => changed(app),
+                    Ok(false) => {}
+                    Err(error) => eprintln!("Lock In: couldn't mark the session as broken: {error}"),
+                }
+                body.push_str(" This session now counts as broken.");
+            }
+            (format!("Closed {name}"), body)
+        }
+    };
+    if let Err(error) = app.notification().builder().title(title).body(body).show() {
+        eprintln!("Lock In: couldn't show a browser notification: {error}");
+    }
 }
 
 /// The running session's check for idle time.
@@ -248,6 +339,7 @@ pub fn run() {
             app.manage(Mutex::new(engine));
             app.manage(TimerTask::default());
             app.manage(IdleTask::default());
+            app.manage(BrowserTask::default());
             app.manage(link::Links::default());
 
             tray::create(app.handle(), &snapshot)?;
@@ -256,6 +348,7 @@ pub fn run() {
                 session.as_ref().map(|s| s.id.clone()),
                 snapshot.settings.idle_minutes,
             );
+            watch_browsers(app.handle(), session.as_ref().map(|s| s.id.clone()));
             schedule_timer(app.handle(), session, snapshot.session.map(|s| s.profile_name));
             tauri::async_runtime::spawn(link::serve(app.handle().clone()));
             match std::env::current_exe() {
@@ -290,6 +383,7 @@ pub fn run() {
             commands::set_profile_timer,
             commands::use_emergency_pass,
             commands::set_settings,
+            commands::forget_browser,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lock In")

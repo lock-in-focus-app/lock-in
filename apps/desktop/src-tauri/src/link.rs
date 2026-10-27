@@ -2,7 +2,7 @@
 // they start themselves (Native Messaging), so each browser starts a small bridge process
 // (bridge.rs) that connects here over a local socket. Messages are JSON, one per line.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -15,6 +15,7 @@ use tauri::{AppHandle, Manager};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc;
 
+use crate::browsers::KnownBrowser;
 use crate::session::{GateVisit, Profile, Session};
 use crate::store::Synced;
 
@@ -67,6 +68,10 @@ pub enum FromExtension {
     GateVisit {
         visit: GateVisit,
     },
+    /// From the bridge itself, before anything from the extension: the browser it links.
+    Bridge {
+        browser_pid: u32,
+    },
     /// From a newer extension; ignored.
     #[serde(other)]
     Unknown,
@@ -82,25 +87,40 @@ pub enum ToExtension<'a> {
     },
 }
 
-/// The connected bridges, one per browser, each with a queue of lines to send it.
+/// A connected bridge: a queue of lines to send it, and the browser it links, once it says.
+struct Link {
+    sender: mpsc::UnboundedSender<Arc<str>>,
+    browser_pid: Option<u32>,
+}
+
+/// The connected bridges, one per browser profile with the extension.
 #[derive(Default)]
 pub struct Links {
     next_id: AtomicU64,
-    senders: Mutex<HashMap<u64, mpsc::UnboundedSender<Arc<str>>>>,
+    links: Mutex<HashMap<u64, Link>>,
 }
 
 impl Links {
-    fn senders(&self) -> std::sync::MutexGuard<'_, HashMap<u64, mpsc::UnboundedSender<Arc<str>>>> {
-        self.senders.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    fn links(&self) -> std::sync::MutexGuard<'_, HashMap<u64, Link>> {
+        self.links.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
 /// Sends the current profiles and session to every connected browser.
 pub fn broadcast(app: &AppHandle) {
     let Some(line) = state_line(app) else { return };
-    for sender in app.state::<Links>().senders().values() {
-        let _ = sender.send(line.clone());
+    for link in app.state::<Links>().links().values() {
+        let _ = link.sender.send(line.clone());
     }
+}
+
+/// The process ids of the browsers that are linked right now.
+pub fn linked_browsers(app: &AppHandle) -> HashSet<u32> {
+    app.state::<Links>()
+        .links()
+        .values()
+        .filter_map(|link| link.browser_pid)
+        .collect()
 }
 
 fn state_line(app: &AppHandle) -> Option<Arc<str>> {
@@ -151,7 +171,13 @@ async fn handle(app: AppHandle, stream: Stream) {
     if let Some(line) = state_line(&app) {
         let _ = sender.send(line);
     }
-    links.senders().insert(id, sender);
+    links.links().insert(
+        id,
+        Link {
+            sender,
+            browser_pid: None,
+        },
+    );
 
     let (receive, mut send) = stream.split();
     let writer = async {
@@ -165,7 +191,7 @@ async fn handle(app: AppHandle, stream: Stream) {
         let mut lines = BufReader::new(receive).lines();
         while let Some(line) = lines.next_line().await? {
             if line.len() <= MAX_MESSAGE {
-                on_message(&app, &line);
+                on_message(&app, id, &line);
             }
         }
         Ok::<_, io::Error>(())
@@ -175,10 +201,10 @@ async fn handle(app: AppHandle, stream: Stream) {
         _ = writer => {}
         _ = reader => {}
     }
-    links.senders().remove(&id);
+    links.links().remove(&id);
 }
 
-fn on_message(app: &AppHandle, line: &str) {
+fn on_message(app: &AppHandle, link_id: u64, line: &str) {
     let message = match serde_json::from_str::<FromExtension>(line) {
         Ok(message) => message,
         Err(error) => {
@@ -209,7 +235,32 @@ fn on_message(app: &AppHandle, line: &str) {
                 eprintln!("Lock In: couldn't log a gate visit: {error}");
             }
         }
+        FromExtension::Bridge { browser_pid } => {
+            if let Some(link) = app.state::<Links>().links().get_mut(&link_id) {
+                link.browser_pid = Some(browser_pid);
+            }
+            // Looking it up reads the system's process list, so it's done off this task.
+            let app = app.clone();
+            tauri::async_runtime::spawn_blocking(move || remember_browser(&app, browser_pid));
+        }
         FromExtension::Unknown => {}
+    }
+}
+
+/// Remembers a browser that linked, so it's watched during sessions from now on.
+fn remember_browser(app: &AppHandle, pid: u32) {
+    let Some(process) = crate::processes::find(pid) else {
+        return;
+    };
+    let browser = KnownBrowser {
+        name: process.name,
+        path: process.path.to_string_lossy().into_owned(),
+    };
+    let remembered = crate::engine(app).remember_browser(browser, crate::now_ms());
+    match remembered {
+        Ok(true) => crate::changed(app),
+        Ok(false) => {}
+        Err(error) => eprintln!("Lock In: couldn't remember a browser: {error}"),
     }
 }
 
@@ -253,6 +304,12 @@ mod tests {
         assert!(matches!(
             serde_json::from_str(visit).unwrap(),
             FromExtension::GateVisit { .. }
+        ));
+
+        let bridge = r#"{"type":"bridge","browserPid":42}"#;
+        assert!(matches!(
+            serde_json::from_str(bridge).unwrap(),
+            FromExtension::Bridge { browser_pid: 42 }
         ));
 
         let newer = r#"{"type":"somethingNew","x":1}"#;
