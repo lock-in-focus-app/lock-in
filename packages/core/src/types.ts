@@ -70,6 +70,8 @@ export interface Profile {
   id: string;
   name: string;
   sites: SiteRule[];
+  /** The color of this profile's stars in the night sky, e.g. "#f5c86b". Missing, it falls back to a default. */
+  starColor?: string;
   /** The quiet timer, run by the desktop app. Missing fields fall back to its defaults. */
   timer?: Partial<TimerSettings>;
   /** Desktop apps closed or hidden during sessions, set in the desktop app. */

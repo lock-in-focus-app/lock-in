@@ -93,6 +93,19 @@ describe('profile editor', () => {
     expect(await levelOf('Reddit')).toBe('Allowed');
   });
 
+  it('gives a new profile its own star color, which can be changed', async () => {
+    const picked = () =>
+      page.$eval('[role=radiogroup][aria-label="Star color for New profile"] input:checked', (input) =>
+        input.getAttribute('aria-label'),
+      );
+    // The starters are gold, blue-white and lavender, so the next free color is mint.
+    expect(await picked()).toBe('Mint');
+    expect((await savedProfiles()).at(-1)).toMatchObject({ starColor: '#9fe3c9' });
+    await page.click('[role=radiogroup][aria-label="Star color for New profile"] input[aria-label="Rose"]');
+    await expect.poll(async () => (await savedProfiles()).at(-1)).toMatchObject({ starColor: '#f2a7c3' });
+    expect(await picked()).toBe('Rose');
+  });
+
   it('renames a profile, ignoring blank names', async () => {
     await rename('Reading');
     await expect.poll(async () => (await savedProfiles()).at(-1)!.name).toBe('Reading');

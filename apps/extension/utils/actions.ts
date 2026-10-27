@@ -10,6 +10,7 @@ import {
   withProfilesRemoved,
   withProfileRenamed,
   withSiteLevel,
+  withStarColor,
   withPathRuleRemoved,
   withPathRules,
   withStarterProfilesReset,
@@ -132,6 +133,11 @@ export async function deleteProfiles(profileIds: string[]): Promise<void> {
 
 export async function renameProfile(profileId: string, name: string): Promise<void> {
   await editProfiles((list) => withProfileRenamed(list, profileId, name));
+}
+
+/** Sets the color of a profile's stars in the desktop app's night sky. */
+export async function setStarColor(profileId: string, color: string): Promise<void> {
+  await editProfiles((list) => withStarColor(list, profileId, color));
 }
 
 /** Moves a profile earlier (-1) or later (1) in the list. */

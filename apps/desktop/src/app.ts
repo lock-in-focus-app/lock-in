@@ -3,6 +3,7 @@ import type {
   AppRule,
   InstalledApp,
   SatelliteAction,
+  SessionRecord,
   Settings,
   Snapshot,
   TimerSettings,
@@ -46,6 +47,9 @@ export const setProfileTimer = (profileId: string, timer: TimerSettings) =>
 export const setProfileApps = (profileId: string, apps: AppRule[]) =>
   invoke<void>('set_profile_apps', { profileId, apps });
 
+export const setProfileStarColor = (profileId: string, color: string) =>
+  invoke<void>('set_profile_star_color', { profileId, color });
+
 /** The apps that can be added to a profile. */
 export const installedApps = () => invoke<InstalledApp[]>('installed_apps');
 
@@ -60,6 +64,9 @@ export const actOnSatellite = (id: string, action: SatelliteAction) => invoke<vo
 
 /** Everything logged from `from` up to (not including) `to` (epoch ms), for the weekly report. */
 export const activity = (from: number, to: number) => invoke<Activity>('activity', { from, to });
+
+/** Every finished session, oldest first, for the night sky. */
+export const sessionLog = () => invoke<SessionRecord[]>('session_log');
 
 type WeekInfo = { firstDay: number };
 

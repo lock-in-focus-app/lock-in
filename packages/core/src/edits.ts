@@ -1,4 +1,5 @@
 import { maxPathRules, normalizePath } from './paths';
+import { isStarColor, newStarColor } from './sky';
 import type { Profile, RedirectSettings, Session, SiteLevel, SiteRecipe, SiteRule } from './types';
 
 // Pure, immutable edits to profiles and sessions. The extension (and later the desktop
@@ -89,9 +90,9 @@ function withRecipeOverrides(session: Session, recipeId: string, recipeOverrides
 /** Longest profile name we keep. */
 export const maxProfileNameLength = 40;
 
-/** Adds an empty profile at the end. Every site starts out allowed. */
+/** Adds an empty profile at the end, with a star color no other profile has yet. Every site starts out allowed. */
 export function withNewProfile(profiles: readonly Profile[], id: string, name: string): Profile[] {
-  return [...profiles, { id, name: cleanName(name) || 'New profile', sites: [] }];
+  return [...profiles, { id, name: cleanName(name) || 'New profile', starColor: newStarColor(profiles), sites: [] }];
 }
 
 /** Copies a profile, placing the copy right after it. */
@@ -119,6 +120,12 @@ export function withProfileRenamed(profiles: readonly Profile[], profileId: stri
   const cleaned = cleanName(name);
   if (!cleaned) return [...profiles];
   return profiles.map((p) => (p.id === profileId ? { ...p, name: cleaned } : p));
+}
+
+/** Sets a profile's star color. Anything but a hex color like "#f5c86b" is ignored. */
+export function withStarColor(profiles: readonly Profile[], profileId: string, color: string): Profile[] {
+  if (!isStarColor(color)) return [...profiles];
+  return profiles.map((p) => (p.id === profileId ? { ...p, starColor: color.toLowerCase() } : p));
 }
 
 /** Moves a profile earlier (negative offset) or later in the list, stopping at either end. */

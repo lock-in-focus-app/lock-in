@@ -7,7 +7,7 @@ use crate::apps::{AppRule, InstalledApp};
 use crate::engine::{Activity, Snapshot};
 use crate::error::Result;
 use crate::satellites::SatelliteAction;
-use crate::session::EndReason;
+use crate::session::{EndReason, SessionRecord};
 use crate::settings::Settings;
 use crate::timer::TimerSettings;
 
@@ -36,6 +36,13 @@ pub fn use_emergency_pass(app: AppHandle) -> Result<()> {
 #[tauri::command]
 pub fn set_profile_timer(app: AppHandle, profile_id: String, timer: TimerSettings) -> Result<()> {
     crate::engine(&app).set_profile_timer(&profile_id, timer, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_profile_star_color(app: AppHandle, profile_id: String, color: String) -> Result<()> {
+    crate::engine(&app).set_profile_star_color(&profile_id, &color, crate::now_ms())?;
     crate::changed(&app);
     Ok(())
 }
@@ -92,6 +99,12 @@ pub fn act_on_satellite(app: AppHandle, id: String, action: SatelliteAction) -> 
     crate::engine(&app).act_on_satellite(&id, action, crate::now_ms())?;
     crate::satellites_changed(&app);
     Ok(())
+}
+
+/// Every finished session, oldest first, for the night sky.
+#[tauri::command]
+pub fn session_log(app: AppHandle) -> Result<Vec<SessionRecord>> {
+    crate::engine(&app).session_log()
 }
 
 /// Everything logged from `from` up to (not including) `to` (epoch ms), for the weekly report.

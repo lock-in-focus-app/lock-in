@@ -2,6 +2,7 @@
   {
     "id": "writing",
     "name": "Writing",
+    "starColor": "#f5c86b",
     "timer": {
       "minutes": 45,
       "onEnd": "silent"
@@ -48,6 +49,7 @@
   {
     "id": "deep-work",
     "name": "Deep Work",
+    "starColor": "#cfe0ff",
     "timer": {
       "minutes": 50,
       "strictness": "medium"
@@ -101,6 +103,7 @@
   {
     "id": "wind-down",
     "name": "Wind Down",
+    "starColor": "#b9a7f5",
     "timer": {
       "minutes": 0
     },

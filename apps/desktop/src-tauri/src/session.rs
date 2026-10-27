@@ -41,6 +41,17 @@ impl Profile {
         self.rest.insert("apps".into(), value);
     }
 
+    /// The color of the profile's stars, if it was given one. The window picks a default
+    /// otherwise (packages/core/src/sky.ts).
+    pub fn star_color(&self) -> Option<String> {
+        let color = self.rest.get("starColor").and_then(Value::as_str)?;
+        is_star_color(color).then(|| color.to_owned())
+    }
+
+    pub fn set_star_color(&mut self, color: &str) {
+        self.rest.insert("starColor".into(), color.to_ascii_lowercase().into());
+    }
+
     /// Whether the profile tames, redirects or restricts any site or page, so it needs the
     /// browser extension. A profile for writing in a desktop app might not.
     pub fn tames_sites(&self) -> bool {
@@ -55,6 +66,11 @@ impl Profile {
             changes(site) || pages.into_iter().flatten().any(changes)
         })
     }
+}
+
+/// Whether `color` is a hex color like "#f5c86b", the only kind a star can be.
+pub fn is_star_color(color: &str) -> bool {
+    color.len() == 7 && color.starts_with('#') && color[1..].bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 /// The profiles every new install starts with, shared with the extension.

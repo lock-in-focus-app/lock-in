@@ -43,3 +43,24 @@ button {
   border-radius: 10px;
   cursor: pointer;
 }
+
+/* Cards that lean toward the pointer and lift (`v-tilt`, tilt.ts), floating over the sky. */
+.tilt {
+  transform: perspective(900px) rotateX(var(--tilt-y, 0deg)) rotateY(var(--tilt-x, 0deg)) translateY(var(--lift, 0));
+  transition:
+    transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 500ms;
+}
+
+.tilt:hover {
+  --lift: -2px;
+  filter: drop-shadow(0 8px 14px rgb(0 0 0 / 0.45));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt,
+  .tilt:hover {
+    transform: none;
+    transition: none;
+  }
+}

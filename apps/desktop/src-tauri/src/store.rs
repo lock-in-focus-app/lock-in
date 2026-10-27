@@ -286,7 +286,6 @@ impl Store {
     }
 
     /// The session log, oldest first.
-    #[allow(dead_code)] // Read by the night sky once it lands.
     pub fn sessions(&self) -> Result<Vec<SessionRecord>> {
         self.sessions_between(i64::MIN, i64::MAX)
     }

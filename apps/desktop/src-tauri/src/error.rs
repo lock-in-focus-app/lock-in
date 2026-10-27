@@ -14,6 +14,7 @@ pub enum Error {
     Locked,
     NoPassesLeft,
     UnknownSatellite,
+    InvalidStarColor,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -31,6 +32,7 @@ impl fmt::Display for Error {
             Error::Locked => f.write_str("this session is in Hard mode until its timer is done"),
             Error::NoPassesLeft => f.write_str("no emergency passes are left this week"),
             Error::UnknownSatellite => f.write_str("that satellite is already gone"),
+            Error::InvalidStarColor => f.write_str("a star color has to be a hex color like #f5c86b"),
         }
     }
 }

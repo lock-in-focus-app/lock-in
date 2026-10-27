@@ -496,6 +496,7 @@ pub fn run() {
             commands::start_session,
             commands::end_session,
             commands::set_profile_timer,
+            commands::set_profile_star_color,
             commands::use_emergency_pass,
             commands::set_settings,
             commands::forget_browser,
@@ -505,6 +506,7 @@ pub fn run() {
             commands::act_on_satellite,
             commands::close_capture,
             commands::activity,
+            commands::session_log,
             commands::first_weekday,
         ])
         .build(tauri::generate_context!())

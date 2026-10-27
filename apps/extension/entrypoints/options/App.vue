@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { maxProfileNameLength } from '@lock-in/core';
+import { maxProfileNameLength, starColorFor } from '@lock-in/core';
 import { computed, nextTick, ref, watch } from 'vue';
+import StarColorPicker from '@/components/StarColorPicker.vue';
 import QuotesSection from './components/QuotesSection.vue';
 import RedirectSection from './components/RedirectSection.vue';
 import SitesSection from './components/SitesSection.vue';
@@ -164,6 +165,14 @@ async function deletePicked() {
             @keydown.enter="($event.target as HTMLInputElement).blur()"
           />
         </label>
+        <div class="star-field">
+          <span aria-hidden="true">Star</span>
+          <StarColorPicker
+            :color="starColorFor(profile.id, profile.starColor)"
+            :profile-name="profile.name"
+            @update:color="(color: string) => setStarColor(profile!.id, color)"
+          />
+        </div>
 
         <div v-if="!confirmingDelete" class="actions">
           <button type="button" class="text-button" :disabled="position <= 0" @click="moveProfile(profile.id, -1)">
@@ -349,6 +358,13 @@ h1 {
   flex: 1 1 220px;
   align-items: center;
   gap: 10px;
+  color: var(--dim);
+}
+
+.star-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--dim);
 }
 
