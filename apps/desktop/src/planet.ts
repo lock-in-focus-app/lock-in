@@ -32,7 +32,7 @@ export interface PlanetView {
   alpha: number;
   /** How much it shines from being hovered, from 0 to 1. */
   glow: number;
-  /** The star color of the month's top profile, which tints its glow ("#rrggbb"). */
+  /** The star color of the month's top profile, for rings in that color ("#rrggbb"). */
   tint: string;
   /** How far the sky has turned while exploring, in radians: planets spin and moons go round with it. */
   turn: number;
@@ -75,7 +75,9 @@ export function stampPlanet(c: CanvasRenderingContext2D, planet: Planet, view: P
   const half = Math.ceil(radius * planetReach) + 4;
   if (!entry || entry.key !== key) {
     const canvas = entry?.canvas ?? document.createElement('canvas');
-    if (canvas.width < half * 2) canvas.width = canvas.height = half * 2;
+    // A new canvas starts 300 by 150, so both sides are checked; it has to be square.
+    if (canvas.width < half * 2 || canvas.height !== canvas.width)
+      canvas.width = canvas.height = Math.max(half * 2, canvas.width);
     const offscreen = canvas.getContext('2d')!;
     offscreen.setTransform(1, 0, 0, 1, 0, 0);
     offscreen.clearRect(0, 0, canvas.width, canvas.height);
@@ -100,14 +102,7 @@ export function drawPlanet(c: CanvasRenderingContext2D, planet: Planet, view: Pl
   const core = planet.form === 'dust' ? radius * 0.6 : radius;
   c.globalAlpha = view.alpha;
 
-  // A soft glow in the top profile's color, stronger with an atmosphere and while hovered. A lava
-  // world also glows warm around its edge.
-  const halo = 0.16 + 0.34 * planet.glow + 0.25 * glow;
-  const outer = core * (1.3 + 0.3 * planet.glow);
-  glowAround(c, x, y, core * 0.85, outer, withAlpha(view.tint, halo), withAlpha(view.tint, 0));
-  if (planet.kind === 'lava' && planet.form === 'round') {
-    glowAround(c, x, y, core * 0.9, core * 1.45, hsl(planet.colors.detail, 0.35), hsl(planet.colors.detail, 0));
-  }
+  drawGlow(c, planet, x, y, core, glow);
 
   const moons = planet.moons.map((moon) => {
     const angle = moon.angle + (turn * moonSpeed * 2) / moon.orbit;
@@ -123,7 +118,7 @@ export function drawPlanet(c: CanvasRenderingContext2D, planet: Planet, view: Pl
 
   if (planet.shape === 'linked' && planet.shapeAmount > 0) drawLinked(c, planet, x, y, core, turn);
   else drawBody(c, planet, x, y, core, turn);
-  if (planet.shell > 0 && planet.shape !== 'linked') drawShell(c, planet, x, y, core, view.tint);
+  if (planet.shell > 0 && planet.shape !== 'linked') drawShell(c, planet, x, y, core);
   if (planet.aurora > 0 && planet.shape !== 'linked' && planet.shape !== 'donut') {
     drawAurora(c, planet, x, y, core, view);
   }
@@ -131,6 +126,31 @@ export function drawPlanet(c: CanvasRenderingContext2D, planet: Planet, view: Pl
   for (const ring of planet.rings) drawRing(c, planet, ring, x, y, radius, view, false);
   if (planet.dust > 0) drawDust(c, planet, x, y, radius, turn, false);
   drawMoons(c, moons, radius, false);
+}
+
+/**
+ * A soft glow around the planet in its own color, following its shape, stronger with an
+ * atmosphere and while hovered. Lava and marble worlds glow in their bright color.
+ */
+function drawGlow(c: CanvasRenderingContext2D, planet: Planet, x: number, y: number, radius: number, hovered: number) {
+  const bright = planet.kind === 'lava' || planet.kind === 'marble';
+  const color = bright ? planet.colors.detail : planet.colors.body;
+  const strength = Math.min(1, (bright ? 0.45 : 0.3) + 0.4 * planet.glow + 0.3 * hovered);
+  if (planet.shape === 'linked' && planet.shapeAmount > 0) {
+    glowAround(c, x, y, radius * 0.6, radius * 1.4, hsl(color, 0.3 * strength, 12), hsl(color, 0, 12));
+    return;
+  }
+  // The planet's outline casts a blurred shadow in its color. The outline itself is covered
+  // by the planet, drawn over it, so only the glow shows.
+  c.save();
+  c.translate(x, y);
+  c.rotate(planet.tilt);
+  c.shadowColor = hsl(color, strength, 12);
+  c.shadowBlur = radius * (0.35 + 0.35 * planet.glow);
+  c.fillStyle = hsl(planet.colors.body);
+  tracePlanet(c, planet, radius * 0.98);
+  c.fill('evenodd');
+  c.restore();
 }
 
 function glowAround(
@@ -686,7 +706,7 @@ function drawLinked(c: CanvasRenderingContext2D, planet: Planet, x: number, y: n
 }
 
 /** A see-through glass shell around the planet, with a highlight where the light catches it. */
-function drawShell(c: CanvasRenderingContext2D, planet: Planet, x: number, y: number, radius: number, tint: string) {
+function drawShell(c: CanvasRenderingContext2D, planet: Planet, x: number, y: number, radius: number) {
   // It follows the planet's outline, a little out from it.
   const reach = radius * 1.16;
   c.save();
@@ -698,7 +718,11 @@ function drawShell(c: CanvasRenderingContext2D, planet: Planet, x: number, y: nu
   c.fillStyle = glass;
   tracePlanet(c, planet, reach);
   c.fill('evenodd');
-  c.strokeStyle = withAlpha(tint, 0.3 * planet.shell);
+  c.strokeStyle = hsl(
+    planet.kind === 'lava' || planet.kind === 'marble' ? planet.colors.detail : planet.colors.body,
+    0.35 * planet.shell,
+    16,
+  );
   c.lineWidth = radius * 0.025;
   c.stroke();
   // A highlight up to the top left, where the light catches it.

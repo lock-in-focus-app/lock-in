@@ -129,7 +129,7 @@ export interface Planet {
   monthStart: number;
   /** Focus in the month, overtime included (ms). */
   focusMs: number;
-  /** The profile with the most focus in the month, whose star color tints the planet's glow. */
+  /** The profile with the most focus in the month, whose star color some rings take. */
   topProfileId: string;
   /** How big it is, from 0 to 1. It follows the month's focus, fast at first and then slowly. */
   size: number;
