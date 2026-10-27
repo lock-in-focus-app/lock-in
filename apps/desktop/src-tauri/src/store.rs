@@ -4,7 +4,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::error::Result;
-use crate::satellites::{Satellite, SatelliteState};
+use crate::satellites::{Satellite, SatelliteRecord, SatelliteState};
 use crate::session::{EndReason, GateVisit, SessionRecord};
 
 /// A value that's kept in step with the extension, with when it last changed. The newest
@@ -248,13 +248,18 @@ impl Store {
     }
 
     /// Gate visits as (session id, visit), oldest first.
-    #[allow(dead_code)] // Read by insights and the night sky once they land.
+    #[allow(dead_code)] // Read by the night sky once it lands.
     pub fn gate_visits(&self) -> Result<Vec<(Option<String>, GateVisit)>> {
+        self.gate_visits_between(i64::MIN, i64::MAX)
+    }
+
+    /// Gate visits from `from` up to (not including) `to`, as (session id, visit), oldest first.
+    pub fn gate_visits_between(&self, from: i64, to: i64) -> Result<Vec<(Option<String>, GateVisit)>> {
         let mut statement = self.db.prepare(
             "SELECT session_id, id, recipe_id, at, destination, why, intention, continued
-             FROM gate_visits ORDER BY at",
+             FROM gate_visits WHERE at >= ?1 AND at < ?2 ORDER BY at",
         )?;
-        let rows = statement.query_map([], |row| {
+        let rows = statement.query_map(params![from, to], |row| {
             Ok((
                 row.get(0)?,
                 GateVisit {
@@ -281,14 +286,19 @@ impl Store {
     }
 
     /// The session log, oldest first.
-    #[allow(dead_code)] // Read by insights and the night sky once they land.
+    #[allow(dead_code)] // Read by the night sky once it lands.
     pub fn sessions(&self) -> Result<Vec<SessionRecord>> {
+        self.sessions_between(i64::MIN, i64::MAX)
+    }
+
+    /// The sessions that started from `from` up to (not including) `to`, oldest first.
+    pub fn sessions_between(&self, from: i64, to: i64) -> Result<Vec<SessionRecord>> {
         let mut statement = self.db.prepare(
             "SELECT id, profile_id, profile_name, started_at, ended_at, timer_minutes,
                 focused_ms, overtime_ms, idle_tail_ms, end_reason, broken
-             FROM sessions ORDER BY started_at",
+             FROM sessions WHERE started_at >= ?1 AND started_at < ?2 ORDER BY started_at",
         )?;
-        let rows = statement.query_map([], |row| {
+        let rows = statement.query_map(params![from, to], |row| {
             Ok(SessionRecord {
                 id: row.get(0)?,
                 profile_id: row.get(1)?,
@@ -304,6 +314,39 @@ impl Store {
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// The satellites launched from `from` up to (not including) `to`, and what became of
+    /// them, oldest first. What they said is left out; insights don't need it.
+    pub fn satellites_launched_between(&self, from: i64, to: i64) -> Result<Vec<SatelliteRecord>> {
+        let mut statement = self.db.prepare(
+            "SELECT launched_at, state, state_at, snoozes, tasked_at FROM satellites
+             WHERE launched_at >= ?1 AND launched_at < ?2 ORDER BY launched_at",
+        )?;
+        let rows = statement.query_map(params![from, to], |row| {
+            Ok(SatelliteRecord {
+                launched_at: row.get(0)?,
+                state: SatelliteState::parse(&row.get::<_, String>(1)?).unwrap_or(SatelliteState::Back),
+                state_at: row.get(2)?,
+                snoozes: row.get(3)?,
+                tasked_at: row.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// When the first session, gate visit or satellite was logged (epoch ms), if anything has
+    /// been.
+    pub fn first_logged_at(&self) -> Result<Option<i64>> {
+        Ok(self.db.query_row(
+            "SELECT MIN(at) FROM (
+                SELECT MIN(started_at) AS at FROM sessions
+                UNION ALL SELECT MIN(at) FROM gate_visits
+                UNION ALL SELECT MIN(launched_at) FROM satellites
+             )",
+            [],
+            |row| row.get(0),
+        )?)
     }
 }
 

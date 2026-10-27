@@ -4,7 +4,7 @@
 use tauri::AppHandle;
 
 use crate::apps::{AppRule, InstalledApp};
-use crate::engine::Snapshot;
+use crate::engine::{Activity, Snapshot};
 use crate::error::Result;
 use crate::satellites::SatelliteAction;
 use crate::session::EndReason;
@@ -92,6 +92,12 @@ pub fn act_on_satellite(app: AppHandle, id: String, action: SatelliteAction) -> 
     crate::engine(&app).act_on_satellite(&id, action, crate::now_ms())?;
     crate::satellites_changed(&app);
     Ok(())
+}
+
+/// Everything logged from `from` up to (not including) `to` (epoch ms), for the weekly report.
+#[tauri::command]
+pub fn activity(app: AppHandle, from: i64, to: i64) -> Result<Activity> {
+    crate::engine(&app).activity(from, to)
 }
 
 /// Closes the satellite box and hands focus back to the app you were in.

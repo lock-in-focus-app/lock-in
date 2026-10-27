@@ -187,9 +187,11 @@ impl SessionRecord {
     }
 }
 
-/// One trip to a redirected site, as the extension reports it.
-#[derive(Clone, Debug, PartialEq, Deserialize)]
+/// One trip to a redirected site, as the extension reports it. The extension has its own
+/// `GateVisit` type, so this one is `GateVisitRecord` in TypeScript.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "GateVisitRecord")]
 pub struct GateVisit {
     pub id: String,
     pub recipe_id: String,

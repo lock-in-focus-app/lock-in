@@ -259,6 +259,8 @@ The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly te
 
 Insights are all computed locally.
 
+**In the desktop app:** "Your week" in the header, between sessions, opens the report for the calendar week (Monday to Sunday, local time), with arrows back to earlier weeks. The app's Rust core only reads the log for a range of dates; the report itself is worked out in `packages/core/src/insights.ts`, which knows the local time zone and can be shared with the extension later. It shows focus by day and profile with the change on last week; trips to redirected sites by hour, site and "why", how often you went back to focus, and grouped intentions; what became of the satellites launched; and up to three suggestions, each only when there's enough data behind it (a reason a site keeps pulling you in, the time of day focus goes best, a timer that fits how long sessions really run). The extension on its own keeps only a week of gate visits and no session log, so it has no report yet.
+
 ## 7. Other features
 - **Session suggestions from apps** (off by default): opening an app or site you've linked to a profile, e.g. Obsidian → *Writing*, shows a small prompt: "Obsidian opened — start *Writing*?" with three choices:
   - **Start**
@@ -361,7 +363,7 @@ lock-in/
 **Phase 3: Satellites & insights**
 - ✅ Satellites (§4) in the desktop app: the Alt+P box, menu-bar capture, the post-session return, and the task list.
 - ✅ Satellites in the extension: capture from the popup and redirect pages, sent to the app when linked and kept by the extension when it runs alone.
-- Weekly report.
+- ✅ Weekly report (§6) in the desktop app.
 - Session suggestions from apps.
 
 **Phase 4: The night sky**

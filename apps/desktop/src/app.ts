@@ -1,4 +1,12 @@
-import type { AppRule, InstalledApp, SatelliteAction, Settings, Snapshot, TimerSettings } from '@lock-in/core';
+import type {
+  Activity,
+  AppRule,
+  InstalledApp,
+  SatelliteAction,
+  Settings,
+  Snapshot,
+  TimerSettings,
+} from '@lock-in/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { onUnmounted, ref } from 'vue';
@@ -49,6 +57,9 @@ export const forgetBrowser = (path: string) => invoke<void>('forget_browser', { 
 export const launchSatellite = (text: string) => invoke<boolean>('launch_satellite', { text });
 
 export const actOnSatellite = (id: string, action: SatelliteAction) => invoke<void>('act_on_satellite', { id, action });
+
+/** Everything logged from `from` up to (not including) `to` (epoch ms), for the weekly report. */
+export const activity = (from: number, to: number) => invoke<Activity>('activity', { from, to });
 
 /** Closes the satellite box and hands focus back to the app you were in. */
 export const closeCapture = () => invoke<void>('close_capture');

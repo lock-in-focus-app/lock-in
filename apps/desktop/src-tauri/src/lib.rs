@@ -503,6 +503,7 @@ pub fn run() {
             commands::launch_satellite,
             commands::act_on_satellite,
             commands::close_capture,
+            commands::activity,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lock In")

@@ -23,6 +23,22 @@ pub struct Satellite {
     pub state_at: i64,
 }
 
+/// A satellite as the weekly report sees it: when it was launched and what became of it, but
+/// not what it said.
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SatelliteRecord {
+    /// Epoch milliseconds.
+    pub launched_at: i64,
+    pub state: SatelliteState,
+    pub state_at: i64,
+    /// How many times it was sent back into orbit.
+    pub snoozes: u32,
+    /// When it first went onto the task list, if it did.
+    pub tasked_at: Option<i64>,
+}
+
 /// Where a satellite is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
