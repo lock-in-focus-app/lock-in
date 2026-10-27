@@ -136,7 +136,7 @@ async function run(action: () => Promise<void>) {
 </script>
 
 <template>
-  <NightSky :stars="skyStars" :clarity="clarity" :drift="view === 'sky'" />
+  <NightSky :stars="skyStars" :clarity="clarity" :drift="exploring" />
   <main>
     <header>
       <span class="star" aria-hidden="true">✦</span>

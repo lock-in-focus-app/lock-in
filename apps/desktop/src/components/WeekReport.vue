@@ -12,6 +12,7 @@ import {
 import { recipes } from '@lock-in/recipes';
 import { computed, ref, watch } from 'vue';
 import { activity, firstDayOfWeek } from '../app';
+import DotChart from './DotChart.vue';
 import Unfold from './Unfold.vue';
 import WeekPicker from './WeekPicker.vue';
 
@@ -83,10 +84,14 @@ const days = computed(() =>
 );
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
-const barHeight = (value: number, max: number) => (value ? `${Math.max(6, (value / max) * 100)}%` : '2px');
 
 const focus = computed(() => report.value?.focus);
-const maxDay = computed(() => Math.max(...(focus.value?.days ?? [0])));
+// The busiest day, named above its dots, when the week had any focus.
+const peakDay = computed(() => {
+  const week = focus.value?.days ?? [];
+  const most = Math.max(0, ...week);
+  return most > 0 ? `Peak: ${days.value[week.indexOf(most)]!.long}` : undefined;
+});
 const focusTrend = computed(() => {
   if (!focus.value || !hasLastWeek.value) return '';
   const change = focus.value.focusedMs - focus.value.lastWeekMs;
@@ -112,7 +117,6 @@ const endings = computed(() => {
 });
 
 const distractions = computed(() => report.value?.distractions);
-const maxHour = computed(() => Math.max(...(distractions.value?.hours ?? [0])));
 const visitsTrend = computed(() => {
   if (!distractions.value || !hasLastWeek.value) return '';
   const change = distractions.value.visits - distractions.value.lastWeekVisits;
@@ -215,13 +219,16 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
               {{ formatDuration(focus.focusedMs) }} <span class="dim">focused</span>
               <span v-if="focusTrend" class="trend">{{ focusTrend }}</span>
             </p>
-            <ol class="bars days" aria-label="Focus by day">
-              <li v-for="(ms, i) in focus.days" :key="i" :title="`${days[i]!.long}: ${formatDuration(ms)}`">
-                <span class="track"><span class="bar" :style="{ height: barHeight(ms, maxDay) }" /></span>
-                <span class="axis" aria-hidden="true">{{ days[i]!.short }}</span>
-                <span class="hidden">{{ days[i]!.long }}: {{ formatDuration(ms) }}</span>
-              </li>
-            </ol>
+            <DotChart
+              label="Focus by day"
+              :values="focus.days"
+              :titles="focus.days.map((ms, i) => `${days[i]!.long}: ${formatDuration(ms)}`)"
+              :labels="days.map((day) => day.short)"
+              :peak="peakDay"
+              :rows="6"
+              :across="3"
+              color="var(--glow)"
+            />
             <template v-if="focus.sessions">
               <p class="dim">{{ sessionsLine }}</p>
               <ul class="rows">
@@ -247,16 +254,13 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
               <p class="dim">
                 You went back to focus {{ distractions.turnedBack }} of {{ distractions.visits }} times.
               </p>
-              <ol class="bars hours" aria-label="Trips by time of day">
-                <li
-                  v-for="(count, hour) in distractions.hours"
-                  :key="hour"
-                  :title="`${formatHour(hour)}: ${plural(count, 'trip')}`"
-                >
-                  <span class="track"><span class="bar" :style="{ height: barHeight(count, maxHour) }" /></span>
-                  <span class="hidden">{{ formatHour(hour) }}: {{ plural(count, 'trip') }}</span>
-                </li>
-              </ol>
+              <DotChart
+                label="Trips by time of day"
+                :values="distractions.hours"
+                :titles="distractions.hours.map((count, hour) => `${formatHour(hour)}: ${plural(count, 'trip')}`)"
+                :rows="4"
+                color="#f2a7c3"
+              />
               <p class="hour-axis dim" aria-hidden="true">
                 <span>12am</span><span>6am</span><span>12pm</span><span>6pm</span>
               </p>
@@ -440,51 +444,6 @@ p {
   text-align: center;
 }
 
-.bars {
-  display: grid;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.days {
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-}
-
-.hours {
-  grid-template-columns: repeat(24, 1fr);
-  gap: 2px;
-}
-
-.bars li {
-  display: grid;
-  gap: 4px;
-  justify-items: center;
-}
-
-.track {
-  display: flex;
-  align-items: flex-end;
-  width: 100%;
-  height: 56px;
-}
-
-.hours .track {
-  height: 32px;
-}
-
-.bar {
-  width: 100%;
-  border-radius: 3px;
-  background: var(--glow);
-}
-
-.axis {
-  color: var(--dim);
-  font-size: 11px;
-}
-
 .hour-axis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -535,15 +494,5 @@ p {
 .error {
   color: #f0a3a3;
   font-size: 12px;
-}
-
-/* Read out by screen readers, in place of the bars. */
-.hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 </style>

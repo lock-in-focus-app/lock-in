@@ -18,9 +18,10 @@ const emit = defineEmits<{ start: [profileId: string] }>();
       class="launch"
       type="button"
       :title="`Lock in with ${profile.name}`"
+      :style="{ '--star': starColorFor(profile.id, profile.starColor) }"
       @click="emit('start', profile.id)"
     >
-      <span class="star" :style="{ color: starColorFor(profile.id, profile.starColor) }" aria-hidden="true">✦</span>
+      <span class="star" aria-hidden="true">✦</span>
       <span class="name">{{ profile.name }}</span>
       <span class="length">{{ profile.timer.minutes > 0 ? `${profile.timer.minutes} min` : 'No timer' }}</span>
     </button>
@@ -46,12 +47,25 @@ const emit = defineEmits<{ start: [profileId: string] }>();
   text-align: left;
 }
 
+/* A soft glow in the profile's star color under the pointer's sheen, brighter on hover. */
+.launch::after {
+  background:
+    radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 0%), rgb(255 255 255 / 0.08), transparent 65%),
+    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--star) 28%, transparent), transparent 70%);
+  opacity: 0.7;
+}
+
+.launch:hover::after {
+  opacity: 1;
+}
+
 .launch:active {
   scale: 0.97;
 }
 
 .star {
   grid-row: span 2;
+  color: var(--star);
   align-self: center;
   font-size: 15px;
   text-shadow: 0 0 8px currentColor;

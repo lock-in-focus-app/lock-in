@@ -7,7 +7,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 // or the haze is moving, every frame while the view drifts, and only when something changes
 // under reduced motion.
 //
-// With `drift` on (the Sky page), the sky leans and zooms gently toward the pointer, like
+// With `drift` on (exploring the Sky page), the sky leans and zooms gently toward the pointer, like
 // nudging a telescope, with brighter (nearer) stars moving a little more for depth.
 
 export interface SkyStar {
