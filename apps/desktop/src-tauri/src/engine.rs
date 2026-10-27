@@ -103,6 +103,15 @@ impl Engine {
         self.session.value.as_ref()
     }
 
+    pub fn settings(&self) -> &Settings {
+        &self.settings
+    }
+
+    /// Whether the profile with this id tames any sites, so its sessions need the extension.
+    pub fn profile_tames_sites(&self, id: &str) -> bool {
+        self.profile(id).is_some_and(Profile::tames_sites)
+    }
+
     pub fn browsers(&self) -> &[KnownBrowser] {
         &self.browsers
     }
@@ -219,11 +228,13 @@ impl Engine {
     }
 
     /// Changes the app-wide settings. While a Hard session is running, passes per week can
-    /// only go down, or it would be an easy way out.
+    /// only go down and closing browsers can't be turned off, or they'd be easy ways out.
     pub fn set_settings(&mut self, settings: Settings, now: i64) -> Result<()> {
         let settings = settings.clamped();
         let hard = self.session().and_then(|s| s.lock(now)) == Some(Strictness::Hard);
-        if hard && settings.passes_per_week > self.settings.passes_per_week {
+        let looser = settings.passes_per_week > self.settings.passes_per_week
+            || (self.settings.close_browsers && !settings.close_browsers);
+        if hard && looser {
             return Err(Error::Locked);
         }
         self.store.save(
@@ -700,6 +711,25 @@ mod tests {
                 60 * MIN,
             )
             .unwrap();
+    }
+
+    #[test]
+    fn closing_browsers_stays_on_during_a_hard_session() {
+        let mut engine = hard_engine();
+        assert!(!engine.settings().close_browsers);
+        let on = Settings {
+            close_browsers: true,
+            ..Settings::default()
+        };
+        engine.start_session("deep-work", 0).unwrap();
+        // Turning it on is stricter, so that's fine; turning it off isn't, until the timer's done.
+        engine.set_settings(on.clone(), MIN).unwrap();
+        assert!(matches!(
+            engine.set_settings(Settings::default(), 2 * MIN),
+            Err(Error::Locked)
+        ));
+        engine.set_settings(Settings::default(), 60 * MIN).unwrap();
+        assert!(!engine.settings().close_browsers);
     }
 
     #[test]

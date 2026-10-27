@@ -12,6 +12,10 @@ pub struct Settings {
     /// Minutes without keyboard or mouse input before a session ends by itself. The time away
     /// isn't counted. 0 turns this off.
     pub idle_minutes: u32,
+    /// Whether a Medium or Hard session closes a browser that runs without the extension
+    /// (and Hard counts the session as broken). Off, it only warns. Opt-in, so the app and
+    /// the extension can each be used on their own.
+    pub close_browsers: bool,
 }
 
 pub const MAX_PASSES_PER_WEEK: u32 = 14;
@@ -22,6 +26,7 @@ impl Default for Settings {
         Self {
             passes_per_week: 2,
             idle_minutes: 15,
+            close_browsers: false,
         }
     }
 }

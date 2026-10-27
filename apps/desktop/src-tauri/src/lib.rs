@@ -87,7 +87,8 @@ pub(crate) fn changed(app: &AppHandle) {
 struct BrowserTask(Mutex<Option<(String, JoinHandle<()>)>>);
 
 /// Checks every few seconds while a session runs for known browsers running without the
-/// extension, and acts on them as the session's strictness says (browsers.rs).
+/// extension, and acts on them as Settings and the session's strictness say (browsers.rs).
+/// Sessions whose profile doesn't tame any sites leave the browsers alone.
 fn watch_browsers(app: &AppHandle, session_id: Option<String>) {
     let task = app.state::<BrowserTask>();
     let mut task = task.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -108,22 +109,29 @@ fn watch_browsers(app: &AppHandle, session_id: Option<String>) {
         loop {
             tokio::time::sleep(Duration::from_millis(browsers::CHECK_EVERY_MS as u64)).await;
             let now = now_ms();
-            let (paths, lock) = {
+            let (paths, response) = {
                 let engine = engine(&app);
                 let Some(session) = engine.session().filter(|s| s.id == id) else {
                     return;
                 };
-                let paths: Vec<_> = engine.browsers().iter().map(|b| b.path.clone().into()).collect();
-                (paths, session.lock(now))
+                let paths: Vec<_> = if engine.profile_tames_sites(&session.profile_id) {
+                    engine.browsers().iter().map(|b| b.path.clone().into()).collect()
+                } else {
+                    Vec::new()
+                };
+                let close = engine.settings().close_browsers;
+                (paths, Response::to(session.lock(now), close))
             };
             if paths.is_empty() {
+                // Nothing to watch right now, e.g. every site in the profile is allowed.
+                watch = BrowserWatch::default();
                 continue;
             }
             let running = tauri::async_runtime::spawn_blocking(move || processes::running(&paths))
                 .await
                 .unwrap_or_default();
             let linked = link::linked_browsers(&app);
-            for action in watch.check(now, &running, &linked, lock) {
+            for action in watch.check(now, &running, &linked, response) {
                 act_on_browser(&app, &id, action);
             }
         }

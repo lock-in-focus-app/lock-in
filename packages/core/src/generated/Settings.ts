@@ -12,4 +12,10 @@ passesPerWeek: number,
  * Minutes without keyboard or mouse input before a session ends by itself. The time away
  * isn't counted. 0 turns this off.
  */
-idleMinutes: number, };
+idleMinutes: number, 
+/**
+ * Whether a Medium or Hard session closes a browser that runs without the extension
+ * (and Hard counts the session as broken). Off, it only warns. Opt-in, so the app and
+ * the extension can each be used on their own.
+ */
+closeBrowsers: boolean, };
