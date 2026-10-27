@@ -41,21 +41,24 @@ const expiryOptions: { id: PassExpiry; label: string }[] = [
   { id: 'nothing', label: 'Leave it open' },
 ];
 
-function save(patch: Partial<RedirectSettings>) {
-  void setRedirectSettings(props.profile.id, { ...settings.value, ...patch });
+// Each change is worked out from the saved settings at the moment it's saved, not from what's
+// on screen, so two quick changes in a row can't undo each other.
+function save(change: (current: RedirectSettings) => Partial<RedirectSettings>) {
+  void setRedirectSettings(props.profile.id, (current) => ({ ...current, ...change(current) }));
 }
 
 function saveGate(patch: Partial<GateSettings>) {
-  save({ gate: { ...settings.value.gate, ...patch } });
+  save((current) => ({ gate: { ...current.gate, ...patch } }));
 }
 
 function saveWait(patch: Partial<GateWait>) {
-  saveGate({ wait: { ...settings.value.gate.wait, ...patch } as GateWait });
+  save((current) => ({ gate: { ...current.gate, wait: { ...current.gate.wait, ...patch } as GateWait } }));
 }
 
 function toggleDestination(id: RedirectDestination, on: boolean) {
-  const current = settings.value.destinations;
-  save({ destinations: redirectDestinations.filter((d) => (d === id ? on : current.includes(d))) });
+  save((current) => ({
+    destinations: redirectDestinations.filter((d) => (d === id ? on : current.destinations.includes(d))),
+  }));
 }
 
 // A redirected visit has to land somewhere: on one of the pages, or straight on the gate.
@@ -77,14 +80,15 @@ function addLink() {
     return;
   }
   const title = linkTitle.value.trim() || url.hostname;
-  save({ links: [...settings.value.links, { id: crypto.randomUUID(), title, url: url.href }] });
+  const link = { id: crypto.randomUUID(), title, url: url.href };
+  save((current) => ({ links: [...current.links, link] }));
   linkTitle.value = '';
   linkUrl.value = '';
   linkError.value = '';
 }
 
 function removeLink(id: string) {
-  save({ links: settings.value.links.filter((link) => link.id !== id) });
+  save((current) => ({ links: current.links.filter((link) => link.id !== id) }));
 }
 </script>
 
