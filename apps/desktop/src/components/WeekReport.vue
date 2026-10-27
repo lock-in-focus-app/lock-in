@@ -4,14 +4,15 @@ import {
   formatDuration,
   formatHour,
   formatHourRange,
+  maxConstellationNameLength,
   weeklyReport,
   weekStart,
   type SiteDistractions,
   type WeeklyReport,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
-import { computed, ref, watch } from 'vue';
-import { activity, firstDayOfWeek } from '../app';
+import { computed, nextTick, ref, watch } from 'vue';
+import { activity } from '../app';
 import DotChart from './DotChart.vue';
 import Unfold from './Unfold.vue';
 import WeekPicker from './WeekPicker.vue';
@@ -19,10 +20,21 @@ import WeekPicker from './WeekPicker.vue';
 // The weekly report: focus, distractions and satellites for one calendar week, worked out on
 // this device from what the app logged. It opens on this week; the arrows go back to earlier
 // ones, as far as the log goes. Weeks start on the first day of the week set on the computer.
+// The week's constellation shows softly behind the header (drawn by the sky), named beneath it.
 
-const firstDay = ref(1);
-const ready = ref(false);
-const thisWeek = computed(() => weekStart(Date.now(), firstDay.value));
+const props = defineProps<{
+  /** The first day of the week, 0 being Sunday. */
+  firstDay: number;
+  /** The constellation of the week being shown, if it has one. */
+  constellation?: { id: string; name: string; named: boolean };
+}>();
+const emit = defineEmits<{
+  /** The start of the week being shown, whenever it changes. */
+  week: [start: number];
+  rename: [id: string, name: string];
+}>();
+
+const thisWeek = computed(() => weekStart(Date.now(), props.firstDay));
 const start = ref(thisWeek.value);
 const report = ref<WeeklyReport>();
 const firstLoggedAt = ref<number | null>(null);
@@ -34,32 +46,48 @@ watch(start, (to, from) => (slide.value = to > from ? 'week-forward' : 'week-bac
 
 const siteName = (recipeId: string) => recipes.find((r) => r.id === recipeId)?.name ?? recipeId;
 
-// Nothing is shown until the first day of the week is known, so the week doesn't jump.
-void firstDayOfWeek()
-  .catch(() => 1)
-  .then((day) => {
-    firstDay.value = day;
-    start.value = thisWeek.value;
-    ready.value = true;
-  });
+watch(start, (week) => emit('week', week), { immediate: true });
 
-watch([start, ready], async ([week, isReady]) => {
-  if (!isReady) return;
-  error.value = '';
-  try {
-    // The week before too, for the trends.
-    const logged = await activity(addWeeks(week, -1), addWeeks(week, 1));
-    // Skip it if the arrows moved on while it loaded.
-    if (week !== start.value) return;
-    firstLoggedAt.value = logged.firstLoggedAt;
-    report.value = weeklyReport(logged, week, siteName);
-  } catch (reason) {
-    error.value = `Couldn't load the week: ${String(reason)}`;
+watch(
+  start,
+  async (week) => {
+    error.value = '';
+    try {
+      // The week before too, for the trends.
+      const logged = await activity(addWeeks(week, -1), addWeeks(week, 1));
+      // Skip it if the arrows moved on while it loaded.
+      if (week !== start.value) return;
+      firstLoggedAt.value = logged.firstLoggedAt;
+      report.value = weeklyReport(logged, week, siteName);
+    } catch (reason) {
+      error.value = `Couldn't load the week: ${String(reason)}`;
+    }
+  },
+  { immediate: true },
+);
+
+// Renaming the week's constellation, in place.
+const renaming = ref(false);
+const draft = ref('');
+const nameInput = ref<HTMLInputElement>();
+async function startRenaming() {
+  draft.value = props.constellation?.named ? props.constellation.name : '';
+  renaming.value = true;
+  await nextTick();
+  nameInput.value?.focus();
+}
+function saveName() {
+  if (!renaming.value) return;
+  renaming.value = false;
+  const constellation = props.constellation;
+  if (constellation && draft.value.trim() !== (constellation.named ? constellation.name : '')) {
+    emit('rename', constellation.id, draft.value);
   }
-});
+}
+watch(start, () => (renaming.value = false));
 
 const firstWeek = computed(() =>
-  firstLoggedAt.value === null ? thisWeek.value : weekStart(firstLoggedAt.value, firstDay.value),
+  firstLoggedAt.value === null ? thisWeek.value : weekStart(firstLoggedAt.value, props.firstDay),
 );
 // No trends against a week before anything was logged.
 const hasLastWeek = computed(() => start.value > firstWeek.value);
@@ -151,7 +179,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 </script>
 
 <template>
-  <section v-if="ready" class="week" aria-labelledby="week-title">
+  <section class="week" aria-labelledby="week-title">
     <nav class="weeks" aria-label="Weeks">
       <button
         type="button"
@@ -185,6 +213,25 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
         ›
       </button>
     </nav>
+    <Transition name="fade" mode="out-in">
+      <div v-if="constellation" :key="constellation.id" class="constellation">
+        <form v-if="renaming" class="rename" @submit.prevent="saveName">
+          <input
+            ref="nameInput"
+            v-model="draft"
+            :maxlength="maxConstellationNameLength"
+            :placeholder="constellation.named ? 'A made-up name' : constellation.name"
+            aria-label="This week's constellation"
+            @keydown.esc.prevent="renaming = false"
+            @blur="saveName"
+          />
+        </form>
+        <button v-else type="button" class="name" title="Name this week's constellation" @click="startRenaming">
+          <span class="star" aria-hidden="true">✦</span> {{ constellation.name }}
+          <span class="edit">Rename</span>
+        </button>
+      </div>
+    </Transition>
     <Unfold>
       <div v-if="picking" class="picker-space">
         <WeekPicker
@@ -304,6 +351,75 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 </template>
 
 <style scoped>
+.constellation {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.name {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: none;
+  color: var(--starlight);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 10px rgb(6 9 20 / 0.9);
+  transition: background 300ms;
+}
+
+.name .star {
+  color: var(--glow);
+}
+
+.edit {
+  margin-left: 4px;
+  color: var(--dim);
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+.name:hover,
+.name:focus-visible {
+  background: rgb(255 255 255 / 0.07);
+}
+
+.name:hover .edit,
+.name:focus-visible .edit {
+  opacity: 1;
+}
+
+.rename input {
+  width: 220px;
+  padding: 3px 10px;
+  border: 1px solid rgb(205 215 255 / 0.2);
+  border-radius: 999px;
+  background: var(--sky-raised);
+  color: var(--starlight);
+  font: inherit;
+  font-size: 12px;
+  text-align: center;
+  outline: none;
+  transition:
+    border-color 300ms,
+    box-shadow 300ms;
+}
+
+.rename input:focus {
+  border-color: rgb(205 215 255 / 0.4);
+  box-shadow: 0 0 12px -2px rgb(160 180 255 / 0.35);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 400ms ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 .picker-space {
   padding-top: 12px;
 }

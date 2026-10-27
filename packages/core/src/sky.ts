@@ -37,9 +37,6 @@ export interface Star {
   /** Time focused before timers were done, and after. Idle tails aren't counted. */
   focusedMs: number;
   overtimeMs: number;
-  /** Where it sits, from 0 to 1 across and down the sky. Fixed once the star forms. */
-  x: number;
-  y: number;
 }
 
 /**
@@ -64,7 +61,6 @@ export function stars(sessions: readonly SessionRecord[]): Star[] {
       last.focusedMs += session.focusedMs;
       last.overtimeMs += session.overtimeMs;
     } else {
-      const random = seeded(session.id);
       formed.push({
         id: session.id,
         profileId: session.profileId,
@@ -73,9 +69,6 @@ export function stars(sessions: readonly SessionRecord[]): Star[] {
         endedAt: session.endedAt,
         focusedMs: session.focusedMs,
         overtimeMs: session.overtimeMs,
-        // Kept off the edges, so a star's glow isn't cut in half.
-        x: 0.06 + random() * 0.88,
-        y: 0.06 + random() * 0.88,
       });
     }
   }
@@ -177,7 +170,7 @@ export function newStarColor(profiles: readonly Profile[]): string {
 }
 
 /** A 32-bit FNV-1a hash of a string. */
-function hash(text: string): number {
+export function hash(text: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);
@@ -187,7 +180,7 @@ function hash(text: string): number {
 }
 
 /** Random numbers from 0 to 1 that are always the same for the same seed (mulberry32). */
-function seeded(seed: string): () => number {
+export function seeded(seed: string): () => number {
   let state = hash(seed);
   return () => {
     state = (state + 0x6d2b79f5) | 0;

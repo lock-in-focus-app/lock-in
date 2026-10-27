@@ -47,19 +47,6 @@ describe('stars', () => {
     expect(sky[0]).toMatchObject({ profileId: 'deep-work', sessionIds: [earlier.id], focusedMs: 50 * MIN });
   });
 
-  it('places a star in the same spot every time, away from the edges', () => {
-    const one = session(0, 50);
-    const [first] = stars([one]);
-    const [again] = stars([{ ...one }]);
-    expect(again).toEqual(first);
-    for (const star of stars(Array.from({ length: 200 }, (_, i) => session(i * 100, 40)))) {
-      expect(star.x).toBeGreaterThanOrEqual(0.06);
-      expect(star.x).toBeLessThanOrEqual(0.94);
-      expect(star.y).toBeGreaterThanOrEqual(0.06);
-      expect(star.y).toBeLessThanOrEqual(0.94);
-    }
-  });
-
   it('joins short back-to-back sessions into one star that grows', () => {
     const first = session(0, 20);
     const second = session(25, 15, { overtimeMs: 2 * MIN });

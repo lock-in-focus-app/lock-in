@@ -508,6 +508,8 @@ pub fn run() {
             commands::close_capture,
             commands::activity,
             commands::session_log,
+            commands::constellation_names,
+            commands::name_constellation,
             commands::add_sample_data,
             commands::remove_sample_data,
             commands::first_weekday,
