@@ -357,6 +357,7 @@ lock-in/
 - Streaks and stardust (earned and shown; nothing to spend it on yet).
 
 **Phase 5: Polish & release**
+- UI redesign: the floating-card look from the reference images. Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.
