@@ -1,6 +1,7 @@
 use serde::Serialize;
 use ts_rs::TS;
 
+use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
 use crate::session::{EndReason, GateVisit, Profile, Session, SessionRecord, starter_profiles};
 use crate::settings::Settings;
@@ -10,6 +11,8 @@ use crate::timer::{Strictness, TimerSettings};
 const PROFILES: &str = "profiles";
 const ACTIVE_SESSION: &str = "activeSession";
 const SETTINGS: &str = "settings";
+const BROWSERS: &str = "browsers";
+const BROKEN_SESSION: &str = "brokenSession";
 
 /// Emergency passes come back a week after they're used.
 const PASS_WEEK_MS: i64 = 7 * 24 * 60 * 60_000;
@@ -23,6 +26,10 @@ pub struct Engine {
     settings: Settings,
     /// When each emergency pass was used (epoch ms).
     pass_uses: Vec<i64>,
+    /// The browsers that have linked to the app.
+    browsers: Vec<KnownBrowser>,
+    /// The id of the running session, if it counts as broken.
+    broken_session: Option<String>,
 }
 
 /// Everything the UI shows, sent whenever it changes.
@@ -35,6 +42,8 @@ pub struct Snapshot {
     pub settings: Settings,
     /// Emergency passes left for the last 7 days.
     pub passes_left: u32,
+    /// The browsers that have linked to the app, which are watched during sessions.
+    pub browsers: Vec<KnownBrowser>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -56,6 +65,8 @@ pub struct ActiveSession {
     /// Epoch milliseconds.
     pub started_at: i64,
     pub timer: Option<TimerSettings>,
+    /// A browser had to be closed during this Hard session for running without the extension.
+    pub broken: bool,
 }
 
 impl Engine {
@@ -75,17 +86,29 @@ impl Engine {
             .map(|s: Synced<Settings>| s.value)
             .unwrap_or_default();
         let pass_uses = store.pass_uses()?;
+        let browsers = store.load(BROWSERS)?.map(|s| s.value).unwrap_or_default();
+        let broken_session = store.load(BROKEN_SESSION)?.and_then(|s| s.value);
         Ok(Self {
             store,
             profiles,
             session,
             settings,
             pass_uses,
+            browsers,
+            broken_session,
         })
     }
 
     pub fn session(&self) -> Option<&Session> {
         self.session.value.as_ref()
+    }
+
+    pub fn browsers(&self) -> &[KnownBrowser] {
+        &self.browsers
+    }
+
+    fn is_broken(&self, session: &Session) -> bool {
+        self.broken_session.as_deref() == Some(session.id.as_str())
     }
 
     fn profile(&self, id: &str) -> Option<&Profile> {
@@ -116,9 +139,11 @@ impl Engine {
                 profile_name: self.profile_name(&s.profile_id),
                 started_at: s.started_at,
                 timer: s.timer.clone(),
+                broken: self.is_broken(s),
             }),
             settings: self.settings.clone(),
             passes_left: self.passes_left(now),
+            browsers: self.browsers.clone(),
         }
     }
 
@@ -162,7 +187,8 @@ impl Engine {
             EndReason::EmergencyPass if self.passes_left(now) == 0 => return Err(Error::NoPassesLeft),
             reason => reason,
         };
-        let record = SessionRecord::new(session, &self.profile_name(&session.profile_id), now, reason);
+        let mut record = SessionRecord::new(session, &self.profile_name(&session.profile_id), now, reason);
+        record.broken = self.is_broken(session);
         let synced = Synced {
             value: None,
             updated_at: now,
@@ -181,7 +207,8 @@ impl Engine {
         let Some(session) = self.session().filter(|s| s.id == session_id) else {
             return Ok(None);
         };
-        let record = SessionRecord::idle(session, &self.profile_name(&session.profile_id), last_input, now);
+        let mut record = SessionRecord::idle(session, &self.profile_name(&session.profile_id), last_input, now);
+        record.broken = self.is_broken(session);
         let synced = Synced {
             value: None,
             updated_at: now,
@@ -208,6 +235,60 @@ impl Engine {
         )?;
         self.settings = settings;
         Ok(())
+    }
+
+    /// Remembers a browser that linked to the app, so it's watched during sessions. Returns
+    /// whether it's new (or renamed).
+    pub fn remember_browser(&mut self, browser: KnownBrowser, now: i64) -> Result<bool> {
+        if self.browsers.contains(&browser) {
+            return Ok(false);
+        }
+        let mut browsers = self.browsers.clone();
+        browsers.retain(|b| b.path != browser.path);
+        browsers.push(browser);
+        self.save_browsers(browsers, now)?;
+        Ok(true)
+    }
+
+    /// Stops watching a browser, e.g. one that's no longer used. Only between sessions, or
+    /// forgetting it would be a way around the session.
+    pub fn forget_browser(&mut self, path: &str, now: i64) -> Result<()> {
+        if self.session().is_some() {
+            return Err(Error::SessionRunning);
+        }
+        let mut browsers = self.browsers.clone();
+        browsers.retain(|b| b.path != path);
+        self.save_browsers(browsers, now)
+    }
+
+    fn save_browsers(&mut self, browsers: Vec<KnownBrowser>, now: i64) -> Result<()> {
+        self.store.save(
+            BROWSERS,
+            &Synced {
+                value: &browsers,
+                updated_at: now,
+            },
+        )?;
+        self.browsers = browsers;
+        Ok(())
+    }
+
+    /// Marks the session with this id as broken, if it's still running. Returns whether
+    /// that's new.
+    pub fn break_session(&mut self, session_id: &str, now: i64) -> Result<bool> {
+        let running = self.session().is_some_and(|s| s.id == session_id);
+        if !running || self.broken_session.as_deref() == Some(session_id) {
+            return Ok(false);
+        }
+        self.store.save(
+            BROKEN_SESSION,
+            &Synced {
+                value: Some(session_id),
+                updated_at: now,
+            },
+        )?;
+        self.broken_session = Some(session_id.to_owned());
+        Ok(true)
     }
 
     /// Changes a profile's timer, for every future session that uses it.
@@ -289,7 +370,8 @@ impl Engine {
                 Some(previous) => {
                     let name = self.profile_name(&previous.profile_id);
                     let ended_at = incoming.updated_at.min(now);
-                    let record = SessionRecord::new(previous, &name, ended_at, EndReason::Stopped);
+                    let mut record = SessionRecord::new(previous, &name, ended_at, EndReason::Stopped);
+                    record.broken = self.is_broken(previous);
                     self.store.end_session(&record, ACTIVE_SESSION, &incoming)?;
                 }
                 None => self.store.save(ACTIVE_SESSION, &incoming)?,
@@ -674,6 +756,56 @@ mod tests {
         assert_eq!((record.focused_ms, record.idle_tail_ms), (5 * MIN, 15 * MIN));
         assert_eq!(engine.session(), None);
         assert_eq!(engine.session_log().unwrap(), vec![record]);
+    }
+
+    fn chrome(name: &str) -> KnownBrowser {
+        KnownBrowser {
+            name: name.into(),
+            path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome".into(),
+        }
+    }
+
+    #[test]
+    fn remembers_browsers_until_forgotten_between_sessions() {
+        let mut engine = engine();
+        assert!(engine.remember_browser(chrome("Google Chrome"), 1).unwrap());
+        assert!(!engine.remember_browser(chrome("Google Chrome"), 2).unwrap());
+        // Same browser, new name: replaced, not added.
+        assert!(engine.remember_browser(chrome("Chrome"), 3).unwrap());
+        assert_eq!(engine.snapshot(3).browsers, vec![chrome("Chrome")]);
+
+        engine.start_session("deep-work", 4).unwrap();
+        assert!(matches!(
+            engine.forget_browser(&chrome("Chrome").path, 5),
+            Err(Error::SessionRunning)
+        ));
+        engine.end_session(5, EndReason::Stopped).unwrap();
+        engine.forget_browser(&chrome("Chrome").path, 6).unwrap();
+        assert_eq!(engine.browsers(), &[]);
+
+        engine.remember_browser(chrome("Chrome"), 7).unwrap();
+        let reloaded = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        assert_eq!(reloaded.browsers(), &[chrome("Chrome")]);
+    }
+
+    #[test]
+    fn logs_a_broken_session_as_broken() {
+        let mut engine = hard_engine();
+        let id = engine.start_session("deep-work", 0).unwrap().id.clone();
+        assert!(!engine.break_session("other", MIN).unwrap());
+        assert!(engine.break_session(&id, MIN).unwrap());
+        assert!(!engine.break_session(&id, 2 * MIN).unwrap());
+        assert!(engine.snapshot(2 * MIN).session.unwrap().broken);
+
+        // Still broken after a restart, and in the log once it ends.
+        let mut engine = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        let record = engine.end_session(60 * MIN, EndReason::Stopped).unwrap();
+        assert!(record.broken);
+        assert_eq!(engine.session_log().unwrap(), vec![record]);
+
+        // The next session starts whole.
+        engine.start_session("deep-work", 61 * MIN).unwrap();
+        assert!(!engine.snapshot(61 * MIN).session.unwrap().broken);
     }
 
     #[test]

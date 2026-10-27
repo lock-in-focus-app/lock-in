@@ -112,6 +112,9 @@ pub struct SessionRecord {
     /// towards focus or overtime. Only sessions that end for being idle have one.
     pub idle_tail_ms: i64,
     pub end_reason: EndReason,
+    /// Whether a browser had to be closed during a Hard session for running without the
+    /// extension. A broken session won't earn rewards.
+    pub broken: bool,
 }
 
 impl SessionRecord {
@@ -147,6 +150,7 @@ impl SessionRecord {
             overtime_ms: counted - split,
             idle_tail_ms: ended_at - counted,
             end_reason,
+            broken: false,
         }
     }
 }

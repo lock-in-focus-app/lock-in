@@ -5,4 +5,8 @@ export type ActiveSession = { id: string, profileId: string, profileName: string
 /**
  * Epoch milliseconds.
  */
-startedAt: number, timer: TimerSettings | null, };
+startedAt: number, timer: TimerSettings | null, 
+/**
+ * A browser had to be closed during this Hard session for running without the extension.
+ */
+broken: boolean, };

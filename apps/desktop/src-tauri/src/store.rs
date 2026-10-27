@@ -57,6 +57,9 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX gate_visits_at ON gate_visits (at);
 "#,
+    r#"
+    ALTER TABLE sessions ADD COLUMN broken INTEGER NOT NULL DEFAULT 0;
+"#,
 ];
 
 impl Store {
@@ -108,8 +111,8 @@ impl Store {
         let tx = self.db.transaction()?;
         tx.execute(
             "INSERT OR REPLACE INTO sessions (id, profile_id, profile_name, started_at, ended_at, timer_minutes,
-                focused_ms, overtime_ms, idle_tail_ms, end_reason)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                focused_ms, overtime_ms, idle_tail_ms, end_reason, broken)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 record.id,
                 record.profile_id,
@@ -121,6 +124,7 @@ impl Store {
                 record.overtime_ms,
                 record.idle_tail_ms,
                 record.end_reason.as_str(),
+                record.broken,
             ],
         )?;
         save(&tx, key, synced)?;
@@ -188,7 +192,7 @@ impl Store {
     pub fn sessions(&self) -> Result<Vec<SessionRecord>> {
         let mut statement = self.db.prepare(
             "SELECT id, profile_id, profile_name, started_at, ended_at, timer_minutes,
-                focused_ms, overtime_ms, idle_tail_ms, end_reason
+                focused_ms, overtime_ms, idle_tail_ms, end_reason, broken
              FROM sessions ORDER BY started_at",
         )?;
         let rows = statement.query_map([], |row| {
@@ -203,6 +207,7 @@ impl Store {
                 overtime_ms: row.get(7)?,
                 idle_tail_ms: row.get(8)?,
                 end_reason: EndReason::parse(&row.get::<_, String>(9)?).unwrap_or(EndReason::Stopped),
+                broken: row.get(10)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
