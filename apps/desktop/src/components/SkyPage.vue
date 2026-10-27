@@ -1,0 +1,215 @@
+<script setup lang="ts">
+import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
+import { computed, ref, watch } from 'vue';
+import LaunchDock from './LaunchDock.vue';
+import SatelliteLaunch from './SatelliteLaunch.vue';
+import SatellitesBack from './SatellitesBack.vue';
+import SatellitesView from './SatellitesView.vue';
+import SessionView from './SessionView.vue';
+import Unfold from './Unfold.vue';
+
+// The home page (PLAN §5): the sky, with the profiles along the bottom to lock in with, the
+// running session floating over it, and satellites. Explore clears everything away so the sky
+// is on its own; it all drifts toward you as it fades, and comes back the same way.
+const props = defineProps<{
+  profiles: ProfileSummary[];
+  session: ActiveSession | null;
+  passesLeft: number;
+  satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
+  starCount: number;
+  stardust: number;
+}>();
+const exploring = defineModel<boolean>('exploring', { required: true });
+const emit = defineEmits<{
+  start: [profileId: string];
+  end: [];
+  pass: [];
+  launch: [text: string];
+  act: [id: string, action: SatelliteAction];
+}>();
+
+const showingTasks = ref(false);
+const taskCount = computed(() => props.satellites.orbiting.length + props.satellites.tasks.length);
+const hasTasks = computed(() => taskCount.value > 0 || props.satellites.done.length > 0);
+// Tasks wait while you focus, so they don't pull you back in.
+watch(
+  () => props.session,
+  (session) => session && (showingTasks.value = false),
+);
+</script>
+
+<template>
+  <div class="sky-page">
+    <Transition name="puff">
+      <div v-show="!exploring" class="layer">
+        <SatellitesBack
+          v-if="!session && satellites.back.length"
+          :satellites="satellites.back"
+          @act="(id, action) => emit('act', id, action)"
+        />
+
+        <div class="middle">
+          <SessionView
+            v-if="session"
+            :session="session"
+            :passes-left="passesLeft"
+            @end="emit('end')"
+            @pass="emit('pass')"
+          />
+        </div>
+
+        <div class="bottom">
+          <div class="bar">
+            <span class="stats">
+              <template v-if="starCount">
+                {{ starCount }} {{ starCount === 1 ? 'star' : 'stars' }} · {{ stardust.toLocaleString() }} stardust
+              </template>
+              <template v-else>Your first star forms after five minutes of focus.</template>
+            </span>
+            <button
+              v-if="!session && hasTasks"
+              class="text-button"
+              type="button"
+              :aria-expanded="showingTasks"
+              @click="showingTasks = !showingTasks"
+            >
+              Tasks<template v-if="taskCount"> · {{ taskCount }}</template>
+            </button>
+            <button class="text-button" type="button" @click="exploring = true">Explore</button>
+          </div>
+          <Unfold>
+            <div v-if="showingTasks" class="tasks">
+              <SatellitesView
+                :orbiting="satellites.orbiting"
+                :tasks="satellites.tasks"
+                :done="satellites.done"
+                @act="(id, action) => emit('act', id, action)"
+              />
+            </div>
+          </Unfold>
+          <!-- During a session, only how many are in orbit, not what they say. -->
+          <SatelliteLaunch
+            :session-running="!!session"
+            :in-orbit="session ? satellites.orbiting.length : 0"
+            @launch="emit('launch', $event)"
+          />
+          <LaunchDock v-if="!session" :profiles="profiles" @start="emit('start', $event)" />
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="fade">
+      <div v-if="exploring" class="explore">
+        <span class="stats">
+          {{ starCount }} {{ starCount === 1 ? 'star' : 'stars' }} · {{ stardust.toLocaleString() }} stardust
+        </span>
+        <button class="text-button" type="button" @click="exploring = false">Done exploring</button>
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<style scoped>
+.sky-page {
+  position: relative;
+  /* The window below the header, so the dock sits at the bottom of the sky. */
+  min-height: calc(100vh - 92px);
+  display: flex;
+}
+
+.layer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transform-origin: 50% 60%;
+}
+
+.middle {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+.bottom {
+  display: grid;
+  gap: 10px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stats {
+  margin-right: auto;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.text-button {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: none;
+  color: var(--dim);
+  font-size: 12px;
+  transition:
+    background 300ms,
+    color 300ms;
+}
+
+.text-button:hover,
+.text-button[aria-expanded='true'] {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--starlight);
+}
+
+.tasks :deep(section:first-child) {
+  margin-top: 0;
+}
+
+.explore {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.puff-enter-active,
+.puff-leave-active {
+  transition:
+    opacity 700ms ease,
+    transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter 700ms ease;
+}
+
+.puff-enter-from,
+.puff-leave-to {
+  opacity: 0;
+  transform: scale(1.12);
+  filter: blur(6px);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 700ms ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .puff-enter-from,
+  .puff-leave-to {
+    transform: none;
+    filter: none;
+  }
+}
+</style>

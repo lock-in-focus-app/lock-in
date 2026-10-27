@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AppRule, SatelliteAction, SatelliteState, SessionRecord, Settings, TimerSettings } from '@lock-in/core';
 import { sessionSoFar, skyClarity, starColorFor, stardust, starMagnitude, stars, starSparkle } from '@lock-in/core';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
   actOnSatellite,
   addSampleData,
@@ -21,37 +21,30 @@ import {
 } from './app';
 import NightSky, { type SkyStar } from './components/NightSky.vue';
 import ProfileList from './components/ProfileList.vue';
-import SatelliteLaunch from './components/SatelliteLaunch.vue';
-import SatellitesBack from './components/SatellitesBack.vue';
-import SatellitesView from './components/SatellitesView.vue';
-import SessionView from './components/SessionView.vue';
 import SettingsView from './components/SettingsView.vue';
+import SkyPage from './components/SkyPage.vue';
 import WeekReport from './components/WeekReport.vue';
 
 const snapshot = useSnapshot();
 const error = ref('');
-// The dashboard, or Settings or the weekly report in its place, or just the sky.
-type View = 'dashboard' | 'settings' | 'week' | 'sky';
-const view = ref<View>('dashboard');
+// The Sky is home (PLAN §5). Profiles only edits them; sessions start from the Sky.
+type View = 'sky' | 'profiles' | 'week' | 'settings';
+const view = ref<View>('sky');
+// Explore clears everything off the Sky page, so the sky is on its own.
+const exploring = ref(false);
+watch(view, (to) => to !== 'sky' && (exploring.value = false));
 const tabs = computed(() => {
   const all: { view: View; label: string }[] = [
-    { view: 'dashboard', label: 'Dashboard' },
     { view: 'sky', label: 'Sky' },
+    { view: 'profiles', label: 'Profiles' },
     { view: 'week', label: 'Your week' },
     { view: 'settings', label: 'Settings' },
   ];
   // The report waits between sessions.
   return all.filter((tab) => tab.view !== 'week' || !snapshot.value?.session);
 });
-// The page under the tabs. A running session takes the dashboard's place, and the Sky keeps
-// whatever page was there, to come back to.
-const pane = ref<'home' | 'session' | 'week' | 'settings'>('home');
-watchEffect(() => {
-  if (view.value === 'sky') return;
-  pane.value = view.value === 'dashboard' ? (snapshot.value?.session ? 'session' : 'home') : view.value;
-});
 // Pages slide in from the side their tab is on.
-const order: View[] = ['dashboard', 'sky', 'week', 'settings'];
+const order: View[] = ['sky', 'profiles', 'week', 'settings'];
 const slide = ref<'slide-forward' | 'slide-back'>('slide-forward');
 watch(view, (to, from) => (slide.value = order.indexOf(to) >= order.indexOf(from) ? 'slide-forward' : 'slide-back'));
 
@@ -66,11 +59,11 @@ watch([view, tabs], () => void nextTick(placePill));
 const tabBarResized = new ResizeObserver(placePill);
 onMounted(() => tabBar.value && tabBarResized.observe(tabBar.value));
 onUnmounted(() => tabBarResized.disconnect());
-// The report waits between sessions, so starting one goes back to the dashboard.
+// The report waits between sessions, so starting one goes back to the Sky.
 watch(
   () => snapshot.value?.session?.id,
   (id) => {
-    if (id && view.value === 'week') view.value = 'dashboard';
+    if (id && view.value === 'week') view.value = 'sky';
   },
 );
 
@@ -104,16 +97,16 @@ const skyStars = computed<SkyStar[]>(() => {
   }));
 });
 const totalStardust = computed(() => stardust(sessions.value));
-// The Sky view shows it clear; otherwise it's hazy between sessions.
+// Exploring shows it clear; otherwise it's hazy between sessions.
 const clarity = computed(() =>
-  view.value === 'sky' ? 1 : skyClarity(now.value, !!snapshot.value?.session, log.value[log.value.length - 1]),
+  exploring.value ? 1 : skyClarity(now.value, !!snapshot.value?.session, log.value[log.value.length - 1]),
 );
 
-const closeSky = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && view.value === 'sky') view.value = 'dashboard';
+const stopExploring = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') exploring.value = false;
 };
-onMounted(() => window.addEventListener('keydown', closeSky));
-onUnmounted(() => window.removeEventListener('keydown', closeSky));
+onMounted(() => window.addEventListener('keydown', stopExploring));
+onUnmounted(() => window.removeEventListener('keydown', stopExploring));
 
 const sampleData = (action: 'add' | 'remove') =>
   run(async () => {
@@ -121,12 +114,14 @@ const sampleData = (action: 'add' | 'remove') =>
     await loadLog();
   });
 
-const satellites = (state: SatelliteState) => snapshot.value?.satellites.filter((s) => s.state === state) ?? [];
-const back = computed(() => satellites('back'));
-const orbiting = computed(() => satellites('orbiting'));
-const tasks = computed(() => satellites('task'));
-// The latest first. The core only sends tasks ticked off in the last day.
-const done = computed(() => satellites('done').sort((a, b) => b.stateAt - a.stateAt));
+const inState = (state: SatelliteState) => snapshot.value?.satellites.filter((s) => s.state === state) ?? [];
+const satellites = computed(() => ({
+  back: inState('back'),
+  orbiting: inState('orbiting'),
+  tasks: inState('task'),
+  // The latest first. The core only sends tasks ticked off in the last day.
+  done: inState('done').sort((a, b) => b.stateAt - a.stateAt),
+}));
 const launch = (text: string) => run(async () => void (await launchSatellite(text)));
 const act = (id: string, action: SatelliteAction) => run(() => actOnSatellite(id, action));
 
@@ -141,7 +136,7 @@ async function run(action: () => Promise<void>) {
 </script>
 
 <template>
-  <NightSky :stars="skyStars" :clarity="clarity" />
+  <NightSky :stars="skyStars" :clarity="clarity" :drift="view === 'sky'" />
   <main>
     <header>
       <span class="star" aria-hidden="true">✦</span>
@@ -161,60 +156,44 @@ async function run(action: () => Promise<void>) {
       </nav>
     </header>
 
-    <!-- The cards drift toward you as they fade, leaving just the sky, and come back the same way. -->
-    <Transition name="puff">
-      <div v-show="view !== 'sky'" class="deck">
-        <Transition :name="slide" mode="out-in">
-          <div v-if="snapshot" :key="pane" class="pane">
-            <SettingsView
-              v-if="pane === 'settings'"
-              :settings="snapshot.settings"
-              :passes-left="snapshot.passesLeft"
-              :browsers="snapshot.browsers"
-              :session-running="!!snapshot.session"
-              @update:settings="(settings: Settings) => run(() => setSettings(settings))"
-              @forget-browser="(path: string) => run(() => forgetBrowser(path))"
-              @sample-data="sampleData"
-              @close="view = 'dashboard'"
-            />
-            <WeekReport v-else-if="pane === 'week'" />
-            <template v-else-if="pane === 'session' && snapshot.session">
-              <SessionView
-                :session="snapshot.session"
-                :passes-left="snapshot.passesLeft"
-                @end="run(endSession)"
-                @pass="run(spendEmergencyPass)"
-              />
-              <!-- Only how many are in orbit, not what they say, so they don't pull you back in. -->
-              <SatelliteLaunch class="satellites" session-running :in-orbit="orbiting.length" @launch="launch" />
-            </template>
-            <template v-else>
-              <!-- Satellites wait here after a session, with nothing popping up to break the flow. -->
-              <SatellitesBack v-if="back.length" :satellites="back" @act="act" />
-              <ProfileList
-                :profiles="snapshot.profiles"
-                :can-hide-apps="snapshot.canHideApps"
-                @start="(id: string) => run(() => startSession(id))"
-                @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
-                @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
-                @set-star-color="(id: string, color: string) => run(() => setProfileStarColor(id, color))"
-              />
-              <SatelliteLaunch class="satellites" :session-running="false" :in-orbit="0" @launch="launch" />
-              <SatellitesView :orbiting="orbiting" :tasks="tasks" :done="done" @act="act" />
-            </template>
-          </div>
-        </Transition>
+    <Transition :name="slide" mode="out-in">
+      <div v-if="snapshot" :key="view">
+        <SkyPage
+          v-if="view === 'sky'"
+          v-model:exploring="exploring"
+          :profiles="snapshot.profiles"
+          :session="snapshot.session"
+          :passes-left="snapshot.passesLeft"
+          :satellites="satellites"
+          :star-count="skyStars.length"
+          :stardust="totalStardust"
+          @start="(id: string) => run(() => startSession(id))"
+          @end="run(endSession)"
+          @pass="run(spendEmergencyPass)"
+          @launch="launch"
+          @act="act"
+        />
+        <ProfileList
+          v-else-if="view === 'profiles'"
+          :profiles="snapshot.profiles"
+          :can-hide-apps="snapshot.canHideApps"
+          @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
+          @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
+          @set-star-color="(id: string, color: string) => run(() => setProfileStarColor(id, color))"
+        />
+        <WeekReport v-else-if="view === 'week'" />
+        <SettingsView
+          v-else
+          :settings="snapshot.settings"
+          :passes-left="snapshot.passesLeft"
+          :browsers="snapshot.browsers"
+          :session-running="!!snapshot.session"
+          @update:settings="(settings: Settings) => run(() => setSettings(settings))"
+          @forget-browser="(path: string) => run(() => forgetBrowser(path))"
+          @sample-data="sampleData"
+          @close="view = 'sky'"
+        />
       </div>
-    </Transition>
-
-    <Transition name="fade">
-      <p v-if="view === 'sky'" class="sky-stats">
-        <template v-if="skyStars.length">
-          {{ skyStars.length }} {{ skyStars.length === 1 ? 'star' : 'stars' }} ·
-          {{ totalStardust.toLocaleString() }} stardust
-        </template>
-        <template v-else>Your first star forms after five minutes of focus.</template>
-      </p>
     </Transition>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -286,25 +265,6 @@ h1 {
   color: var(--starlight);
 }
 
-.deck {
-  transform-origin: 50% 30%;
-}
-
-.puff-enter-active,
-.puff-leave-active {
-  transition:
-    opacity 700ms ease,
-    transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    filter 700ms ease;
-}
-
-.puff-enter-from,
-.puff-leave-to {
-  opacity: 0;
-  transform: scale(1.12);
-  filter: blur(6px);
-}
-
 .slide-forward-enter-active,
 .slide-back-enter-active {
   transition:
@@ -335,30 +295,7 @@ h1 {
   filter: blur(3px);
 }
 
-.sky-stats {
-  position: fixed;
-  right: 0;
-  bottom: 24px;
-  left: 0;
-  margin: 0;
-  color: var(--dim);
-  font-size: 12px;
-  text-align: center;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 700ms ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .puff-enter-from,
-  .puff-leave-to,
   .slide-forward-enter-from,
   .slide-forward-leave-to,
   .slide-back-enter-from,
@@ -370,16 +307,6 @@ h1 {
   .pill {
     transition: none;
   }
-}
-
-.view:hover,
-.view[aria-pressed='true'] {
-  background: var(--sky-raised);
-  color: var(--starlight);
-}
-
-.satellites {
-  margin-top: 32px;
 }
 
 .error {
