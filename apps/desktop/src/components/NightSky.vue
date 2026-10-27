@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { skyPlaces, type Planet } from '@lock-in/core';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
-import { drawPlanet } from '../planet';
+import { forgetPlanets, stampPlanet } from '../planet';
 
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
 // from the reward engine (packages/core/src/constellations.ts); this only draws them, with light
@@ -46,7 +46,7 @@ export interface SkyConstellation {
 
 /**
  * A month's planet, with what to show beneath it on hover (its month and focus time) and the star
- * color of its month's top profile, which tints its glow.
+ * color of its month's top profile, which some rings take.
  */
 export type SkyPlanet = Planet & { label: string; tint: string };
 
@@ -180,12 +180,12 @@ function targets(width: number, height: number): Map<string, Place> {
       const months = monthNumber(planet.monthStart) - month;
       const radius = Math.min(width, height) * 0.05 * (0.45 + 0.55 * planet.size);
       places.set(planetKey(planet), {
-        x: Math.min(0.88, 1 - (radius * 2.2) / width) + months * 0.9,
+        x: Math.min(0.88, 1 - (radius * 2.8) / width) + months * 0.9,
         y: (128 * scale) / height,
         unit: radius / width,
-        alpha: months === 0 ? 0.55 : 0,
+        alpha: months === 0 ? 0.8 : 0,
         label: 0,
-        lift: 0,
+        lift: months === 0 ? 1 : 0,
       });
     }
     return places;
@@ -239,10 +239,10 @@ function targets(width: number, height: number): Map<string, Place> {
     const age = planets.length - 1 - i;
     const angle = -0.3 * Math.PI + age * goldenAngle + orbit;
     const radius = (base * (0.45 + 0.55 * planet.size)) / (1 + 0.25 * age);
-    // Room for its ring, so it isn't cut off at the window's side.
-    const room = radius * 2.3;
+    // Room for its rings and moons, so it isn't cut off at the window's edges.
+    const room = radius * 2.8;
     const x = Math.min(width - room, Math.max(room, middle.x + Math.cos(angle) * across));
-    const y = middle.y + Math.sin(angle) * down * (Math.sin(angle) > 0 ? 0.8 : 1);
+    const y = Math.max(room, middle.y + Math.sin(angle) * down * (Math.sin(angle) > 0 ? 0.8 : 1));
     const shownHere = props.drift || age < skyPlanets;
     places.set(planetKey(planet), {
       x: x / width,
@@ -413,8 +413,9 @@ function draw(time: number) {
     const y = at.y * height;
     const radius = place.unit * width * (1 + (at.zoom - 1) / 2) * (1 + 0.06 * glow);
     if (x + radius * 3 < 0 || x - radius * 3 > width) continue;
-    const alpha = place.alpha * (1 - 0.6 * haze) * (0.9 + 0.1 * glow);
-    drawPlanet(c, planet, { x, y, radius, alpha, glow, tint: planet.tint, turn: orbit, time, still: still.matches });
+    // Like the week's constellation, the week's month's planet cuts through the haze a little.
+    const alpha = place.alpha * (1 - 0.6 * haze * (1 - 0.5 * place.lift)) * (0.9 + 0.1 * glow);
+    stampPlanet(c, planet, { x, y, radius, alpha, glow, tint: planet.tint, turn: orbit, time, lively: circling() });
     planetSpots.push({ key, x, y, radius });
     if (place.label * glow > 0.01) {
       // Its month and focus time, beneath it while it's hovered.
@@ -444,12 +445,14 @@ function draw(time: number) {
   lastDrawn = time;
 }
 
+/** Whether planets circle and spin: only while exploring, and not at all under reduced motion. */
+const circling = () => !!props.drift && props.week === undefined && !still.matches && !!props.planets?.length;
+
 function tick(time: number) {
   const elapsed = lastTime ? time - lastTime : 0;
   lastTime = time;
-  // Planets circle only while exploring, and not at all under reduced motion.
-  const circling = !!props.drift && props.week === undefined && !still.matches && !!props.planets?.length;
-  if (circling) orbit += (elapsed / planetLapMs) * Math.PI * 2;
+  const turning = circling();
+  if (turning) orbit += (elapsed / planetLapMs) * Math.PI * 2;
   const hazing = Math.abs(props.clarity - shownClarity) > 0.002;
   if (hazing) {
     shownClarity += (props.clarity - shownClarity) * (1 - Math.exp(-elapsed / (hazeDriftMs / 3)));
@@ -464,7 +467,7 @@ function tick(time: number) {
     lens.zoom += (aim.zoom - lens.zoom) * follow;
   }
   const sky = canvas.value;
-  const gliding = (sky ? glide(elapsed, sky.width, sky.height) : false) || circling;
+  const gliding = (sky ? glide(elapsed, sky.width, sky.height) : false) || turning;
   // Under reduced motion nothing twinkles, so the loop stops once everything has settled.
   const moving = !still.matches || hazing;
   if (!moving || panning || gliding || time - lastDrawn >= frameMs) draw(time);
@@ -513,6 +516,10 @@ function settle() {
 }
 
 watch(() => [props.constellations, props.planets, props.clarity, props.names, props.week, props.drift], wake);
+watch(
+  () => props.planets,
+  (planets) => forgetPlanets(new Set(planets?.map((planet) => planet.id))),
+);
 watch(
   () => props.drift,
   (drift) => !drift && settle(),

@@ -87,13 +87,14 @@ watch(
               />
             </div>
           </Unfold>
+          <!-- Sessions come first, so the profiles sit above the satellites. -->
+          <LaunchDock v-if="!session" :profiles="profiles" @start="emit('start', $event)" />
           <!-- During a session, only how many are in orbit, not what they say. -->
           <SatelliteLaunch
             :session-running="!!session"
             :in-orbit="session ? satellites.orbiting.length : 0"
             @launch="emit('launch', $event)"
           />
-          <LaunchDock v-if="!session" :profiles="profiles" @start="emit('start', $event)" />
         </div>
       </div>
     </Transition>

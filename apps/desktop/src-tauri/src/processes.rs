@@ -154,7 +154,18 @@ mod tests {
     #[test]
     fn finds_and_quits_a_program() {
         let mut child = std::process::Command::new("sleep").arg("30").spawn().unwrap();
-        let path = find(child.id()).expect("sleep is running").path;
+        // For a moment after spawning, the child is still a copy of this test program, not yet
+        // `sleep`. Wait until it is, or its path would be this program's.
+        let path = (0..100)
+            .find_map(|_| {
+                let path = find(child.id())?.path;
+                if path.file_name()? == "sleep" {
+                    return Some(path);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+                None
+            })
+            .expect("sleep is running");
         assert!(running(std::slice::from_ref(&path)).iter().any(|p| p.pid == child.id()));
 
         assert!(quit(child.id()));

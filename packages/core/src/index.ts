@@ -99,6 +99,7 @@ export {
   type Constellation,
 } from './constellations';
 export {
+  oddShapes,
   planetKinds,
   planets,
   type Hsl,
@@ -107,6 +108,7 @@ export {
   type PlanetForm,
   type PlanetKind,
   type PlanetRing,
+  type PlanetShape,
   type RingStyle,
   type SurfaceFeature,
 } from './planets';
