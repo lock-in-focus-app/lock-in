@@ -183,14 +183,15 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
 
 ### Stars
 - **Every session adds a star, and every star twinkles.** Longer sessions make bigger, brighter stars, and overtime makes a star twinkle a little brighter still. That's the secret overtime bonus (§2), never announced.
-- **Color comes from the profile.** Each profile picks its star color, e.g. warm gold for Writing and blue-white for Deep Work, so the sky shows at a glance how you spend your time.
+- **Color comes from the profile.** Each profile has a star color, e.g. warm gold for Writing and blue-white for Deep Work, so the sky shows at a glance how you spend your time. The starter profiles (and profiles that already exist when the sky ships) get default colors from a calm palette. Creating a profile includes picking its star color, wherever profiles are created (the extension's settings today), and it can be changed later.
 - **Short sessions:** a star's size and brightness follow its minutes, so a 5-minute session is a faint speck next to a 90-minute one. Stardust and the chance of rare events count focused *minutes*, not sessions, so splitting one session into many earns nothing extra.
 - **Back-to-back sessions share a star.** A session under 30 minutes that starts within 10 minutes of the last one ending joins that star, which grows to match. Sessions of 30 minutes or more always get their own star.
 - **The smallest star is 5 minutes.** A lone session shorter than that (often an accidental start) leaves no star, though its minutes still count toward stardust.
 - **Missed days cost nothing.** The sky never loses anything, so there's no streak guilt.
 
 ### Constellations and the Milky Way
-- **Streaks connect stars into constellations.** A week of streak days draws one, and you can name it. Each constellation's shape is unique to you.
+- **One constellation per week.** Each week's stars (weeks start on the computer's first day of the week, as in the weekly report) connect into that week's constellation, and you can name it. Each constellation's shape is unique to you, and a week with gaps is still a constellation: missed days never break anything.
+- **Two layouts, with an animated move between them.** In the Sky view, constellations gather close together so you can take in many at once (for performance, older ones fold into the Milky Way's glow rather than all being drawn). In the weekly report they spread out and line up in week order, and the report shows that week's constellation softly behind its header and week title, like a hero image behind a page header.
 - **The Milky Way** fills in slowly as your total focus hours grow. It's also the zoomed-out view: from far away, older constellations fold into its glow.
 
 ### Planets and moons
@@ -209,7 +210,8 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
 ### Light pollution
 - Outside a session, the sky is washed out by a faint glow and haze. When you lock in, the pollution fades away and the sky is crisp for the whole session, while your new star forms. This is the brand metaphor made playable.
 - **Afterglow:** after a session ends, the sky stays clear for a while (about 20% of the session length) before the haze creeps back in.
-- **"View sky" toggle:** you can always switch to a clear view to explore, name and admire your constellations. The pollution is mood, not a lock.
+- **The sky lives behind everything** in the desktop window. The dashboard's cards float over it, so you see the haze between sessions and the clear sky while you're locked in.
+- **The "Sky" button** shows the sky on its own, clear, to explore, name and admire your constellations; the pollution is mood, not a lock. The dashboard cards drift toward you as they fade, as if puffing out of existence, and come back the same way. The cards are slightly 3D, tilting and lifting a little under the pointer. Under `prefers-reduced-motion` both become a plain fade with flat cards.
 - Stats sit alongside the sky: focus time, streaks, and the weekly report.
 
 ### Stardust
@@ -226,6 +228,7 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
 ### What to protect
 - **No paywall, ever.** Everything is earned by focusing.
 - **Calm, not a slot machine.** Rare things should feel like discoveries.
+- **Dreamy.** Motion is soft and floaty (drifting, fading, gentle glow), never snappy or flashy.
 - **Drawn by code, not image packs.** It keeps the app small and gives every sky its own planets and shapes.
 - **Local only.** Nothing leaves the device unless you share a constellation (below).
 
@@ -237,7 +240,7 @@ The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly te
 - The sky only renders while its window is open and visible, and twinkling stops under `prefers-reduced-motion`.
 
 ### Architecture
-- A reward engine turns the session log into plain events: minutes, overtime minutes, streak days, distractions resisted, satellites parked, rare events.
+- A reward engine turns the session log into plain events: minutes, overtime minutes, streak days, distractions resisted, satellites parked, rare events. Like the weekly report, the app's Rust core supplies the log and the engine itself is TypeScript in `packages/core`, unit-tested. The device's secret for rare events is generated once and kept in the app's database.
 - Given the same log and the device's secret, it always produces the same sky, so the sky rebuilds after an import or a sync.
 - The sky is one swappable renderer over those events, so the community can build other "worlds" later.
 
@@ -361,11 +364,12 @@ lock-in/
 - ✅ Weekly report (§6) in the desktop app.
 
 **Phase 4: The night sky**
-- Reward engine + sky renderer (§5): twinkling stars colored by profile, light pollution outside sessions and a clear sky during them, the "View sky" toggle, constellations, the Milky Way.
-- Seeded planets and moons, comets for resisted distractions, rare events.
-- Streaks and stardust (earned and shown; nothing to spend it on yet).
-- Satellites in the sky: the ones in orbit and on the task list drawn as small satellites circling.
-- The week's constellation in the weekly report: the stars formed that week drawn softly behind the report's header and week title, like a hero image behind a page header.
+Built in slices, one PR each:
+1. **Reward engine + first sky:** stars from the session log (sizes, shared and skipped stars), the stardust total, profile star colors (defaults, plus a choice when creating a profile), and one canvas behind the dashboard with twinkling stars, light pollution between sessions, a clear sky during them with an afterglow, and the "Sky" button with its fade-toward-you and the slightly 3D hover cards.
+2. **Weekly constellations:** naming, the close-together layout in the Sky view and the spread-out week-order layout in the weekly report, and the week's constellation behind the report's header and week title.
+3. **Planets and moons**, seeded per month.
+4. **Comets** for resisted distractions, **rare events**, streak stats, and **satellites in the sky** (the ones in orbit and on the task list drawn as small satellites circling).
+5. **Performance at scale:** pan and zoom, the spatial index, cached static layers, and older constellations folding into the Milky Way.
 
 **Phase 5: Polish & release**
 - UI redesign: the floating-card look from the reference images, and the satellites' dreamy orbiting look, first-use tooltip and animation (§4). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
