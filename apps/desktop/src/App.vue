@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import type { Settings, TimerSettings } from '@lock-in/core';
 import { ref } from 'vue';
-import { endSession, setProfileTimer, setSettings, spendEmergencyPass, startSession, useSnapshot } from './app';
+import {
+  endSession,
+  forgetBrowser,
+  setProfileTimer,
+  setSettings,
+  spendEmergencyPass,
+  startSession,
+  useSnapshot,
+} from './app';
 import ProfileList from './components/ProfileList.vue';
 import SessionView from './components/SessionView.vue';
 import SettingsView from './components/SettingsView.vue';
@@ -34,7 +42,10 @@ async function run(action: () => Promise<void>) {
       v-if="snapshot && showSettings"
       :settings="snapshot.settings"
       :passes-left="snapshot.passesLeft"
+      :browsers="snapshot.browsers"
+      :session-running="!!snapshot.session"
       @update:settings="(settings: Settings) => run(() => setSettings(settings))"
+      @forget-browser="(path: string) => run(() => forgetBrowser(path))"
       @close="showSettings = false"
     />
     <SessionView

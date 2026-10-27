@@ -30,4 +30,9 @@ overtimeMs: number,
  * Time away at the end, after the last keyboard or mouse input, which doesn't count
  * towards focus or overtime. Only sessions that end for being idle have one.
  */
-idleTailMs: number, endReason: EndReason, };
+idleTailMs: number, endReason: EndReason, 
+/**
+ * Whether a browser had to be closed during a Hard session for running without the
+ * extension. A broken session won't earn rewards.
+ */
+broken: boolean, };

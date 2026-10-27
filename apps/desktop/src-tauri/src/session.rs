@@ -23,6 +23,21 @@ impl Profile {
         let value = serde_json::to_value(timer).expect("timer settings serialize");
         self.rest.insert("timer".into(), value);
     }
+
+    /// Whether the profile tames, redirects or restricts any site or page, so it needs the
+    /// browser extension. A profile for writing in a desktop app might not.
+    pub fn tames_sites(&self) -> bool {
+        let changes = |rule: &Value| {
+            rule.get("level")
+                .and_then(Value::as_str)
+                .is_some_and(|l| l != "allowed")
+        };
+        let sites = self.rest.get("sites").and_then(Value::as_array);
+        sites.into_iter().flatten().any(|site| {
+            let pages = site.get("paths").and_then(Value::as_array);
+            changes(site) || pages.into_iter().flatten().any(changes)
+        })
+    }
 }
 
 /// The profiles every new install starts with, shared with the extension.
@@ -112,6 +127,9 @@ pub struct SessionRecord {
     /// towards focus or overtime. Only sessions that end for being idle have one.
     pub idle_tail_ms: i64,
     pub end_reason: EndReason,
+    /// Whether a browser had to be closed during a Hard session for running without the
+    /// extension. A broken session won't earn rewards.
+    pub broken: bool,
 }
 
 impl SessionRecord {
@@ -147,6 +165,7 @@ impl SessionRecord {
             overtime_ms: counted - split,
             idle_tail_ms: ended_at - counted,
             end_reason,
+            broken: false,
         }
     }
 }
@@ -231,6 +250,23 @@ mod tests {
         let profile = json!({ "id": "p", "name": "P", "sites": [{ "recipeId": "x", "level": "redirected" }] });
         let parsed: Profile = serde_json::from_value(profile.clone()).unwrap();
         assert_eq!(serde_json::to_value(&parsed).unwrap(), profile);
+    }
+
+    #[test]
+    fn knows_which_profiles_tame_sites() {
+        let profile = |sites: Value| -> Profile {
+            serde_json::from_value(json!({ "id": "p", "name": "P", "sites": sites })).unwrap()
+        };
+        assert!(!profile(json!([])).tames_sites());
+        assert!(!profile(json!([{ "recipeId": "reddit", "level": "allowed" }])).tames_sites());
+        assert!(profile(json!([{ "recipeId": "reddit", "level": "tamed" }])).tames_sites());
+        assert!(
+            profile(json!([{ "recipeId": "youtube", "level": "allowed", "paths": [{ "path": "/shorts", "level": "redirected" }] }]))
+                .tames_sites()
+        );
+        let no_sites: Profile = serde_json::from_value(json!({ "id": "p", "name": "P" })).unwrap();
+        assert!(!no_sites.tames_sites());
+        assert!(starter_profiles().iter().all(Profile::tames_sites));
     }
 
     #[test]
