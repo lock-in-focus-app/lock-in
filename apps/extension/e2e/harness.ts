@@ -45,6 +45,13 @@ export const urls = {
   other: 'http://other.test/',
 };
 
+/** The hosts of the sites above, which the popup has a section for. */
+const siteHosts = new Set(
+  Object.entries(urls)
+    .filter(([site]) => site !== 'other')
+    .map(([, url]) => new URL(url).host),
+);
+
 /** The extension's id in Chrome, fixed by the public key in its manifest. */
 export const chromeExtensionId = 'nfaamgjiehkppopelaampopbofjoepca';
 
@@ -114,8 +121,10 @@ export async function openPopup({ browser, extension }: TestBrowser, tab: Page):
   const target = await browser.waitForTarget((t) => t.url().endsWith('/popup.html') && !earlier.has(t));
   const popup = (await target.asPage())!;
   // No setViewport here: Chrome doesn't let a popup's size be overridden, it sizes itself to its content.
-  await popup.waitForSelector('main');
-  await wait(300);
+  // The session (or the list to start one) shows once storage has loaded, and a site's
+  // section once the popup has looked up the tab.
+  await popup.waitForSelector('main > section');
+  if (siteHosts.has(new URL(tab.url()).host)) await popup.waitForSelector('main > .site');
   return popup;
 }
 
@@ -165,18 +174,43 @@ export async function setProfileRedirect(
 /** Starts a session without going through the popup. */
 export async function startSession(extensionPage: Page, profileId: string): Promise<void> {
   await setStored(extensionPage, { activeSession: { id: 'e2e', profileId, startedAt: Date.now() } });
-  await wait(300);
 }
 
 /** The URL a redirected visit lands on. */
 export const redirectPage = ({ extensionId }: TestBrowser, target: string, expired = false) =>
   `chrome-extension://${extensionId}/redirect.html${expired ? '?expired' : ''}#${target}`;
 
-/** Writes straight to the extension's local storage, e.g. to fast-forward a pass. */
+/**
+ * Writes straight to the extension's local storage, e.g. to fast-forward a pass, then waits
+ * for the redirect rules to catch up, so visiting a site next sees the change. Open tabs
+ * catch up by themselves, so check those with `expect.poll`.
+ */
 export async function setStored(extensionPage: Page, values: Record<string, unknown>): Promise<void> {
   await extensionPage.evaluate(
     (items) => (globalThis as unknown as { chrome: typeof browser }).chrome.storage.local.set(items),
     values,
+  );
+  await syncRedirects(extensionPage);
+}
+
+/**
+ * Waits until what's stored passes `check`, e.g. after a click in the popup saves something,
+ * then for the redirect rules to catch up.
+ */
+export async function storedWhen(extensionPage: Page, check: (storage: Stored) => boolean): Promise<void> {
+  await until('storage to change', async () => check(await stored(extensionPage)));
+  await syncRedirects(extensionPage);
+}
+
+/**
+ * The background updates the redirect rules soon after storage changes. Asking it to sync
+ * waits until they match what's stored now, the same way the gate's Continue does.
+ */
+function syncRedirects(extensionPage: Page): Promise<void> {
+  return extensionPage.evaluate(() =>
+    (globalThis as unknown as { chrome: typeof browser }).chrome.runtime.sendMessage({
+      type: 'lock-in:sync-redirects',
+    }),
   );
 }
 
@@ -184,6 +218,23 @@ export function text(page: Page): Promise<string> {
   return page.$eval('main', (main) => (main as HTMLElement).innerText);
 }
 
+/**
+ * Checks until `check` passes, for the setup before tests, where `expect.poll` can't be used.
+ * Gives up after as long as `expect.poll` would.
+ */
+export async function until(waitingFor: string, check: () => Promise<boolean>): Promise<void> {
+  const giveUpAt = Date.now() + 5_000;
+  while (!(await check())) {
+    if (Date.now() > giveUpAt) throw new Error(`Timed out waiting for ${waitingFor}`);
+    await wait(50);
+  }
+}
+
+/**
+ * A fixed pause. Only for checking that something *doesn't* happen, or for real timers like a
+ * pass running out; anything that should happen is waited for with `expect.poll` instead,
+ * since a busy CI runner can take much longer than a fixed pause.
+ */
 export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function copyBuildForTests(): Promise<string> {

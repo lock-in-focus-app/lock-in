@@ -9,6 +9,7 @@ import {
   openPopup,
   stored,
   text,
+  until,
   urls,
   wait,
   type TestBrowser,
@@ -26,11 +27,21 @@ const appSession: Session = {
 const states = (messages: ToDesktop[]) =>
   messages.filter((m): m is Extract<ToDesktop, { type: 'state' }> => m.type === 'state');
 
+/** Whether the extension says it's linked to the app, from session storage. */
+const linked = (extensionPage: Page) =>
+  extensionPage.evaluate(() =>
+    (globalThis as unknown as { chrome: typeof browser }).chrome.storage.session
+      .get('desktopLinked')
+      .then((items) => items.desktopLinked ?? false),
+  );
+
 // One browser for the whole file, linked to a fake app; each test picks up where the last left off.
 describe('the desktop app link', () => {
   let app: FakeDesktopApp;
   let t: TestBrowser;
   let control: Page;
+  /** When the session last changed, by the newest state the extension sent the app. */
+  const lastSessionChange = async () => states(await app.received()).at(-1)?.activeSession?.updatedAt ?? 0;
 
   beforeAll(async () => {
     // The app is already running a session, started at its end after the browser last synced.
@@ -44,7 +55,7 @@ describe('the desktop app link', () => {
     ]);
     t = await launch({ nativeHost: app.host });
     control = await controlPage(t);
-    await wait(500);
+    await until('the link', () => linked(control));
   });
   afterAll(async () => {
     await t?.close();
@@ -56,7 +67,7 @@ describe('the desktop app link', () => {
   });
 
   it("picks up the app's session and timer", async () => {
-    expect((await stored(control)).activeSession).toEqual(appSession);
+    await expect.poll(async () => (await stored(control)).activeSession).toEqual(appSession);
 
     const tab = await t.browser.newPage();
     await tab.goto(urls.other);
@@ -81,9 +92,9 @@ describe('the desktop app link', () => {
     const tab = await t.browser.newPage();
     await tab.goto(urls.x);
     await tab.waitForSelector('main');
-    await wait(300);
-    const visits = (await app.received()).filter((m) => m.type === 'gateVisit');
-    expect(visits.at(-1)).toMatchObject({ type: 'gateVisit', visit: { recipeId: 'x' } });
+    await expect
+      .poll(async () => (await app.received()).filter((m) => m.type === 'gateVisit').at(-1))
+      .toMatchObject({ type: 'gateVisit', visit: { recipeId: 'x' } });
     await tab.close();
   });
 
@@ -95,12 +106,13 @@ describe('the desktop app link', () => {
     await popup.click('button.end');
     expect(await popup.$eval('button.confirm', (button) => button.disabled)).toBe(true);
     await popup.waitForSelector('button.confirm:not([disabled])', { timeout: 15_000 });
+    const endedAt = Date.now();
     await popup.click('button.confirm');
-    await wait(300);
 
+    // The first state the extension sent had no session either, so wait for one sent since.
+    await expect.poll(() => lastSessionChange()).toBeGreaterThanOrEqual(endedAt);
     const last = states(await app.received()).at(-1)!;
     expect(last.activeSession?.value).toBeNull();
-    expect(last.activeSession!.updatedAt).toBeGreaterThan(startedAt);
     expect(last.profiles).toBeUndefined();
     await tab.close();
   });
@@ -113,10 +125,11 @@ describe('the desktop app link', () => {
       profiles: { value: starterProfiles, updatedAt: 0 },
       activeSession: { value: session, updatedAt: Date.now() },
     });
-    await wait(500);
-    expect((await stored(control)).activeSession).toEqual(session);
+    await expect.poll(async () => (await stored(control)).activeSession).toEqual(session);
 
-    // The app's own change doesn't bounce back to it as a new one.
+    // The app's own change doesn't bounce back to it as a new one. An echo would follow the
+    // change straight away, so give it a moment to show up.
+    await wait(500);
     const echoed = states(await app.received()).filter((m) => m.activeSession?.value?.id === 'second');
     expect(echoed).toEqual([]);
   });
@@ -127,6 +140,7 @@ describe('the desktop app link', () => {
       profiles: { value: [], updatedAt: 0 },
       activeSession: { value: null, updatedAt: startedAt },
     });
+    // Nothing should change, so all there is to wait for is a moment.
     await wait(500);
     const storage = await stored(control);
     expect(storage.activeSession?.id).toBe('second');
@@ -135,16 +149,15 @@ describe('the desktop app link', () => {
 
   it('carries on by itself once the app goes away', async () => {
     await app.send({ type: 'unlinked' });
-    await wait(500);
+    await expect.poll(() => linked(control)).toBe(false);
     const before = (await stored(control)).syncedAt!.activeSession;
     const tab = await t.browser.newPage();
     await tab.goto(urls.other);
     const popup = await openPopup(t, tab);
     expect(await text(popup)).not.toContain('App linked');
     await popup.click('button.end');
-    await wait(300);
+    await expect.poll(async () => (await stored(control)).activeSession ?? null).toBeNull();
     const storage = await stored(control);
-    expect(storage.activeSession ?? null).toBeNull();
     // Still stamped, so this change wins when the app links again.
     expect(storage.syncedAt!.activeSession).toBeGreaterThan(before);
   });
@@ -154,6 +167,8 @@ describe('a strict session from the desktop app', () => {
   let app: FakeDesktopApp;
   let t: TestBrowser;
   let control: Page;
+  /** When the session last changed, by the newest state the extension sent the app. */
+  const lastSessionChange = async () => states(await app.received()).at(-1)?.activeSession?.updatedAt ?? 0;
 
   const strictSession = (strictness: Strictness): FromDesktop => ({
     type: 'state',
@@ -182,7 +197,7 @@ describe('a strict session from the desktop app', () => {
     app = await fakeDesktopApp([{ type: 'linked' }, strictSession('medium')]);
     t = await launch({ nativeHost: app.host });
     control = await controlPage(t);
-    await wait(500);
+    await until('the session', async () => (await stored(control)).activeSession?.id === 'medium');
   });
   afterAll(async () => {
     await t?.close();
@@ -197,15 +212,16 @@ describe('a strict session from the desktop app', () => {
 
     await popup.click('.end-early input', { count: 3 });
     await popup.type('.end-early input', target);
+    const endedAt = Date.now();
     await popup.click('button.confirm');
-    await wait(300);
-    expect((await stored(control)).activeSession ?? null).toBeNull();
+    await expect.poll(async () => (await stored(control)).activeSession ?? null).toBeNull();
+    await expect.poll(() => lastSessionChange()).toBeGreaterThanOrEqual(endedAt);
     expect(states(await app.received()).at(-1)?.activeSession?.value).toBeNull();
   });
 
   it("won't end a Hard session early", async () => {
     await app.send(strictSession('hard'));
-    await wait(500);
+    await expect.poll(async () => (await stored(control)).activeSession?.id).toBe('hard');
     const popup = await popupEnding();
     expect(await text(popup)).toContain('Hard mode');
     expect(await popup.$('button.confirm')).toBeNull();
@@ -221,7 +237,6 @@ describe('without the desktop app', () => {
     const t = await launch();
     try {
       const control = await controlPage(t);
-      await wait(300);
       const tab = await t.browser.newPage();
       await tab.goto(urls.other);
       const popup = await openPopup(t, tab);

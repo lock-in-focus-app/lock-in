@@ -1,6 +1,6 @@
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch, stored, wait, type TestBrowser } from './harness';
+import { launch, stored, type TestBrowser } from './harness';
 
 describe('settings page', () => {
   let t: TestBrowser;
@@ -46,7 +46,9 @@ describe('settings page', () => {
     await page.$$eval('[role=tab]', (tabs) =>
       (tabs.find((tab) => tab.textContent!.trim() === 'Deep Work') as HTMLElement).click(),
     );
-    await wait(100);
+    await page.waitForFunction(
+      () => document.querySelector('[role=tab][aria-selected=true]')?.textContent?.trim() === 'Deep Work',
+    );
   });
   afterAll(() => t?.close());
 
@@ -111,19 +113,18 @@ describe('settings page', () => {
     await page.click('input[aria-label="Link address"]', { count: 3 });
     await page.type('input[aria-label="Link address"]', 'docs.example.com/draft');
     await page.click('form.add button[type=submit]');
-    await wait(150);
-    expect((await deepWork()).links).toMatchObject([{ title: 'Draft', url: 'https://docs.example.com/draft' }]);
+    await expect
+      .poll(async () => (await deepWork()).links)
+      .toMatchObject([{ title: 'Draft', url: 'https://docs.example.com/draft' }]);
   });
 
   it('adds and removes your own quotes', async () => {
     await page.type('input[aria-label="Quote"]', 'Ship it.');
     await page.type('input[aria-label="Author"]', 'Me');
     await page.$$eval('form.add', (forms) => forms[1]!.requestSubmit());
-    await wait(150);
-    expect((await stored(page)).ownQuotes).toMatchObject([{ text: 'Ship it.', author: 'Me' }]);
+    await expect.poll(async () => (await stored(page)).ownQuotes).toMatchObject([{ text: 'Ship it.', author: 'Me' }]);
 
-    await page.click('button[aria-label="Remove quote"]');
-    await wait(150);
-    expect((await stored(page)).ownQuotes).toEqual([]);
+    await (await page.waitForSelector('button[aria-label="Remove quote"]'))!.click();
+    await expect.poll(async () => (await stored(page)).ownQuotes).toEqual([]);
   });
 });
