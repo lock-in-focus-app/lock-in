@@ -61,11 +61,15 @@ jobs:
       # What Tauri needs to build on Linux: the system webview and the menu-bar (tray) library.
       # Only what they depend on, not what they recommend (media plugins and the like).
       #
-      # Ubuntu's mirror sometimes slows to a trickle and the 60 MB download takes longer than
-      # the build, so the packages are cached (refreshed monthly, saved only by main, like the
-      # Rust cache). Anything newer than the cache is still downloaded. If downloading stalls,
-      # it stops after 3 minutes and tries again, keeping what it has. Only the download is
-      # timed: stopping apt while it installs could leave packages half set up.
+      # GitHub's runners download from Azure's copy of Ubuntu's mirror, which sometimes slows
+      # to a trickle. So:
+      # - The packages are cached, refreshed monthly. Any branch saves the cache when it has no
+      #   copy yet for this month (a pull request's copy is only seen by that pull request; main's
+      #   by everyone). Anything newer than the cache is still downloaded.
+      # - If downloading takes over 2 minutes (it usually takes seconds), it stops and tries
+      #   again from Ubuntu's own mirror, keeping what it has.
+      # - Only the download is timed: stopping apt while it installs could leave packages half
+      #   set up.
       - id: apt-month
         run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
       - id: apt-cache
@@ -80,17 +84,22 @@ jobs:
           sudo apt-get update
           if [ -d ~/apt-packages ]; then sudo cp ~/apt-packages/*.deb /var/cache/apt/archives/; fi
           for attempt in 1 2 3; do
-            sudo timeout 180 apt-get install -y --no-install-recommends --download-only \
+            sudo timeout 120 apt-get install -y --no-install-recommends --download-only \
               -o Acquire::Retries=3 $packages && break
             [ "$attempt" = 3 ] && exit 1
-            echo "::warning::Downloading packages failed or stalled, trying again"
+            echo "::warning::Downloading packages failed or was slow, trying Ubuntu's own mirror"
+            # The runner lists its mirrors in apt-mirrors.txt; older images name Azure's directly.
+            for file in /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
+              if [ -f "$file" ]; then sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' "$file"; fi
+            done
+            sudo apt-get update
           done
           sudo apt-get install -y --no-install-recommends $packages
           # Drop packages the mirror has replaced, so the cache doesn't grow month by month.
           sudo apt-get autoclean
           mkdir -p ~/apt-packages
           cp /var/cache/apt/archives/*.deb ~/apt-packages/
-      - if: github.ref == 'refs/heads/main' && steps.apt-cache.outputs.cache-hit != 'true'
+      - if: steps.apt-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-packages
