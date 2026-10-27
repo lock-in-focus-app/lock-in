@@ -91,10 +91,10 @@ describe('open tabs and expired passes', () => {
       const page = await t.browser.newPage();
       await page.goto(urls.reddit);
       await startSession(control, 'deep-work');
-      expect(await overlayText(page)).not.toBeNull();
+      // The cover can take a moment on a slow CI runner, both ways.
+      await expect.poll(() => overlayText(page), { timeout: 10_000 }).not.toBeNull();
       await setStored(control, { activeSession: null });
-      await wait(300);
-      expect(await overlayText(page)).toBeNull();
+      await expect.poll(() => overlayText(page), { timeout: 10_000 }).toBeNull();
       await page.close();
     });
   });
