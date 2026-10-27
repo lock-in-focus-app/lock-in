@@ -197,8 +197,10 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
 - **The Milky Way** fills in slowly as your total focus hours grow. It's also the zoomed-out view: from far away, older constellations fold into its glow.
 
 ### Planets and moons
-- **A planet for every month you focus at all.** It's generated from a seed (colors, bands, rings), so no two people's planets look alike. Its size grows with that month's focus time. Planets drift slowly across the sky.
-- **Moons** are earned around that month's planet, from focus streaks and from rare events.
+- **A planet for every month you focus at all.** It's generated from a seed (its colors, where its bands sit and how its rings lean), so no two people's planets look alike. A month without focus has no planet, and no gap where one would be. Like the stars, planets are worked out from the session log, so past months get theirs too.
+- **It grows through the month, in size and in detail.** Size follows the month's focus time (full size at 60 hours). More hours bring more detail, each starting faint and filling in: the first band at 2 hours and another every 5 hours after (up to 6), a glowing atmosphere from 8 hours, a ring from 20 hours (with a gap through it once it's wide), a storm in its bands from 35 hours and a second, fainter ring from 50 hours. The current month's planet changes as you focus; earlier months stay exactly as they ended.
+- **Where they sit.** Planets are nearer than the stars, around the edge of the constellations, the current month's largest and up to the right, older ones further round, smaller and fainter. The Sky shows the last 6 months' planets, still. Explore shows them all, slowly circling (a lap every 8 minutes) with their moons going round, and hovering one shows its month and focus time beneath it. In the weekly report, the week's month's planet sits faintly beside its constellation's name. Under reduced motion they never move.
+- **Moons from streaks.** A streak of days with focus earns a moon on the day it reaches 3, 7 and 14 days in a row, then every week after, around that day's month's planet (at most 3 per planet). Nothing announces a moon; it's just there. A missed day starts a new streak but never takes a moon away. Moons from rare events come with them (slice 5).
 
 ### Comets: resisting a distraction
 - Leaving the intention gate for "Back to focus" instead of continuing can bring a comet.
@@ -380,7 +382,7 @@ Built in slices, one PR each:
 1. ✅ **Reward engine + first sky:** stars from the session log (sizes, shared and skipped stars), the stardust total, profile star colors (defaults, plus a choice when creating a profile), and one canvas behind the window with twinkling stars, light pollution between sessions, a clear sky during them with an afterglow, glass cards that tilt under the pointer, sliding pages, and sample sessions for development builds.
 2. ✅ **The Sky as home:** the Sky page with its profile buttons, the session over the sky, satellites and tasks, the telescope drift and Explore; the Profiles page for editing only; and animations for the weekly report's calendar (switching weeks and months, opening and closing it).
 3. ✅ **Weekly constellations:** naming, names shown beneath them on hover in Explore, the close-together layout on the Sky page and the spread-out week-order layout in the weekly report, and the week's constellation behind the report's header and week title.
-4. **Planets and moons**, seeded per month.
+4. ✅ **Planets and moons:** a seeded planet for every month with focus, growing and gaining bands, an atmosphere, rings and a storm as the month's focus grows; moons from streaks; planets framing the constellations on the Sky, circling in Explore with hover labels, and beside the week's constellation in the report.
 5. **Comets** for resisted distractions, **rare events**, streak stats, and **satellites in the sky** (the ones in orbit and on the task list drawn as small satellites circling).
 6. **Performance at scale:** pan and zoom, the spatial index, cached static layers, and older constellations folding into the Milky Way.
 

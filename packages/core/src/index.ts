@@ -98,6 +98,7 @@ export {
   skyPlaces,
   type Constellation,
 } from './constellations';
+export { planets, type Hsl, type Moon, type Planet } from './planets';
 export { endLock, formatClock, timerStatus, unlockText, type TimerStatus } from './timer';
 export {
   cleanedSatelliteText,
