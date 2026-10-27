@@ -4,7 +4,7 @@
 use tauri::AppHandle;
 
 use crate::apps::{AppRule, InstalledApp};
-use crate::engine::{Activity, Snapshot};
+use crate::engine::{Activity, ConstellationName, Snapshot};
 use crate::error::{Error, Result};
 use crate::satellites::SatelliteAction;
 use crate::session::{EndReason, SessionRecord};
@@ -105,6 +105,18 @@ pub fn act_on_satellite(app: AppHandle, id: String, action: SatelliteAction) -> 
 #[tauri::command]
 pub fn session_log(app: AppHandle) -> Result<Vec<SessionRecord>> {
     crate::engine(&app).session_log()
+}
+
+/// The names people gave constellations.
+#[tauri::command]
+pub fn constellation_names(app: AppHandle) -> Result<Vec<ConstellationName>> {
+    crate::engine(&app).constellation_names()
+}
+
+/// Names a constellation, by the id of its first star. A blank name goes back to the made-up one.
+#[tauri::command]
+pub fn name_constellation(app: AppHandle, id: String, name: String) -> Result<()> {
+    crate::engine(&app).name_constellation(&id, &name)
 }
 
 /// Adds six weeks of made-up sessions, so the sky and the weekly report can be tried without

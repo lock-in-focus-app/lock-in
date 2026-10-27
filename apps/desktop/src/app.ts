@@ -1,6 +1,7 @@
 import type {
   Activity,
   AppRule,
+  ConstellationName,
   InstalledApp,
   SatelliteAction,
   SessionRecord,
@@ -67,6 +68,12 @@ export const activity = (from: number, to: number) => invoke<Activity>('activity
 
 /** Every finished session, oldest first, for the night sky. */
 export const sessionLog = () => invoke<SessionRecord[]>('session_log');
+
+/** The names people gave constellations. */
+export const constellationNames = () => invoke<ConstellationName[]>('constellation_names');
+
+/** Names a constellation, by its first star's id. A blank name goes back to the made-up one. */
+export const nameConstellation = (id: string, name: string) => invoke<void>('name_constellation', { id, name });
 
 /** Adds six weeks of made-up sessions, in development builds. */
 export const addSampleData = () => invoke<void>('add_sample_data');

@@ -15,6 +15,7 @@ pub enum Error {
     NoPassesLeft,
     UnknownSatellite,
     InvalidStarColor,
+    UnknownConstellation,
     DevelopmentOnly,
 }
 
@@ -34,6 +35,7 @@ impl fmt::Display for Error {
             Error::NoPassesLeft => f.write_str("no emergency passes are left this week"),
             Error::UnknownSatellite => f.write_str("that satellite is already gone"),
             Error::InvalidStarColor => f.write_str("a star color has to be a hex color like #f5c86b"),
+            Error::UnknownConstellation => f.write_str("that constellation doesn't exist"),
             Error::DevelopmentOnly => f.write_str("that's only in development builds"),
         }
     }

@@ -1,13 +1,26 @@
 <script setup lang="ts">
 import type { AppRule, SatelliteAction, SatelliteState, SessionRecord, Settings, TimerSettings } from '@lock-in/core';
-import { sessionSoFar, skyClarity, starColorFor, stardust, starMagnitude, stars, starSparkle } from '@lock-in/core';
+import {
+  constellationNames,
+  constellations,
+  sessionSoFar,
+  skyClarity,
+  starColorFor,
+  stardust,
+  starMagnitude,
+  stars,
+  starSparkle,
+} from '@lock-in/core';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
   actOnSatellite,
   addSampleData,
+  constellationNames as savedNames,
   endSession,
+  firstDayOfWeek,
   forgetBrowser,
   launchSatellite,
+  nameConstellation,
   removeSampleData,
   sessionLog,
   setProfileApps,
@@ -19,7 +32,7 @@ import {
   useNow,
   useSnapshot,
 } from './app';
-import NightSky, { type SkyStar } from './components/NightSky.vue';
+import NightSky, { type SkyConstellation } from './components/NightSky.vue';
 import ProfileList from './components/ProfileList.vue';
 import SettingsView from './components/SettingsView.vue';
 import SkyPage from './components/SkyPage.vue';
@@ -33,6 +46,9 @@ const view = ref<View>('sky');
 // Explore clears everything off the Sky page, so the sky is on its own.
 const exploring = ref(false);
 watch(view, (to) => to !== 'sky' && (exploring.value = false));
+// The week the report is showing, so the sky can line its constellations up behind it.
+const reportWeek = ref<number>();
+watch(view, (to) => to !== 'week' && (reportWeek.value = undefined));
 const tabs = computed(() => {
   const all: { view: View; label: string }[] = [
     { view: 'sky', label: 'Sky' },
@@ -72,30 +88,61 @@ watch(
 const log = ref<SessionRecord[]>([]);
 const now = useNow();
 const minute = computed(() => Math.floor(now.value / 60_000));
-const loadLog = () => run(async () => void (log.value = await sessionLog()));
-onMounted(loadLog);
+const loadLog = async () => void (log.value = await sessionLog());
+onMounted(() => run(loadLog));
 // A session that just ended is in the log now.
 watch(
   () => snapshot.value?.session?.id,
   (id, previous) => {
-    if (previous && !id) void loadLog();
+    if (previous && !id) void run(loadLog);
   },
 );
 const sessions = computed(() => {
   const running = snapshot.value?.session;
   return running ? [...log.value, sessionSoFar(running, minute.value * 60_000)] : log.value;
 });
-const skyStars = computed<SkyStar[]>(() => {
+// Weeks start on the computer's first day of the week, as in the weekly report. Nothing is shown
+// until it's known, so constellations don't jump from one grouping to another.
+const firstDay = ref<number>();
+onMounted(
+  () =>
+    void firstDayOfWeek().then(
+      (day) => (firstDay.value = day),
+      () => (firstDay.value = 1),
+    ),
+);
+const names = ref(new Map<string, string>());
+const loadNames = async () => {
+  names.value = new Map((await savedNames()).map((saved) => [saved.id, saved.name]));
+};
+onMounted(() => run(loadNames));
+const skyConstellations = computed<(SkyConstellation & { named: boolean })[]>(() => {
+  if (firstDay.value === undefined) return [];
   const colors = new Map(snapshot.value?.profiles.map((p) => [p.id, p.starColor]));
-  return stars(sessions.value).map((star) => ({
-    id: star.id,
-    x: star.x,
-    y: star.y,
-    color: starColorFor(star.profileId, colors.get(star.profileId)),
-    magnitude: starMagnitude(star),
-    sparkle: starSparkle(star),
+  const list = constellations(stars(sessions.value), firstDay.value);
+  const named = constellationNames(list, names.value);
+  return list.map((constellation, i) => ({
+    id: constellation.id,
+    name: named[i]!,
+    named: names.value.has(constellation.id),
+    weekStart: constellation.weekStart,
+    lines: constellation.lines,
+    stars: constellation.stars.map((star, j) => ({
+      id: star.id,
+      ...constellation.points[j]!,
+      color: starColorFor(star.profileId, colors.get(star.profileId)),
+      magnitude: starMagnitude(star),
+      sparkle: starSparkle(star),
+    })),
   }));
 });
+const starCount = computed(() => skyConstellations.value.reduce((count, c) => count + c.stars.length, 0));
+const reportConstellation = computed(() => skyConstellations.value.find((c) => c.weekStart === reportWeek.value));
+const rename = (id: string, name: string) =>
+  run(async () => {
+    await nameConstellation(id, name);
+    await loadNames();
+  });
 const totalStardust = computed(() => stardust(sessions.value));
 // Exploring shows it clear; otherwise it's hazy between sessions.
 const clarity = computed(() =>
@@ -112,6 +159,7 @@ const sampleData = (action: 'add' | 'remove') =>
   run(async () => {
     await (action === 'add' ? addSampleData() : removeSampleData());
     await loadLog();
+    await loadNames();
   });
 
 const inState = (state: SatelliteState) => snapshot.value?.satellites.filter((s) => s.state === state) ?? [];
@@ -136,7 +184,13 @@ async function run(action: () => Promise<void>) {
 </script>
 
 <template>
-  <NightSky :stars="skyStars" :clarity="clarity" :drift="exploring" />
+  <NightSky
+    :constellations="skyConstellations"
+    :clarity="clarity"
+    :drift="exploring"
+    :names="view === 'sky' && exploring"
+    :week="reportWeek"
+  />
   <main>
     <header>
       <span class="star" aria-hidden="true">✦</span>
@@ -157,7 +211,7 @@ async function run(action: () => Promise<void>) {
     </header>
 
     <Transition :name="slide" mode="out-in">
-      <div v-if="snapshot" :key="view">
+      <div v-if="snapshot && firstDay !== undefined" :key="view">
         <SkyPage
           v-if="view === 'sky'"
           v-model:exploring="exploring"
@@ -165,7 +219,7 @@ async function run(action: () => Promise<void>) {
           :session="snapshot.session"
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
-          :star-count="skyStars.length"
+          :star-count="starCount"
           :stardust="totalStardust"
           @start="(id: string) => run(() => startSession(id))"
           @end="run(endSession)"
@@ -181,7 +235,13 @@ async function run(action: () => Promise<void>) {
           @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
           @set-star-color="(id: string, color: string) => run(() => setProfileStarColor(id, color))"
         />
-        <WeekReport v-else-if="view === 'week'" />
+        <WeekReport
+          v-else-if="view === 'week'"
+          :first-day="firstDay"
+          :constellation="reportConstellation"
+          @week="(week: number) => (reportWeek = week)"
+          @rename="rename"
+        />
         <SettingsView
           v-else
           :settings="snapshot.settings"

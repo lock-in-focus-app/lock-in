@@ -85,6 +85,19 @@ pub struct ProfileSummary {
     pub star_color: Option<String>,
 }
 
+/// A name someone gave a constellation (PLAN §5). The constellations themselves are worked out
+/// from the session log in the UI; `id` is the id of its first star, which is a session's id.
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ConstellationName {
+    pub id: String,
+    pub name: String,
+}
+
+/// The longest name a constellation can have, in characters (as in packages/core).
+const MAX_CONSTELLATION_NAME: usize = 40;
+
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -583,6 +596,25 @@ impl Engine {
         self.store.sessions()
     }
 
+    /// The names people gave constellations.
+    pub fn constellation_names(&self) -> Result<Vec<ConstellationName>> {
+        let names = self.store.constellation_names()?;
+        Ok(names
+            .into_iter()
+            .map(|(id, name)| ConstellationName { id, name })
+            .collect())
+    }
+
+    /// Names the constellation whose first star is the session `id`, which may be the one
+    /// running. A blank name goes back to the made-up one.
+    pub fn name_constellation(&self, id: &str, name: &str) -> Result<()> {
+        let running = self.session().is_some_and(|s| s.id == id);
+        if !running && !self.store.has_session(id)? {
+            return Err(Error::UnknownConstellation);
+        }
+        self.store.name_constellation(id, cleaned_name(name).as_deref())
+    }
+
     /// Adds six weeks of made-up sessions and gate visits for the current profiles, for trying
     /// the app in development builds.
     pub fn add_samples(&mut self, now: i64) -> Result<()> {
@@ -611,6 +643,16 @@ impl Engine {
             first_logged_at: self.store.first_logged_at()?,
         })
     }
+}
+
+/// A constellation's name worth keeping from what was typed: on one line, trimmed and cut down to
+/// a sensible length, or None if there's nothing there.
+fn cleaned_name(text: &str) -> Option<String> {
+    // Runs of spaces and line breaks become one space.
+    let mut name = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    truncate(&mut name, MAX_CONSTELLATION_NAME);
+    let name = name.trim_end().to_owned();
+    (!name.is_empty()).then_some(name)
 }
 
 #[cfg(test)]
@@ -724,9 +766,41 @@ mod tests {
         assert!(log.len() > 20);
         assert!(log.contains(&real));
 
+        let sample = log.iter().find(|s| s.id != real.id).unwrap();
+        engine.name_constellation(&sample.id, "Sample week").unwrap();
+        engine.name_constellation(&real.id, "Real week").unwrap();
+
         engine.remove_samples().unwrap();
-        assert_eq!(engine.session_log().unwrap(), vec![real]);
+        assert_eq!(engine.session_log().unwrap(), vec![real.clone()]);
         assert!(engine.store.gate_visits().unwrap().is_empty());
+        let names = engine.constellation_names().unwrap();
+        assert_eq!(names.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(), [real.id]);
+    }
+
+    #[test]
+    fn names_constellations_and_forgets_blank_names() {
+        let mut engine = engine();
+        engine.start_session("writing", 1_000).unwrap();
+        let running = engine.session().unwrap().id.clone();
+        // The week's first star can be the session that's still running.
+        engine.name_constellation(&running, "  The   Big\nDipper ").unwrap();
+        engine.end_session(1_000 + 50 * MIN, EndReason::Stopped).unwrap();
+        let named = |engine: &Engine| {
+            let names = engine.constellation_names().unwrap();
+            names.into_iter().map(|n| (n.id, n.name)).collect::<Vec<_>>()
+        };
+        assert_eq!(named(&engine), [(running.clone(), "The Big Dipper".to_owned())]);
+
+        let long = "é".repeat(MAX_CONSTELLATION_NAME + 10);
+        engine.name_constellation(&running, &long).unwrap();
+        assert_eq!(named(&engine)[0].1.chars().count(), MAX_CONSTELLATION_NAME);
+
+        engine.name_constellation(&running, " \n ").unwrap();
+        assert_eq!(named(&engine), []);
+        assert!(matches!(
+            engine.name_constellation("nope", "Orion"),
+            Err(Error::UnknownConstellation)
+        ));
     }
 
     fn remote_session(id: &str, profile_id: &str, timer: Option<TimerSettings>) -> Session {

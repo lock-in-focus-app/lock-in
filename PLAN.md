@@ -190,9 +190,10 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
 - **Missed days cost nothing.** The sky never loses anything, so there's no streak guilt.
 
 ### Constellations and the Milky Way
-- **One constellation per week.** Each week's stars (weeks start on the computer's first day of the week, as in the weekly report) connect into that week's constellation, and you can name it. Each constellation's shape is unique to you, and a week with gaps is still a constellation: missed days never break anything.
-- **Two layouts, with an animated move between them.** In the Sky view, constellations gather close together so you can take in many at once (for performance, older ones fold into the Milky Way's glow rather than all being drawn). In the weekly report they spread out and line up in week order, and the report shows that week's constellation softly behind its header and week title, like a hero image behind a page header.
-- **Names you can see.** On the Sky page each constellation's name sits softly beneath it, readable without hunting for it. Hovering a constellation makes it shine a little brighter and brings its name up clearly.
+- **One constellation per week.** Each week's stars (weeks start on the computer's first day of the week, as in the weekly report) connect into that week's constellation. Each star sits in its day's slice of the week, left to right, at a height of its own, and the fewest, shortest lines join them, so each constellation's shape is unique to you. A week with gaps is still a constellation: missed days never break anything.
+- **Naming:** every constellation starts with a made-up name like "The Quiet Heron" (never the same as another), and you can rename it from the weekly report, under the week's title. A blank name goes back to the made-up one. Only names are saved; the shapes are worked out from the session log.
+- **Two layouts, with an animated move between them.** In the Sky view, constellations pack in close, slightly overlapping and zoomed in, so the sky reads as one starry collection: the newest in the middle and older ones spiralling out, fitted above the cards. In Explore they spread out into separate constellations that fill the sky (for performance, older ones will fold into the Milky Way's glow rather than all being drawn). In the weekly report they spread out and line up in week order, and the report shows that week's constellation softly behind its header and week title, like a hero image behind a page header.
+- **Names on hover, in Explore.** The Sky page shows no names, so the sky stays a sky. In Explore, hovering a constellation makes it shine a little brighter and brings its name up beneath it.
 - **The Milky Way** fills in slowly as your total focus hours grow. It's also the zoomed-out view: from far away, older constellations fold into its glow.
 
 ### Planets and moons
@@ -377,8 +378,8 @@ lock-in/
 **Phase 4: The night sky**
 Built in slices, one PR each:
 1. ✅ **Reward engine + first sky:** stars from the session log (sizes, shared and skipped stars), the stardust total, profile star colors (defaults, plus a choice when creating a profile), and one canvas behind the window with twinkling stars, light pollution between sessions, a clear sky during them with an afterglow, glass cards that tilt under the pointer, sliding pages, and sample sessions for development builds.
-2. **The Sky as home:** the Sky page with its profile buttons, the session over the sky, satellites and tasks, the telescope drift and Explore; the Profiles page for editing only; and animations for the weekly report's calendar (switching weeks and months, opening and closing it).
-3. **Weekly constellations:** naming, names shown beneath them on the Sky page and brightened on hover, the close-together layout on the Sky page and the spread-out week-order layout in the weekly report, and the week's constellation behind the report's header and week title.
+2. ✅ **The Sky as home:** the Sky page with its profile buttons, the session over the sky, satellites and tasks, the telescope drift and Explore; the Profiles page for editing only; and animations for the weekly report's calendar (switching weeks and months, opening and closing it).
+3. ✅ **Weekly constellations:** naming, names shown beneath them on hover in Explore, the close-together layout on the Sky page and the spread-out week-order layout in the weekly report, and the week's constellation behind the report's header and week title.
 4. **Planets and moons**, seeded per month.
 5. **Comets** for resisted distractions, **rare events**, streak stats, and **satellites in the sky** (the ones in orbit and on the task list drawn as small satellites circling).
 6. **Performance at scale:** pan and zoom, the spatial index, cached static layers, and older constellations folding into the Milky Way.

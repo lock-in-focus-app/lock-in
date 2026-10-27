@@ -76,6 +76,14 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX satellites_state ON satellites (state);
 "#,
+    // Only the names people give constellations. The constellations themselves are worked out
+    // from the session log, keyed by their first star's id.
+    r#"
+    CREATE TABLE constellation_names (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL
+    );
+"#,
 ];
 
 impl Store {
@@ -250,6 +258,41 @@ impl Store {
             .execute("DELETE FROM sessions WHERE id LIKE ?1", params![pattern])?;
         self.db
             .execute("DELETE FROM gate_visits WHERE id LIKE ?1", params![pattern])?;
+        self.db
+            .execute("DELETE FROM constellation_names WHERE id LIKE ?1", params![pattern])?;
+        Ok(())
+    }
+
+    /// Whether the session log has a session with this id.
+    pub fn has_session(&self, id: &str) -> Result<bool> {
+        let found = self
+            .db
+            .query_row("SELECT 1 FROM sessions WHERE id = ?1", params![id], |_| Ok(()))
+            .optional()?;
+        Ok(found.is_some())
+    }
+
+    /// The names people gave constellations, as (constellation id, name).
+    pub fn constellation_names(&self) -> Result<Vec<(String, String)>> {
+        let mut statement = self
+            .db
+            .prepare("SELECT id, name FROM constellation_names ORDER BY id")?;
+        let rows = statement.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Names a constellation, or with None, forgets its name.
+    pub fn name_constellation(&self, id: &str, name: Option<&str>) -> Result<()> {
+        match name {
+            Some(name) => self.db.execute(
+                "INSERT INTO constellation_names (id, name) VALUES (?1, ?2)
+                 ON CONFLICT (id) DO UPDATE SET name = excluded.name",
+                params![id, name],
+            )?,
+            None => self
+                .db
+                .execute("DELETE FROM constellation_names WHERE id = ?1", params![id])?,
+        };
         Ok(())
     }
 
