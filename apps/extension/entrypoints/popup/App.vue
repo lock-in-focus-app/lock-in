@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { findRecipe, formatClock, timerStatus, type Profile, type SiteRecipe } from '@lock-in/core';
+import { endLock, findRecipe, formatClock, timerStatus, type Profile, type SiteRecipe } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import { computed, onUnmounted, ref } from 'vue';
+import EndEarly from '@/components/EndEarly.vue';
 import SiteToggles from '@/components/SiteToggles.vue';
 
 const session = useStorageItem(activeSession);
@@ -34,6 +35,14 @@ const elapsed = computed(() => {
   return session.value.timer?.showSinceDone && since >= 1 ? `Done · ${since} min ago` : 'Done';
 });
 
+// Sessions from the desktop app can have a strictness, which applies until the timer is done.
+const lock = computed(() => (session.value ? endLock(session.value, now.value) : undefined));
+const endingEarly = ref(false);
+function requestEnd() {
+  if (lock.value) endingEarly.value = true;
+  else void endSession();
+}
+
 function openSettings() {
   void browser.runtime.openOptionsPage();
   window.close();
@@ -57,7 +66,8 @@ function start(profile: Profile) {
     <section v-if="session" class="active">
       <p class="label">Locked in · {{ activeProfile?.name ?? 'Unknown profile' }}</p>
       <p class="elapsed" :class="{ done: elapsed.startsWith('Done') }">{{ elapsed }}</p>
-      <button class="end" type="button" @click="endSession()">End session</button>
+      <EndEarly v-if="endingEarly && lock" :lock="lock" @end="endSession()" @cancel="endingEarly = false" />
+      <button v-else class="end" type="button" @click="requestEnd">End session</button>
     </section>
 
     <section v-else-if="profileList">

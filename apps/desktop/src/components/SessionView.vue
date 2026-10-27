@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { formatClock, timerStatus, type ActiveSession } from '@lock-in/core';
-import { computed } from 'vue';
+import { endLock, formatClock, timerStatus, type ActiveSession } from '@lock-in/core';
+import { computed, ref } from 'vue';
 import { useNow } from '../app';
+import EndEarly from './EndEarly.vue';
 
-const props = defineProps<{ session: ActiveSession }>();
-const emit = defineEmits<{ end: [] }>();
+const props = defineProps<{ session: ActiveSession; passesLeft: number }>();
+const emit = defineEmits<{ end: []; pass: [] }>();
 
 const now = useNow();
 const status = computed(() => timerStatus(props.session, now.value));
+
+// Ending before the timer is done goes through the profile's strictness first.
+const lock = computed(() => endLock(props.session, now.value));
+const endingEarly = ref(false);
+function requestEnd() {
+  if (lock.value) endingEarly.value = true;
+  else emit('end');
+}
 const minutes = computed(() => props.session.timer?.minutes ?? 0);
 
 // The quiet timer: once it's done the session keeps going, and it only says "Done",
@@ -33,7 +42,16 @@ const detail = computed(() => {
     <p class="label">Locked in · {{ session.profileName }}</p>
     <p class="clock" :class="{ done: status.state === 'done' }">{{ clock }}</p>
     <p class="detail">{{ detail }}</p>
-    <button class="end" type="button" @click="emit('end')">End session</button>
+    <EndEarly
+      v-if="endingEarly && lock"
+      class="end-early"
+      :lock="lock"
+      :passes-left="passesLeft"
+      @end="emit('end')"
+      @pass="emit('pass')"
+      @cancel="endingEarly = false"
+    />
+    <button v-else class="end" type="button" @click="requestEnd">End session</button>
   </section>
 </template>
 
@@ -58,6 +76,10 @@ const detail = computed(() => {
 
 .clock.done {
   font-size: 36px;
+}
+
+.end-early {
+  margin-top: 32px;
 }
 
 .end {

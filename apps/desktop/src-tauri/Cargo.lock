@@ -2048,6 +2048,7 @@ version = "0.1.0"
 dependencies = [
  "dirs",
  "interprocess",
+ "objc2-core-graphics",
  "rusqlite",
  "serde",
  "serde_json",
@@ -2059,6 +2060,7 @@ dependencies = [
  "tokio",
  "ts-rs",
  "uuid",
+ "zbus",
 ]
 
 [[package]]

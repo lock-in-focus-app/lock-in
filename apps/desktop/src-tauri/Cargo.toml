@@ -33,6 +33,13 @@ interprocess = { version = "2.4", features = ["tokio"] }
 dirs = "7"
 uuid = { version = "1", features = ["v4"] }
 
+# Reading the system's idle time. Both are already used inside Tauri, so they add no new crates.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGEventSource", "CGEventTypes"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "5"
+
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

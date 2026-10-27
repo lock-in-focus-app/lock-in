@@ -1,4 +1,5 @@
 import {
+  endLock,
   findRule,
   redirectSettingsFor,
   starterProfiles,
@@ -46,7 +47,12 @@ export async function startSession(profileId: string): Promise<void> {
   await activeSession.setValue({ id: crypto.randomUUID(), profileId, startedAt: Date.now() });
 }
 
+/**
+ * Ends the session. The popup asks for a pause or typing first if its timer is still running.
+ * A Hard session can't end here before its timer is done; the desktop app would only bring it back.
+ */
 export async function endSession(): Promise<void> {
+  if (endLock((await activeSession.getValue()) ?? { startedAt: 0 }, Date.now()) === 'hard') return;
   await activeSession.setValue(null);
 }
 
