@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { skyPlaces, type Planet } from '@lock-in/core';
+import { skyPlaces, type Comet, type Planet, type RareEvent, type RareEventKind } from '@lock-in/core';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { forgetPlanets, stampPlanet } from '../planet';
+import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
 // from the reward engine (packages/core/src/constellations.ts); this only draws them, with light
@@ -21,6 +22,9 @@ import { forgetPlanets, stampPlanet } from '../planet';
 // newest largest. On the Sky, the last few months' are still; exploring shows them all, slowly
 // circling, with their moons going round. In the weekly report, the week's month's planet sits
 // faintly beside its constellation.
+//
+// Comets and rare events (skyEvents.ts) play once, the first time they're in `play`. Comets and
+// the nebulae supernovae leave stay beside their week's constellation, behind its stars.
 
 export interface SkyStar {
   id: string;
@@ -49,6 +53,10 @@ export interface SkyConstellation {
  * color of its month's top profile, which some rings take.
  */
 export type SkyPlanet = Planet & { label: string; tint: string };
+/** A comet, beside its week's constellation. */
+export type SkyComet = Comet & { constellationId: string };
+/** A rare event, with its week's constellation if it has one, where a supernova's nebula stays. */
+export type SkyEvent = RareEvent & { constellationId?: string };
 
 const props = defineProps<{
   /** Oldest first. */
@@ -63,6 +71,10 @@ const props = defineProps<{
   names?: boolean;
   /** In the week layout, the start of the week being looked at (epoch ms). Otherwise the Sky layout. */
   week?: number;
+  comets?: SkyComet[];
+  events?: SkyEvent[];
+  /** Comets (`comet:` and their id) and events (`event:` and their id) to play, the first time they're here. */
+  play?: string[];
 }>();
 
 const canvas = ref<HTMLCanvasElement>();
@@ -88,6 +100,8 @@ const skyPlanets = 6;
 /** How long planets take to circle the sky while exploring. */
 const planetLapMs = 8 * 60_000;
 const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+/** How long after one comet or event starts playing the next one does. */
+const playGapMs = 1400;
 
 let context: CanvasRenderingContext2D | null = null;
 let frame = 0;
@@ -102,6 +116,19 @@ const lens = { x: 0, y: 0, zoom: 0 };
 const sprites = new Map<string, HTMLCanvasElement>();
 /** How far planets have gone round while exploring, in radians. Planets spin and moons go round with it. */
 let orbit = 0;
+/** What's playing for the first time, by its key in `play`, and when it starts (on the animation clock). */
+const plays = new Map<string, { start: number; kind: RareEventKind | 'comet' }>();
+/** What has played (or started to), so nothing plays twice. */
+const started = new Set<string>();
+
+/**
+ * How far something has played, from 0 to 1, while it plays: negative while it waits its turn, and
+ * undefined once it's done (or never played).
+ */
+function played(key: string, time: number): number | undefined {
+  const playing = plays.get(key);
+  return playing && Math.min(1, (time - playing.start) / playMs[playing.kind]);
+}
 
 /**
  * Where a constellation or planet is: its middle (as shares of the sky's width and height), how
@@ -319,7 +346,8 @@ function drifted(x: number, y: number, depth: number) {
 
 function draw(time: number) {
   const sky = canvas.value;
-  if (!sky || !context) return;
+  // Nothing to draw while the window has no size (e.g. hidden).
+  if (!sky || !context || !sky.width || !sky.height) return;
   const { width, height } = sky;
   const scale = window.devicePixelRatio || 1;
   const haze = 1 - shownClarity;
@@ -331,6 +359,24 @@ function draw(time: number) {
   c.globalAlpha = 1;
   c.fillStyle = night;
   c.fillRect(0, 0, width, height);
+
+  // Nebulae from supernovae and comets, beside their week's constellation and behind its stars.
+  for (const event of props.events ?? []) {
+    if (event.kind !== 'supernova' || !event.constellationId) continue;
+    const progress = played(`event:${event.id}`, time);
+    const spot = markSpot(event.constellationId, (event.x * 2 - 1) * 0.9, (event.y - 0.5) * 0.8, width, height, haze);
+    if (spot && (progress === undefined || progress >= 0)) {
+      drawSupernova(c, event, spot.x, spot.y, spot.unit, spot.alpha, progress);
+    }
+  }
+  for (const comet of props.comets ?? []) {
+    const progress = played(`comet:${comet.id}`, time);
+    const spot = markSpot(comet.constellationId, comet.x, comet.y, width, height, haze);
+    if (spot && (progress === undefined || progress >= 0)) {
+      drawComet(c, comet, spot.x, spot.y, spot.unit, spot.alpha * 0.85, progress);
+    }
+  }
+  c.globalAlpha = 1;
 
   const boxes: typeof drawnBoxes = [];
   c.font = `${12 * scale}px ${font}`;
@@ -415,7 +461,19 @@ function draw(time: number) {
     if (x + radius * 3 < 0 || x - radius * 3 > width) continue;
     // Like the week's constellation, the week's month's planet cuts through the haze a little.
     const alpha = place.alpha * (1 - 0.6 * haze * (1 - 0.5 * place.lift)) * (0.9 + 0.1 * glow);
-    stampPlanet(c, planet, { x, y, radius, alpha, glow, tint: planet.tint, turn: orbit, time, lively: circling() });
+    const happening = planet.event && played(`event:${planet.event.id}`, time);
+    stampPlanet(c, planet, {
+      x,
+      y,
+      radius,
+      alpha,
+      glow,
+      tint: planet.tint,
+      turn: orbit,
+      time,
+      lively: circling(),
+      event: happening === undefined ? undefined : Math.max(0, happening),
+    });
     planetSpots.push({ key, x, y, radius });
     if (place.label * glow > 0.01) {
       // Its month and focus time, beneath it while it's hovered.
@@ -426,6 +484,18 @@ function draw(time: number) {
     }
   }
   drawnPlanets = planetSpots;
+
+  // Shooting stars, meteor showers and auroras, across the whole sky, and a supernova's flare
+  // where its week has no constellation for it to stay in.
+  for (const event of props.events ?? []) {
+    const progress = played(`event:${event.id}`, time);
+    if (progress === undefined || progress < 0) continue;
+    if (event.kind === 'supernova' && !event.constellationId) {
+      const unit = Math.min(width, height) * 0.3;
+      drawSupernova(c, event, event.x * width, (0.1 + 0.4 * event.y) * height, unit, 1, progress);
+    } else drawPassing(c, event, progress, width, height, time, still.matches);
+  }
+  c.globalAlpha = 1;
 
   if (haze > 0.01) {
     // Light pollution: a pale wash, thickest near the horizon, with the town's warm glow under it.
@@ -443,6 +513,46 @@ function draw(time: number) {
     c.fillRect(0, 0, width, height);
   }
   lastDrawn = time;
+}
+
+/**
+ * Where a spot in a constellation (in its own units) is on the canvas, with the constellation's unit
+ * in pixels and how visible it is, or undefined while the constellation isn't shown.
+ */
+function markSpot(id: string, x: number, y: number, width: number, height: number, haze: number) {
+  const place = shown.get(id);
+  if (!place || place.alpha <= 0.01) return undefined;
+  const unit = place.unit * width;
+  const at = drifted((place.x * width + x * unit) / width, (place.y * height + y * unit) / height, 0.7);
+  // Gradients throw on a position that isn't a number, which would stop the sky drawing.
+  if (!Number.isFinite(at.x + at.y + unit)) return undefined;
+  return {
+    x: at.x * width,
+    y: at.y * height,
+    unit: unit * (1 + (at.zoom - 1) / 2),
+    alpha: place.alpha * (1 - 0.6 * haze * (1 - 0.5 * place.lift)),
+  };
+}
+
+/** Starts playing what's new in `play`, one after another. Under reduced motion, what stays just appears. */
+function startPlaying(keys: readonly string[]) {
+  let next = 0;
+  const now = performance.now();
+  for (const key of keys) {
+    if (started.has(key)) continue;
+    started.add(key);
+    const [kind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+    const found =
+      kind === 'comet'
+        ? props.comets?.find((c) => c.id === id) && 'comet'
+        : props.events?.find((e) => e.id === id)?.kind;
+    if (!found) continue;
+    const passing = found === 'shootingStar' || found === 'meteorShower' || found === 'aurora';
+    if (still.matches && !passing) continue;
+    plays.set(key, { start: now + next * playGapMs, kind: found });
+    next++;
+  }
+  wake();
 }
 
 /** Whether planets circle and spin: only while exploring, and not at all under reduced motion. */
@@ -466,8 +576,11 @@ function tick(time: number) {
     lens.y += (aim.y - lens.y) * follow;
     lens.zoom += (aim.zoom - lens.zoom) * follow;
   }
+  for (const [key, playing] of plays) if (time - playing.start > playMs[playing.kind]) plays.delete(key);
   const sky = canvas.value;
-  const gliding = (sky ? glide(elapsed, sky.width, sky.height) : false) || turning;
+  // Places are shares of the sky's size, so they're only worked out while it has one.
+  const sized = !!sky && sky.width > 0 && sky.height > 0;
+  const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || turning || plays.size > 0;
   // Under reduced motion nothing twinkles, so the loop stops once everything has settled.
   const moving = !still.matches || hazing;
   if (!moving || panning || gliding || time - lastDrawn >= frameMs) draw(time);
@@ -515,7 +628,24 @@ function settle() {
   wake();
 }
 
-watch(() => [props.constellations, props.planets, props.clarity, props.names, props.week, props.drift], wake);
+watch(
+  () => [
+    props.constellations,
+    props.planets,
+    props.clarity,
+    props.names,
+    props.week,
+    props.drift,
+    props.comets,
+    props.events,
+  ],
+  wake,
+);
+watch(
+  () => props.play,
+  (keys) => keys && startPlaying(keys),
+  { immediate: true },
+);
 watch(
   () => props.planets,
   (planets) => forgetPlanets(new Set(planets?.map((planet) => planet.id))),

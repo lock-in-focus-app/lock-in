@@ -2,10 +2,12 @@ import type {
   Activity,
   AppRule,
   ConstellationName,
+  GateVisitRecord,
   InstalledApp,
   SatelliteAction,
   SessionRecord,
   Settings,
+  SkyState,
   Snapshot,
   TimerSettings,
 } from '@lock-in/core';
@@ -74,6 +76,15 @@ export const constellationNames = () => invoke<ConstellationName[]>('constellati
 
 /** Names a constellation, by its first star's id. A blank name goes back to the made-up one. */
 export const nameConstellation = (id: string, name: string) => invoke<void>('name_constellation', { id, name });
+
+/** The night sky's secret for rare events, and when the Sky last showed new ones. */
+export const skyState = () => invoke<SkyState>('sky_state');
+
+/** Notes that the Sky has shown everything up to `at` (epoch ms), so each plays once. */
+export const skySeen = (at: number) => invoke<void>('sky_seen', { at });
+
+/** Trips to redirected sites that went back to focus, oldest first, for comets. */
+export const turnedBack = () => invoke<GateVisitRecord[]>('turned_back');
 
 /** Adds six weeks of made-up sessions, in development builds. */
 export const addSampleData = () => invoke<void>('add_sample_data');

@@ -7,6 +7,11 @@ import type { Hsl, Planet, PlanetRing, SurfaceFeature } from '@lock-in/core';
 //
 // A planet that isn't moving is drawn once and kept as an image (`stampPlanet`), so the Sky page
 // costs a few image copies a frame however detailed the planets get.
+//
+// Something that happened to a planet (a rare event) stays on it: a glowing crater where a moon
+// crashed into it, a chunk broken off and drifting beside it, or a ring of debris after it
+// shattered. The first time the Sky shows it, it plays (`PlanetView.event`). Your best month's
+// planet has a faint halo.
 
 const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 /** How many specks of dust swirl around a planet that's still forming. */
@@ -22,6 +27,12 @@ const moonSpeed = 6;
 const lightningMs = 140;
 /** How far out from a planet's middle anything of it reaches (moons, rings, dust), in its radii. */
 const planetReach = 3.8;
+/** How many shards of rock circle a shattered planet. */
+const shards = 44;
+/** How far through a moon crash the moon hits. */
+const crashAt = 0.55;
+/** The glow of molten rock, in cracks and craters. */
+const molten: Hsl = [24, 95, 60];
 
 /** Where and how to draw a planet. */
 export interface PlanetView {
@@ -39,6 +50,8 @@ export interface PlanetView {
   /** For things that flicker or shimmer (ms), which they only do while `lively` (exploring, without reduced motion). */
   time: number;
   lively: boolean;
+  /** How far its event has played, from 0 (not yet) to 1, while it plays for the first time. */
+  event?: number;
 }
 
 const hsl = ([h, s, l]: Hsl, alpha = 1, lighter = 0) =>
@@ -65,12 +78,21 @@ const cache = new Map<string, { canvas: HTMLCanvasElement; key: string }>();
  * Anything moving (exploring, hovered, a different size mid-glide) is drawn fresh.
  */
 export function stampPlanet(c: CanvasRenderingContext2D, planet: Planet, view: PlanetView) {
-  if (view.lively || view.glow > 0.001) {
+  if (view.lively || view.glow > 0.001 || view.event !== undefined) {
     drawPlanet(c, planet, view);
     return;
   }
   const radius = Math.round(view.radius * 2) / 2;
-  const key = `${planet.kind}|${planet.focusMs}|${planet.moons.length}|${radius}|${view.turn.toFixed(4)}|${view.tint}`;
+  const key = [
+    planet.kind,
+    planet.focusMs,
+    planet.moons.length,
+    radius,
+    view.turn.toFixed(4),
+    view.tint,
+    planet.event?.kind,
+    planet.best,
+  ].join('|');
   let entry = cache.get(planet.id);
   const half = Math.ceil(radius * planetReach) + 4;
   if (!entry || entry.key !== key) {
@@ -101,7 +123,10 @@ export function drawPlanet(c: CanvasRenderingContext2D, planet: Planet, view: Pl
   // A planet still forming is a smaller core inside its dust.
   const core = planet.form === 'dust' ? radius * 0.6 : radius;
   c.globalAlpha = view.alpha;
+  const event = planet.event?.kind;
+  const played = view.event ?? 1;
 
+  if (planet.best) drawHalo(c, x, y, core);
   drawGlow(c, planet, x, y, core, glow);
 
   const moons = planet.moons.map((moon) => {
@@ -115,9 +140,11 @@ export function drawPlanet(c: CanvasRenderingContext2D, planet: Planet, view: Pl
   drawMoons(c, moons, radius, true);
   if (planet.dust > 0) drawDust(c, planet, x, y, radius, turn, true);
   for (const ring of planet.rings) drawRing(c, planet, ring, x, y, radius, view, true);
+  if (event === 'shatter' && played > 0) drawDebris(c, planet, x, y, core, turn, played, true);
 
   if (planet.shape === 'linked' && planet.shapeAmount > 0) drawLinked(c, planet, x, y, core, turn);
   else drawBody(c, planet, x, y, core, turn);
+  if (event && played > 0) drawScar(c, planet, x, y, core, turn, played);
   if (planet.shell > 0 && planet.shape !== 'linked') drawShell(c, planet, x, y, core);
   if (planet.aurora > 0 && planet.shape !== 'linked' && planet.shape !== 'donut') {
     drawAurora(c, planet, x, y, core, view);
@@ -126,6 +153,259 @@ export function drawPlanet(c: CanvasRenderingContext2D, planet: Planet, view: Pl
   for (const ring of planet.rings) drawRing(c, planet, ring, x, y, radius, view, false);
   if (planet.dust > 0) drawDust(c, planet, x, y, radius, turn, false);
   drawMoons(c, moons, radius, false);
+  if (event === 'shatter' && played > 0) drawDebris(c, planet, x, y, core, turn, played, false);
+  if (event === 'split' && played > 0) drawChunk(c, planet, x, y, core, played);
+  if (event === 'moonCrash' && played < 1) drawCrash(c, planet, x, y, core, turn, played);
+}
+
+/** A faint ring of pale gold light around your best month's planet. */
+function drawHalo(c: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+  const light = c.createRadialGradient(x, y, radius * 1.1, x, y, radius * 2);
+  light.addColorStop(0, 'hsl(46 90% 82% / 0)');
+  light.addColorStop(0.35, 'hsl(46 90% 82% / 0.16)');
+  light.addColorStop(1, 'hsl(46 90% 82% / 0)');
+  c.fillStyle = light;
+  c.beginPath();
+  c.arc(x, y, radius * 2, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = 'hsl(46 90% 86% / 0.22)';
+  c.lineWidth = Math.max(1, radius * 0.025);
+  c.beginPath();
+  c.arc(x, y, radius * 1.42, 0, Math.PI * 2);
+  c.stroke();
+}
+
+/** Eases from 0 to 1, fast at first and slowing to a stop. */
+const easeOut = (t: number) => 1 - (1 - Math.min(1, Math.max(0, t))) ** 3;
+
+/**
+ * What an event left on the planet's surface: a glowing crater where a moon hit it, or glowing
+ * cracks where a chunk broke off or it shattered. Both turn with the planet.
+ */
+function drawScar(
+  c: CanvasRenderingContext2D,
+  planet: Planet,
+  x: number,
+  y: number,
+  radius: number,
+  turn: number,
+  played: number,
+) {
+  const event = planet.event!;
+  // A crater only once the moon has hit; cracks open as it breaks.
+  const showing = event.kind === 'moonCrash' ? easeOut((played - crashAt) / (1 - crashAt)) : easeOut(played * 2);
+  if (showing <= 0) return;
+  c.save();
+  c.translate(x, y);
+  c.rotate(planet.tilt);
+  tracePlanet(c, planet, radius);
+  c.clip('evenodd');
+  const spin = turn * planet.spin;
+  if (event.kind === 'moonCrash') {
+    const at = seen(event.lon, event.lat, radius, spin);
+    if (at) {
+      const size = radius * 0.26;
+      const glow = c.createRadialGradient(at.across, at.down, 0, at.across, at.down, size * 1.6);
+      glow.addColorStop(0, hsl(molten, 0.95 * showing, 12));
+      glow.addColorStop(0.45, hsl(molten, 0.55 * showing));
+      glow.addColorStop(1, hsl(molten, 0));
+      c.fillStyle = glow;
+      c.beginPath();
+      c.ellipse(at.across, at.down, size * 1.6 * at.facing, size * 1.6, 0, 0, Math.PI * 2);
+      c.fill();
+      // Its rim, thrown up around it.
+      c.strokeStyle = hsl(planet.colors.body, 0.7 * showing, -20);
+      c.lineWidth = size * 0.2;
+      c.beginPath();
+      c.ellipse(at.across, at.down, size * at.facing, size, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+  } else {
+    // Cracks branching in from the edge where it broke, or all over where it shattered.
+    const cracks = event.kind === 'split' ? 3 : 6;
+    for (let crack = 0; crack < cracks; crack++) {
+      const start = event.kind === 'split' ? event.angle - planet.tilt + (crack - 1) * 0.35 : crack * goldenAngle * 2;
+      let px = Math.cos(start) * radius;
+      let py = Math.sin(start) * radius;
+      const path = [{ x: px, y: py }];
+      for (let i = 1; i < 6; i++) {
+        const heading = start + Math.PI + (noise(crack * 7 + i + event.lon) - 0.5) * 1.4;
+        px += Math.cos(heading) * radius * 0.17;
+        py += Math.sin(heading) * radius * 0.17;
+        path.push({ x: px, y: py });
+      }
+      for (const [width, alpha] of [
+        [0.07, 0.22],
+        [0.025, 0.85],
+      ] as const) {
+        c.strokeStyle = hsl(molten, alpha * showing, 6);
+        c.lineWidth = radius * width;
+        c.lineJoin = 'round';
+        c.lineCap = 'round';
+        c.beginPath();
+        path.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+        c.stroke();
+      }
+    }
+  }
+  c.restore();
+  c.lineCap = 'butt';
+}
+
+/** A moon falling into the planet, then a flash where it hits. */
+function drawCrash(
+  c: CanvasRenderingContext2D,
+  planet: Planet,
+  x: number,
+  y: number,
+  radius: number,
+  turn: number,
+  played: number,
+) {
+  const event = planet.event!;
+  const at = seen(event.lon, event.lat, radius, turn * planet.spin) ?? { across: 0, down: 0, facing: 1 };
+  const hit = leaned(x, y, at.across, at.down, planet.tilt);
+  if (played < crashAt) {
+    // Falling faster as it nears.
+    const fall = (played / crashAt) ** 2;
+    const distance = radius * 3.4 * (1 - fall);
+    const mx = hit.x + Math.cos(event.angle) * distance;
+    const my = hit.y + Math.sin(event.angle) * distance;
+    const size = radius * 0.16;
+    const trail = c.createLinearGradient(
+      mx,
+      my,
+      mx + Math.cos(event.angle) * size * 5,
+      my + Math.sin(event.angle) * size * 5,
+    );
+    trail.addColorStop(0, 'rgb(230 225 215 / 0.5)');
+    trail.addColorStop(1, 'rgb(230 225 215 / 0)');
+    c.strokeStyle = trail;
+    c.lineWidth = size * 1.2;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(mx, my);
+    c.lineTo(mx + Math.cos(event.angle) * size * 5, my + Math.sin(event.angle) * size * 5);
+    c.stroke();
+    c.lineCap = 'butt';
+    const lit = c.createRadialGradient(mx - size * 0.4, my - size * 0.4, 0, mx, my, size * 1.2);
+    lit.addColorStop(0, 'rgb(225 220 210)');
+    lit.addColorStop(1, 'rgb(90 88 84)');
+    c.fillStyle = lit;
+    c.beginPath();
+    c.arc(mx, my, size, 0, Math.PI * 2);
+    c.fill();
+    return;
+  }
+  flash(c, hit.x, hit.y, radius * 0.9, 1 - (played - crashAt) / (1 - crashAt));
+}
+
+/** A burst of light, from white to molten, fading as `strength` falls to 0. */
+function flash(c: CanvasRenderingContext2D, x: number, y: number, reach: number, strength: number) {
+  if (strength <= 0) return;
+  const light = c.createRadialGradient(x, y, 0, x, y, reach);
+  light.addColorStop(0, `rgb(255 250 235 / ${0.95 * strength})`);
+  light.addColorStop(0.3, hsl(molten, 0.6 * strength, 14));
+  light.addColorStop(1, hsl(molten, 0));
+  c.fillStyle = light;
+  c.beginPath();
+  c.arc(x, y, reach, 0, Math.PI * 2);
+  c.fill();
+}
+
+/** A chunk broken off the planet, drifting a little way out, its broken side glowing. */
+function drawChunk(c: CanvasRenderingContext2D, planet: Planet, x: number, y: number, radius: number, played: number) {
+  const event = planet.event!;
+  const out = easeOut(played);
+  flash(c, x + Math.cos(event.angle) * radius, y + Math.sin(event.angle) * radius, radius * 0.8, 1 - played * 2.5);
+  const distance = radius * lerp(0.95, 1.55, out);
+  const cx = x + Math.cos(event.angle) * distance;
+  const cy = y + Math.sin(event.angle) * distance;
+  const size = radius * 0.36;
+  const turned = event.lon + out * 0.6;
+  const corners = Array.from({ length: 7 }, (_, i) => {
+    const angle = turned + (i / 7) * Math.PI * 2;
+    const reach = size * (0.75 + 0.4 * noise(event.lat * 10 + i));
+    return { x: cx + Math.cos(angle) * reach, y: cy + Math.sin(angle) * reach * 0.85 };
+  });
+  const lit = c.createRadialGradient(cx - size * 0.4, cy - size * 0.4, 0, cx, cy, size * 1.3);
+  lit.addColorStop(0, hsl(planet.colors.body, 1, 14));
+  lit.addColorStop(0.6, hsl(planet.colors.body));
+  lit.addColorStop(1, hsl(planet.colors.body, 1, -26));
+  c.fillStyle = lit;
+  smoothShape(c, corners);
+  c.fill();
+  // Its broken side, facing the planet, still glowing.
+  const back = event.angle + Math.PI;
+  const edge = c.createRadialGradient(
+    cx + Math.cos(back) * size,
+    cy + Math.sin(back) * size,
+    0,
+    cx + Math.cos(back) * size,
+    cy + Math.sin(back) * size,
+    size * 1.1,
+  );
+  edge.addColorStop(0, hsl(molten, 0.75));
+  edge.addColorStop(1, hsl(molten, 0));
+  c.save();
+  smoothShape(c, corners);
+  c.clip();
+  c.fillStyle = edge;
+  c.fillRect(cx - size * 1.5, cy - size * 1.5, size * 3, size * 3);
+  c.restore();
+}
+
+/**
+ * Half of the ring of debris a shattered planet left: shards of its rock going slowly round. As it
+ * plays, they fly out from the planet to where they circle.
+ */
+function drawDebris(
+  c: CanvasRenderingContext2D,
+  planet: Planet,
+  x: number,
+  y: number,
+  radius: number,
+  turn: number,
+  played: number,
+  behind: boolean,
+) {
+  const event = planet.event!;
+  const out = easeOut(played);
+  const tilt = planet.tilt + (event.angle / Math.PI - 1) * 0.5;
+  const flat = 0.3;
+  if (behind) flash(c, x, y, radius * 1.5, 1 - played * 3);
+  // A faint band of dust where they circle.
+  c.strokeStyle = hsl(planet.colors.body, 0.12 * out, 10);
+  c.lineWidth = radius * 0.5;
+  c.beginPath();
+  c.ellipse(
+    x,
+    y,
+    radius * 1.9 * out,
+    radius * 1.9 * out * flat,
+    tilt,
+    behind ? Math.PI : 0,
+    behind ? Math.PI * 2 : Math.PI,
+  );
+  c.stroke();
+  for (let i = 0; i < shards; i++) {
+    const reach = radius * lerp(0.9, 1.6 + 0.6 * noise(i + event.lat), out);
+    const angle = i * goldenAngle + event.lon + (turn * 6) / (reach / radius);
+    if (Math.sin(angle) < 0 !== behind) continue;
+    const at = leaned(x, y, Math.cos(angle) * reach, Math.sin(angle) * reach * flat, tilt);
+    const size = radius * (0.03 + 0.06 * noise(i * 3.1));
+    const spin = noise(i * 5.7) * Math.PI * 2 + turn * 4;
+    c.fillStyle = hsl(planet.colors.body, 0.9, noise(i * 1.7) * 18 - 4);
+    c.beginPath();
+    for (let corner = 0; corner < 4; corner++) {
+      const a = spin + (corner / 4) * Math.PI * 2;
+      const r = size * (0.6 + 0.6 * noise(i + corner * 2.3));
+      if (corner) c.lineTo(at.x + Math.cos(a) * r, at.y + Math.sin(a) * r);
+      else c.moveTo(at.x + Math.cos(a) * r, at.y + Math.sin(a) * r);
+    }
+    c.closePath();
+    c.fill();
+  }
 }
 
 /**

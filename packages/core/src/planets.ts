@@ -1,3 +1,4 @@
+import type { PlanetEventKind, RareEvent } from './events';
 import { seeded, type Star } from './sky';
 
 // Planets and moons (PLAN §5): one planet for every month with any focus, and moons around it
@@ -121,6 +122,21 @@ export interface Moon {
   craters: boolean;
 }
 
+/**
+ * Something that happened to a planet (a rare event), which stays: where on it (longitude in
+ * radians, latitude from -1 at the top pole to 1 at the bottom), and which way it went.
+ */
+export interface PlanetEvent {
+  /** The rare event's id: the session that brought it. */
+  id: string;
+  kind: PlanetEventKind;
+  /** When it happened (epoch ms). */
+  at: number;
+  lon: number;
+  lat: number;
+  angle: number;
+}
+
 /** One month's planet. */
 export interface Planet {
   /** The month's first star's id, which doesn't change as the month goes on. */
@@ -174,13 +190,17 @@ export interface Planet {
   aurora: number;
   /** Oldest first, at most three. */
   moons: Moon[];
+  /** Something that happened to it: a moon crashing into it, a chunk breaking off, or shattering. */
+  event?: PlanetEvent;
+  /** Whether it's your best month's planet so far, which gets a faint halo. Not until there are two. */
+  best: boolean;
 }
 
 /**
  * The planets a sky's stars make, oldest first: one for every month with stars, in local time.
- * A month without focus has no planet.
+ * A month without focus has no planet. Rare events that happened to a planet stay on it.
  */
-export function planets(sky: readonly Star[]): Planet[] {
+export function planets(sky: readonly Star[], events: readonly RareEvent[] = []): Planet[] {
   const sorted = [...sky].sort((a, b) => a.startedAt - b.startedAt);
   const months = new Map<number, Star[]>();
   for (const star of sorted) {
@@ -193,6 +213,22 @@ export function planets(sky: readonly Star[]): Planet[] {
   const list: Planet[] = [];
   for (const [start, stars] of months) {
     list.push(planet(stars, start, moons.get(start) ?? [], list[list.length - 1]?.kind));
+  }
+  for (const event of events) {
+    const hit = event.planetId && list.find((p) => p.id === event.planetId);
+    if (!hit || hit.event || !happensToPlanets(event.kind)) continue;
+    hit.event = {
+      id: event.id,
+      kind: event.kind,
+      at: event.at,
+      lon: event.x * Math.PI * 2,
+      lat: (event.y * 2 - 1) * 0.6,
+      angle: event.angle,
+    };
+  }
+  if (list.length > 1) {
+    const best = list.reduce((most, p) => (p.focusMs > most.focusMs ? p : most));
+    best.best = true;
   }
   return list;
 }
@@ -319,6 +355,7 @@ function planet(stars: readonly Star[], start: number, moons: Moon[], before?: P
     flattening: fill(hours, stageHours.aurora),
     aurora: fill(hours, stageHours.aurora),
     moons: moons.slice(0, mostMoons),
+    best: false,
   };
 }
 
@@ -357,6 +394,9 @@ function palette(kind: PlanetKind, random: () => number): Planet['colors'] {
       };
   }
 }
+
+const happensToPlanets = (kind: RareEvent['kind']): kind is PlanetEventKind =>
+  kind === 'moonCrash' || kind === 'split' || kind === 'shatter';
 
 function pick<T>(list: readonly T[], value: number): T {
   return list[Math.floor(value * list.length)]!;
@@ -422,18 +462,18 @@ function streakMoons(sorted: readonly Star[]): Map<number, Moon[]> {
   return moons;
 }
 
-function monthStart(at: number): number {
+export function monthStart(at: number): number {
   const date = new Date(at);
   return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
 }
 
-function dayStart(at: number): number {
+export function dayStart(at: number): number {
   const date = new Date(at);
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
 /** The start of the day after the one starting at `day`, even across a daylight saving change. */
-function nextDay(day: number): number {
+export function nextDay(day: number): number {
   const date = new Date(day);
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
 }

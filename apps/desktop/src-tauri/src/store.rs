@@ -297,7 +297,6 @@ impl Store {
     }
 
     /// Gate visits as (session id, visit), oldest first.
-    #[allow(dead_code)] // Read by the night sky once it lands.
     pub fn gate_visits(&self) -> Result<Vec<(Option<String>, GateVisit)>> {
         self.gate_visits_between(i64::MIN, i64::MAX)
     }
