@@ -28,11 +28,11 @@ const states = (messages: ToDesktop[]) =>
   messages.filter((m): m is Extract<ToDesktop, { type: 'state' }> => m.type === 'state');
 
 /** Whether the extension says it's linked to the app, from session storage. */
-const linked = (extensionPage: Page) =>
+const linked = (extensionPage: Page): Promise<boolean> =>
   extensionPage.evaluate(() =>
     (globalThis as unknown as { chrome: typeof browser }).chrome.storage.session
       .get('desktopLinked')
-      .then((items) => items.desktopLinked ?? false),
+      .then((items) => items.desktopLinked === true),
   );
 
 // One browser for the whole file, linked to a fake app; each test picks up where the last left off.
