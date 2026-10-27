@@ -188,7 +188,7 @@ async function run(action: () => Promise<void>) {
     :constellations="skyConstellations"
     :clarity="clarity"
     :drift="exploring"
-    :names="view === 'sky'"
+    :names="view === 'sky' && exploring"
     :week="reportWeek"
   />
   <main>

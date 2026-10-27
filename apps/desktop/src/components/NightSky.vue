@@ -9,8 +9,8 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 // changes under reduced motion.
 //
 // It has two layouts, and constellations glide from one to the other. On the Sky (`sky`), they
-// gather close together, the newest in the middle, with their names softly beneath them;
-// hovering one brightens it and its name. In the weekly report (`week`), they line up in week
+// gather close together, the newest in the middle, like one starry collection. Exploring spreads
+// them out, and hovering one there brightens it and shows its name beneath it. In the weekly report (`week`), they line up in week
 // order, with the week being looked at large and soft behind the page's header.
 //
 // With `drift` on (exploring the Sky page), the sky leans and zooms gently toward the pointer, like
@@ -45,7 +45,7 @@ const props = defineProps<{
   clarity: number;
   /** Whether the sky drifts toward the pointer. */
   drift?: boolean;
-  /** Whether names show beneath the constellations, and hovering one brightens it. */
+  /** Whether hovering a constellation brightens it and shows its name beneath it. */
   names?: boolean;
   /** In the week layout, the start of the week being looked at (epoch ms). Otherwise the Sky layout. */
   week?: number;
@@ -67,6 +67,8 @@ const shineMs = 350;
 const weekMs = 7 * 24 * 60 * 60_000;
 /** How far a constellation reaches from its middle, in its own units: across, then up and down with its name. */
 const reach = { x: 1.15, up: 0.6, down: 1 };
+/** How much closer together constellations sit on the Sky than while exploring. They overlap a little. */
+const skyGather = 0.5;
 
 let context: CanvasRenderingContext2D | null = null;
 let frame = 0;
@@ -139,9 +141,11 @@ function targets(width: number, height: number): Map<string, Place> {
     }
     return places;
   }
-  // Close together, fitted between the header and the cards at the bottom and never too big.
-  // Exploring clears the cards away, so they spread out to fill the sky.
-  const spots = skyPlaces(list.length);
+  // Packed close, so the Sky reads as one starry collection, fitted between the header and the
+  // cards at the bottom. Exploring clears the cards away, and they spread out into separate
+  // constellations to admire one at a time.
+  const gather = props.drift ? 1 : skyGather;
+  const spots = skyPlaces(list.length).map((s) => ({ x: s.x * gather, y: s.y * gather }));
   const xs = spots.map((s) => s.x);
   const ys = spots.map((s) => s.y);
   const box = {
@@ -158,10 +162,11 @@ function targets(width: number, height: number): Map<string, Place> {
   };
   const fitX = (area.right - area.left) / (box.right - box.left);
   const fitY = (area.bottom - area.top) / (box.bottom - box.top);
-  const unit = Math.min(fitX, fitY, 0.26 * width);
-  // The middles may spread a little further apart than the constellations grow, to fill the sky.
-  const spreadX = Math.min(fitX, unit * 1.4);
-  const spreadY = Math.min(fitY, unit * 1.6);
+  const unit = Math.min(fitX, fitY, (props.drift ? 0.26 : 0.34) * width);
+  // While exploring, the middles may spread a little further apart than the constellations
+  // grow, to fill the sky.
+  const spreadX = props.drift ? Math.min(fitX, unit * 1.4) : unit;
+  const spreadY = props.drift ? Math.min(fitY, unit * 1.6) : unit;
   const middle = { x: (area.left + area.right) / 2, y: (area.top + area.bottom) / 2 };
   const boxMiddle = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
   list.forEach((constellation, i) => {
@@ -307,9 +312,9 @@ function draw(time: number) {
       bottom: Math.max(...ys) + 28 * scale,
     };
     boxes.push(box);
-    if (place.label > 0.01) {
-      // The name, softly beneath it, and clearly while it's hovered.
-      c.globalAlpha = place.label * (0.5 + 0.45 * glow) * (1 - 0.4 * haze);
+    if (place.label * glow > 0.01) {
+      // Its name, beneath it while it's hovered.
+      c.globalAlpha = place.label * glow * 0.95 * (1 - 0.4 * haze);
       c.fillStyle = '#f3f0e6';
       // Kept inside the window, so a name near the edge isn't cut off.
       const half = c.measureText(constellation.name).width / 2 + 6 * scale;
