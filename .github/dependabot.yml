@@ -18,6 +18,10 @@ updates:
       # The Node types follow the Node version we run (CI uses 24), not the newest one.
       - dependency-name: '@types/node'
         update-types: [version-update:semver-major]
+      # TypeScript 7 has no compiler API until 7.1, and vue-tsc, typescript-eslint, WXT and Nuxt
+      # need one. Until they support 7, only packages/* use it; the root and the apps stay on 6.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: cargo
     directory: /apps/desktop/src-tauri
