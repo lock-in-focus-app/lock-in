@@ -19,11 +19,15 @@ import {
   withPass,
   withProfileToggle,
   withRedirectSettings,
+  withSatelliteAction,
+  withSatelliteLaunched,
+  withSatellitesBack,
   withSessionOverridesSaved,
   withSessionToggle,
   type Profile,
   type RedirectDestination,
   type RedirectSettings,
+  type SatelliteAction,
   type SiteLevel,
   type SiteRecipe,
   type WhyReason,
@@ -213,4 +217,28 @@ export async function addOwnQuote(text: string, author: string): Promise<void> {
 
 export async function removeOwnQuote(id: string): Promise<void> {
   await inTurn(async () => ownQuotes.setValue((await ownQuotes.getValue()).filter((quote) => quote.id !== id)));
+}
+
+/** Launches a thought into orbit. It comes back when the session ends, or the next one if none is running. */
+export async function launchSatellite(text: string): Promise<void> {
+  await inTurn(async () =>
+    satellites.setValue(withSatelliteLaunched(await satellites.getValue(), crypto.randomUUID(), text, Date.now())),
+  );
+}
+
+/** Ticks off, snoozes, keeps as a task or deletes a satellite. */
+export async function actOnSatellite(id: string, action: SatelliteAction): Promise<void> {
+  await inTurn(async () =>
+    satellites.setValue(withSatelliteAction(await satellites.getValue(), id, action, Date.now())),
+  );
+}
+
+/** Brings the satellites in orbit back, once a session has ended. */
+export async function bringSatellitesBack(): Promise<void> {
+  await inTurn(async () => satellites.setValue(withSatellitesBack(await satellites.getValue(), Date.now())));
+}
+
+/** Lets go of a satellite the desktop app has taken over. */
+export async function forgetSatellite(id: string): Promise<void> {
+  await inTurn(async () => satellites.setValue((await satellites.getValue()).filter((s) => s.id !== id)));
 }

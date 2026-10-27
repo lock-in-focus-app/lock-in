@@ -18,6 +18,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import BlockedCard from './components/BlockedCard.vue';
 import IntentionGate from './components/IntentionGate.vue';
 import LinkCard from './components/LinkCard.vue';
+import SatelliteLaunch from '@/components/SatelliteLaunch.vue';
 import QuoteCard from './components/QuoteCard.vue';
 import StuckPage from './components/StuckPage.vue';
 import WhyTap from './components/WhyTap.vue';
@@ -36,6 +37,9 @@ const link = ref<SavedLink>();
 const attempts = ref(0);
 const visitId = ref('');
 const why = ref<WhyReason>();
+const linked = useStorageItem(desktopLinked);
+const satelliteList = useStorageItem(satellites);
+const inOrbit = computed(() => satelliteList.value?.filter((s) => s.state === 'orbiting').length ?? 0);
 
 const siteName = computed(() => recipe?.name ?? '');
 const destinationText = computed(() => (target ? `${target.hostname.replace(/^www\./, '')}${target.pathname}` : ''));
@@ -162,6 +166,8 @@ function ordinal(n: number): string {
             Still need {{ siteName }}?
           </button>
         </div>
+        <!-- The thought that pulled you here can wait in orbit instead. -->
+        <SatelliteLaunch class="satellites" session-running :in-orbit="inOrbit" :linked="!!linked" />
       </footer>
     </template>
 
@@ -234,5 +240,9 @@ footer {
 
 .more:empty {
   display: none;
+}
+
+.satellites {
+  margin-top: 24px;
 }
 </style>

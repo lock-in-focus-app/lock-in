@@ -169,6 +169,8 @@ To make the name instantly clear:
 
 **The task list** is a checklist on the dashboard, kept in the app, as long as you like. Ticked-off tasks stay underneath for 24 hours ("Done · last 24 hours"), so one ticked by accident can be unticked; after that they drop off the list (they're still kept for insights). Later: export to Reminders, Todoist and the like.
 
+**In the browser extension**, the popup (focused and ready to type into during a session) and every redirect page have the launch box. When the extension is linked to the app, each satellite is handed over and the app keeps it from then on, so there's one list to review, in the app. The extension holds on to a satellite until the app confirms it has it, so one launched as the link drops goes over next time. Without the app, the extension keeps them itself, with the same rules: they come back however the session ends, and the popup's start screen shows the same quiet "came back" checklist, what's in orbit, and the task list with its 24 hours of ticked-off tasks. If the extension links to the app later, everything it kept moves over.
+
 **The look (with the UI redesign in Phase 5):** dreamy and slow. Tiny satellites drift around the UI in lazy orbits among faint, twinkling stars, e.g. around the launch box and the task list, and a launched thought visibly lifts off and joins them. It should feel calm, never busy: slow loops of tens of seconds, soft glows, nothing that flickers or pulls the eye during a session. It's drawn with CSS or a small canvas (no animation library) and stays still with reduced motion.
 
 Satellites also count in insights, e.g. "You parked 12 thoughts this week instead of acting on them."
@@ -357,8 +359,8 @@ lock-in/
 - ✅ App rules, SQLite. The session log keeps everything the rewards will need later (§5), so stardust and the sky can be worked out from past sessions once they ship. (On macOS, app launches come from `NSWorkspace` notifications; Linux has no unprivileged equivalent, so it checks every 10 seconds during sessions, about 9 ms each.)
 
 **Phase 3: Satellites & insights**
-- Satellites (§4) in the desktop app: the Alt+P box, menu-bar capture, the post-session return, and the task list.
-- Satellites in the extension: capture from the popup and redirect pages, sent to the app when linked and kept by the extension when it runs alone.
+- ✅ Satellites (§4) in the desktop app: the Alt+P box, menu-bar capture, the post-session return, and the task list.
+- ✅ Satellites in the extension: capture from the popup and redirect pages, sent to the app when linked and kept by the extension when it runs alone.
 - Weekly report.
 - Session suggestions from apps.
 
@@ -370,6 +372,7 @@ lock-in/
 
 **Phase 5: Polish & release**
 - UI redesign: the floating-card look from the reference images, and the satellites' dreamy orbiting look, first-use tooltip and animation (§4). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
+- A short tutorial for new users, in the app and the extension: a skippable walkthrough of starting a session, profiles and site levels, the redirect page, launching and reviewing satellites (Alt+P and the popup), and linking the app to the browser. It can be replayed from Settings.
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.

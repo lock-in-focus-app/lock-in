@@ -9,6 +9,7 @@ import {
   type GateVisit,
   type OwnQuote,
   type Profile,
+  type Satellite,
   type Session,
 } from '@lock-in/core';
 import puppeteer, { type Browser, type Extension, type Page } from 'puppeteer';
@@ -134,6 +135,7 @@ export interface Stored {
   profiles?: Profile[];
   gateVisits?: GateVisit[];
   ownQuotes?: OwnQuote[];
+  satellites?: Satellite[];
   syncedAt?: { profiles: number; activeSession: number };
 }
 

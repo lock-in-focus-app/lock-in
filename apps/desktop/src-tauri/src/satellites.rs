@@ -10,7 +10,7 @@ pub const MAX_TEXT: usize = 500;
 pub const DONE_TASKS_SHOWN_MS: i64 = 24 * 60 * 60_000;
 
 /// A thought launched to come back later, so it doesn't pull you out of the session.
-#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Satellite {
