@@ -9,8 +9,8 @@ export default defineConfig({
     // How long `expect.poll` keeps checking. The extension usually catches up within
     // milliseconds, but a busy CI runner can take seconds.
     expect: { poll: { timeout: 5_000 } },
-    // Each file runs its own Chrome; too many at once makes popups and timers flaky. GitHub's
-    // runners for private repos have 2 cores.
-    maxWorkers: process.env.CI ? 2 : 3,
+    // Each file runs its own Chrome, one per core at most. GitHub's runners for public repos
+    // have 4 cores.
+    maxWorkers: process.env.CI ? 4 : 3,
   },
 });
