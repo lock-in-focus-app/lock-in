@@ -4,6 +4,7 @@ use ts_rs::TS;
 use crate::apps::{self, AppRule};
 use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
+use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteState};
 use crate::session::{EndReason, GateVisit, Profile, Session, SessionRecord, starter_profiles};
 use crate::settings::Settings;
 use crate::store::{Store, Synced};
@@ -31,6 +32,9 @@ pub struct Engine {
     browsers: Vec<KnownBrowser>,
     /// The id of the running session, if it counts as broken.
     broken_session: Option<String>,
+    /// Satellites in orbit, back or on the task list, and recently ticked-off tasks, oldest
+    /// first.
+    satellites: Vec<Satellite>,
 }
 
 /// Everything the UI shows, sent whenever it changes.
@@ -47,6 +51,9 @@ pub struct Snapshot {
     pub browsers: Vec<KnownBrowser>,
     /// Whether this system can hide another app's windows, for app rules.
     pub can_hide_apps: bool,
+    /// Satellites in orbit, back or on the task list, and tasks ticked off in the last day,
+    /// oldest first.
+    pub satellites: Vec<Satellite>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -76,7 +83,7 @@ pub struct ActiveSession {
 impl Engine {
     /// Loads saved state. A new install starts with the starter profiles, marked as never
     /// changed so the extension's own profiles win when it first connects.
-    pub fn load(store: Store) -> Result<Self> {
+    pub fn load(store: Store, now: i64) -> Result<Self> {
         let profiles = store.load(PROFILES)?.unwrap_or_else(|| Synced {
             value: starter_profiles(),
             updated_at: 0,
@@ -92,6 +99,7 @@ impl Engine {
         let pass_uses = store.pass_uses()?;
         let browsers = store.load(BROWSERS)?.map(|s| s.value).unwrap_or_default();
         let broken_session = store.load(BROKEN_SESSION)?.and_then(|s| s.value);
+        let satellites = store.shown_satellites(now - DONE_TASKS_SHOWN_MS)?;
         Ok(Self {
             store,
             profiles,
@@ -100,6 +108,7 @@ impl Engine {
             pass_uses,
             browsers,
             broken_session,
+            satellites,
         })
     }
 
@@ -164,6 +173,12 @@ impl Engine {
             passes_left: self.passes_left(now),
             browsers: self.browsers.clone(),
             can_hide_apps: cfg!(target_os = "macos"),
+            satellites: self
+                .satellites
+                .iter()
+                .filter(|s| s.state != SatelliteState::Done || s.state_at >= now - DONE_TASKS_SHOWN_MS)
+                .cloned()
+                .collect(),
         }
     }
 
@@ -209,12 +224,11 @@ impl Engine {
         };
         let mut record = SessionRecord::new(session, &self.profile_name(&session.profile_id), now, reason);
         record.broken = self.is_broken(session);
-        let synced = Synced {
+        let none = Synced {
             value: None,
             updated_at: now,
         };
-        self.store.end_session(&record, ACTIVE_SESSION, &synced)?;
-        self.session = synced;
+        self.log_end(&record, none)?;
         if reason == EndReason::EmergencyPass {
             self.pass_uses.push(now);
         }
@@ -229,12 +243,11 @@ impl Engine {
         };
         let mut record = SessionRecord::idle(session, &self.profile_name(&session.profile_id), last_input, now);
         record.broken = self.is_broken(session);
-        let synced = Synced {
+        let none = Synced {
             value: None,
             updated_at: now,
         };
-        self.store.end_session(&record, ACTIVE_SESSION, &synced)?;
-        self.session = synced;
+        self.log_end(&record, none)?;
         Ok(Some(record))
     }
 
@@ -419,15 +432,74 @@ impl Engine {
                     let ended_at = incoming.updated_at.min(now);
                     let mut record = SessionRecord::new(previous, &name, ended_at, EndReason::Stopped);
                     record.broken = self.is_broken(previous);
-                    self.store.end_session(&record, ACTIVE_SESSION, &incoming)?;
+                    self.log_end(&record, incoming)?;
                 }
-                None => self.store.save(ACTIVE_SESSION, &incoming)?,
+                None => {
+                    self.store.save(ACTIVE_SESSION, &incoming)?;
+                    self.session = incoming;
+                }
             }
-            self.session = incoming;
             changed = true;
         }
 
         Ok(changed)
+    }
+
+    /// Logs a session that ended and takes on what replaced it (no session, or one the
+    /// extension started). Satellites in orbit come back.
+    fn log_end(&mut self, record: &SessionRecord, replacement: Synced<Option<Session>>) -> Result<()> {
+        self.store.end_session(record, ACTIVE_SESSION, &replacement)?;
+        self.session = replacement;
+        for satellite in &mut self.satellites {
+            if satellite.state == SatelliteState::Orbiting {
+                satellite.state = SatelliteState::Back;
+                satellite.state_at = record.ended_at;
+            }
+        }
+        Ok(())
+    }
+
+    /// Launches a thought into orbit, to come back when the running session ends, or the next
+    /// one if none is running. Returns whether there was anything to launch.
+    pub fn launch_satellite(&mut self, text: &str, now: i64) -> Result<bool> {
+        let Some(text) = satellites::cleaned(text) else {
+            return Ok(false);
+        };
+        let satellite = Satellite {
+            id: uuid::Uuid::new_v4().to_string(),
+            text,
+            launched_at: now,
+            state: SatelliteState::Orbiting,
+            state_at: now,
+        };
+        let session_id = self.session().map(|s| s.id.as_str());
+        self.store.save_satellite(&satellite, session_id)?;
+        self.satellites.push(satellite);
+        Ok(true)
+    }
+
+    /// Ticks off, snoozes, keeps as a task or deletes a satellite. A ticked-off task can go
+    /// back on the list for a day afterwards.
+    pub fn act_on_satellite(&mut self, id: &str, action: SatelliteAction, now: i64) -> Result<()> {
+        let satellite = self
+            .satellites
+            .iter_mut()
+            .find(|s| s.id == id)
+            .ok_or(Error::UnknownSatellite)?;
+        let state = action.state();
+        let was_task = satellite.state == SatelliteState::Task;
+        self.store.move_satellite(id, state, now)?;
+        satellite.state = state;
+        satellite.state_at = now;
+        // Only tasks stay once ticked off, and only for a day.
+        let kept = |s: &Satellite| match s.state {
+            SatelliteState::Done if s.id == id => was_task,
+            SatelliteState::Done => s.state_at >= now - DONE_TASKS_SHOWN_MS,
+            SatelliteState::Deleted => false,
+            _ => true,
+        };
+        self.satellites.retain(kept);
+        Ok(())
     }
 
     /// Logs a trip to a redirected site, with the session it happened in.
@@ -455,7 +527,7 @@ mod tests {
     const MIN: i64 = 60_000;
 
     fn engine() -> Engine {
-        Engine::load(Store::open_in_memory().unwrap()).unwrap()
+        Engine::load(Store::open_in_memory().unwrap(), 0).unwrap()
     }
 
     #[test]
@@ -512,7 +584,11 @@ mod tests {
         };
         engine.set_profile_timer("deep-work", timer, 7).unwrap();
 
-        let reloaded = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        let reloaded = Engine::load(
+            std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap()),
+            0,
+        )
+        .unwrap();
         let deep_work = reloaded.profile("deep-work").unwrap();
         assert_eq!(deep_work.timer().minutes, crate::timer::MAX_MINUTES);
         assert_eq!(deep_work.timer().on_end, TimerEnd::Alert);
@@ -697,7 +773,11 @@ mod tests {
         assert_eq!(engine.passes_left(MIN + PASS_WEEK_MS), 1);
 
         // Kept across restarts, since they're read from the session log.
-        let reloaded = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        let reloaded = Engine::load(
+            std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap()),
+            0,
+        )
+        .unwrap();
         assert_eq!(reloaded.passes_left(21 * MIN), 0);
     }
 
@@ -850,7 +930,11 @@ mod tests {
         assert_eq!(engine.browsers(), &[]);
 
         engine.remember_browser(chrome("Chrome"), 7).unwrap();
-        let reloaded = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        let reloaded = Engine::load(
+            std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap()),
+            0,
+        )
+        .unwrap();
         assert_eq!(reloaded.browsers(), &[chrome("Chrome")]);
     }
 
@@ -864,7 +948,11 @@ mod tests {
         assert!(engine.snapshot(2 * MIN).session.unwrap().broken);
 
         // Still broken after a restart, and in the log once it ends.
-        let mut engine = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        let mut engine = Engine::load(
+            std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap()),
+            0,
+        )
+        .unwrap();
         let record = engine.end_session(60 * MIN, EndReason::Stopped).unwrap();
         assert!(record.broken);
         assert_eq!(engine.session_log().unwrap(), vec![record]);
@@ -914,7 +1002,163 @@ mod tests {
     fn picks_up_a_running_session_after_a_restart() {
         let mut engine = engine();
         engine.start_session("wind-down", 5).unwrap();
-        let reloaded = Engine::load(std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap())).unwrap();
+        let reloaded = Engine::load(
+            std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap()),
+            0,
+        )
+        .unwrap();
         assert_eq!(reloaded.session().map(|s| s.profile_id.as_str()), Some("wind-down"));
+    }
+
+    /// The satellites' text and state, oldest first.
+    fn satellites(engine: &Engine) -> Vec<(&str, SatelliteState)> {
+        engine.satellites.iter().map(|s| (s.text.as_str(), s.state)).collect()
+    }
+
+    fn satellite_id(engine: &Engine, text: &str) -> String {
+        engine.satellites.iter().find(|s| s.text == text).unwrap().id.clone()
+    }
+
+    #[test]
+    fn satellites_come_back_when_the_session_ends() {
+        let mut engine = engine();
+        engine.start_session("writing", 0).unwrap();
+        assert!(engine.launch_satellite("  reply to Sam ", MIN).unwrap());
+        assert!(!engine.launch_satellite(" \n ", MIN).unwrap());
+        assert_eq!(satellites(&engine), vec![("reply to Sam", SatelliteState::Orbiting)]);
+
+        engine.end_session(60 * MIN, EndReason::Stopped).unwrap();
+        assert_eq!(satellites(&engine), vec![("reply to Sam", SatelliteState::Back)]);
+        assert_eq!(engine.snapshot(60 * MIN).satellites, engine.satellites);
+
+        // Launched between sessions, it waits for the next one to end.
+        engine.launch_satellite("book dentist", 61 * MIN).unwrap();
+        engine.start_session("writing", 62 * MIN).unwrap();
+        engine.end_session(70 * MIN, EndReason::Stopped).unwrap();
+        assert_eq!(
+            satellites(&engine),
+            vec![
+                ("reply to Sam", SatelliteState::Back),
+                ("book dentist", SatelliteState::Back)
+            ]
+        );
+    }
+
+    #[test]
+    fn satellites_come_back_however_the_session_ends() {
+        let mut engine = engine();
+        engine.start_session("writing", 0).unwrap();
+        engine.launch_satellite("idle", MIN).unwrap();
+        let id = engine.session().unwrap().id.clone();
+        engine.end_idle_session(&id, 2 * MIN, 10 * MIN).unwrap();
+        assert_eq!(satellites(&engine), vec![("idle", SatelliteState::Back)]);
+
+        let mut engine = self::engine();
+        engine.start_session("writing", 0).unwrap();
+        engine.launch_satellite("browser", MIN).unwrap();
+        let ended = Synced {
+            value: None,
+            updated_at: 5 * MIN,
+        };
+        engine.apply_remote(None, Some(ended), 5 * MIN).unwrap();
+        assert_eq!(satellites(&engine), vec![("browser", SatelliteState::Back)]);
+    }
+
+    #[test]
+    fn acts_on_satellites_that_came_back() {
+        let mut engine = engine();
+        for text in ["done", "snooze", "task", "delete"] {
+            engine.launch_satellite(text, 0).unwrap();
+        }
+        engine.start_session("writing", MIN).unwrap();
+        engine.end_session(2 * MIN, EndReason::Stopped).unwrap();
+
+        let act = |engine: &mut Engine, text: &str, action| {
+            let id = satellite_id(engine, text);
+            engine.act_on_satellite(&id, action, 3 * MIN).unwrap();
+        };
+        act(&mut engine, "done", SatelliteAction::Done);
+        act(&mut engine, "snooze", SatelliteAction::Snooze);
+        act(&mut engine, "task", SatelliteAction::Task);
+        act(&mut engine, "delete", SatelliteAction::Delete);
+        assert_eq!(
+            satellites(&engine),
+            vec![("snooze", SatelliteState::Orbiting), ("task", SatelliteState::Task)]
+        );
+        assert!(matches!(
+            engine.act_on_satellite("nope", SatelliteAction::Done, 0),
+            Err(Error::UnknownSatellite)
+        ));
+
+        // Snoozed ones come back after the next session; tasks stay on the list.
+        engine.start_session("writing", 4 * MIN).unwrap();
+        engine.end_session(5 * MIN, EndReason::Stopped).unwrap();
+        assert_eq!(
+            satellites(&engine),
+            vec![("snooze", SatelliteState::Back), ("task", SatelliteState::Task)]
+        );
+
+        // A ticked-off task stays, as done.
+        act(&mut engine, "task", SatelliteAction::Done);
+        assert_eq!(
+            satellites(&engine),
+            vec![("snooze", SatelliteState::Back), ("task", SatelliteState::Done)]
+        );
+    }
+
+    #[test]
+    fn ticked_off_tasks_can_be_unticked_for_a_day() {
+        const DAY: i64 = DONE_TASKS_SHOWN_MS;
+        let mut engine = engine();
+        engine.launch_satellite("oops", 0).unwrap();
+        engine.launch_satellite("old", 0).unwrap();
+        for text in ["oops", "old"] {
+            let id = satellite_id(&engine, text);
+            engine.act_on_satellite(&id, SatelliteAction::Task, MIN).unwrap();
+        }
+        let oops = satellite_id(&engine, "oops");
+        let old = satellite_id(&engine, "old");
+        engine.act_on_satellite(&old, SatelliteAction::Done, 2 * MIN).unwrap();
+        engine.act_on_satellite(&oops, SatelliteAction::Done, 2 * MIN).unwrap();
+        engine.act_on_satellite(&oops, SatelliteAction::Task, 3 * MIN).unwrap();
+        assert_eq!(
+            satellites(&engine),
+            vec![("oops", SatelliteState::Task), ("old", SatelliteState::Done)]
+        );
+
+        // A day on, the done one drops off the list, and stays off after a restart.
+        let shown = |engine: &Engine, now| -> Vec<String> {
+            engine.snapshot(now).satellites.into_iter().map(|s| s.text).collect()
+        };
+        assert_eq!(shown(&engine, 2 * MIN + DAY), vec!["oops", "old"]);
+        assert_eq!(shown(&engine, 3 * MIN + DAY), vec!["oops"]);
+        let store = std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap());
+        assert_eq!(
+            shown(&Engine::load(store, 3 * MIN + DAY).unwrap(), 3 * MIN + DAY),
+            vec!["oops"]
+        );
+    }
+
+    #[test]
+    fn keeps_satellites_through_a_restart_but_not_deleted_text() {
+        let mut engine = engine();
+        engine.launch_satellite("keep me", 0).unwrap();
+        engine.launch_satellite("secret", 0).unwrap();
+        let id = satellite_id(&engine, "secret");
+        engine.act_on_satellite(&id, SatelliteAction::Delete, MIN).unwrap();
+
+        let store = std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap());
+        let texts: Vec<String> = store
+            .db_for_tests()
+            .prepare("SELECT text FROM satellites ORDER BY text")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(texts, vec!["", "keep me"]);
+
+        let reloaded = Engine::load(store, 0).unwrap();
+        assert_eq!(satellites(&reloaded), vec![("keep me", SatelliteState::Orbiting)]);
     }
 }

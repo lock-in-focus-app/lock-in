@@ -6,6 +6,7 @@ use tauri::AppHandle;
 use crate::apps::{AppRule, InstalledApp};
 use crate::engine::Snapshot;
 use crate::error::Result;
+use crate::satellites::SatelliteAction;
 use crate::session::EndReason;
 use crate::settings::Settings;
 use crate::timer::TimerSettings;
@@ -73,4 +74,28 @@ pub async fn installed_apps() -> Vec<InstalledApp> {
     })
     .await
     .unwrap_or_default()
+}
+
+/// Launches a thought into orbit. Returns whether there was anything to launch.
+#[tauri::command]
+pub fn launch_satellite(app: AppHandle, text: String) -> Result<bool> {
+    let launched = crate::engine(&app).launch_satellite(&text, crate::now_ms())?;
+    if launched {
+        crate::satellites_changed(&app);
+    }
+    Ok(launched)
+}
+
+/// Ticks off, snoozes, keeps as a task or deletes a satellite.
+#[tauri::command]
+pub fn act_on_satellite(app: AppHandle, id: String, action: SatelliteAction) -> Result<()> {
+    crate::engine(&app).act_on_satellite(&id, action, crate::now_ms())?;
+    crate::satellites_changed(&app);
+    Ok(())
+}
+
+/// Closes the satellite box and hands focus back to the app you were in.
+#[tauri::command]
+pub fn close_capture(app: AppHandle) -> Result<()> {
+    crate::capture::close(&app, true)
 }

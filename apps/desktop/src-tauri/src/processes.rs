@@ -86,6 +86,33 @@ pub fn hide(pid: u32) -> bool {
     }
 }
 
+/// The app in front, unless it's Lock In itself. Only macOS says which app that is; elsewhere
+/// the window manager hands focus back by itself.
+pub fn frontmost_other_app() -> Option<u32> {
+    #[cfg(target_os = "macos")]
+    {
+        let front = objc2_app_kit::NSWorkspace::sharedWorkspace().frontmostApplication()?;
+        let pid = u32::try_from(front.processIdentifier()).ok()?;
+        (pid != std::process::id()).then_some(pid)
+    }
+    #[cfg(not(target_os = "macos"))]
+    None
+}
+
+/// Brings an app to the front. Returns whether it was asked to.
+pub fn activate(pid: u32) -> bool {
+    #[cfg(target_os = "macos")]
+    return with_app(pid, |app| {
+        app.activateWithOptions(objc2_app_kit::NSApplicationActivationOptions::empty())
+    })
+    .unwrap_or(false);
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = pid;
+        false
+    }
+}
+
 /// Runs `f` with the app that has this process id, or returns None if it isn't an app.
 #[cfg(target_os = "macos")]
 fn with_app<T>(pid: u32, f: impl FnOnce(&objc2_app_kit::NSRunningApplication) -> T) -> Option<T> {

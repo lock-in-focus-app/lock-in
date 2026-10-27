@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import type { AppRule, Settings, TimerSettings } from '@lock-in/core';
-import { ref } from 'vue';
+import type { AppRule, SatelliteAction, SatelliteState, Settings, TimerSettings } from '@lock-in/core';
+import { computed, ref } from 'vue';
 import {
+  actOnSatellite,
   endSession,
   forgetBrowser,
+  launchSatellite,
   setProfileApps,
   setProfileTimer,
   setSettings,
@@ -12,12 +14,24 @@ import {
   useSnapshot,
 } from './app';
 import ProfileList from './components/ProfileList.vue';
+import SatelliteLaunch from './components/SatelliteLaunch.vue';
+import SatellitesBack from './components/SatellitesBack.vue';
+import SatellitesView from './components/SatellitesView.vue';
 import SessionView from './components/SessionView.vue';
 import SettingsView from './components/SettingsView.vue';
 
 const snapshot = useSnapshot();
 const error = ref('');
 const showSettings = ref(false);
+
+const satellites = (state: SatelliteState) => snapshot.value?.satellites.filter((s) => s.state === state) ?? [];
+const back = computed(() => satellites('back'));
+const orbiting = computed(() => satellites('orbiting'));
+const tasks = computed(() => satellites('task'));
+// The latest first. The core only sends tasks ticked off in the last day.
+const done = computed(() => satellites('done').sort((a, b) => b.stateAt - a.stateAt));
+const launch = (text: string) => run(async () => void (await launchSatellite(text)));
+const act = (id: string, action: SatelliteAction) => run(() => actOnSatellite(id, action));
 
 async function run(action: () => Promise<void>) {
   error.value = '';
@@ -49,21 +63,29 @@ async function run(action: () => Promise<void>) {
       @forget-browser="(path: string) => run(() => forgetBrowser(path))"
       @close="showSettings = false"
     />
-    <SessionView
-      v-else-if="snapshot?.session"
-      :session="snapshot.session"
-      :passes-left="snapshot.passesLeft"
-      @end="run(endSession)"
-      @pass="run(spendEmergencyPass)"
-    />
-    <ProfileList
-      v-else-if="snapshot"
-      :profiles="snapshot.profiles"
-      :can-hide-apps="snapshot.canHideApps"
-      @start="(id: string) => run(() => startSession(id))"
-      @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
-      @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
-    />
+    <template v-else-if="snapshot?.session">
+      <SessionView
+        :session="snapshot.session"
+        :passes-left="snapshot.passesLeft"
+        @end="run(endSession)"
+        @pass="run(spendEmergencyPass)"
+      />
+      <!-- Only how many are in orbit, not what they say, so they don't pull you back in. -->
+      <SatelliteLaunch class="satellites" session-running :in-orbit="orbiting.length" @launch="launch" />
+    </template>
+    <template v-else-if="snapshot">
+      <!-- Satellites wait here after a session, with nothing popping up to break the flow. -->
+      <SatellitesBack v-if="back.length" :satellites="back" @act="act" />
+      <ProfileList
+        :profiles="snapshot.profiles"
+        :can-hide-apps="snapshot.canHideApps"
+        @start="(id: string) => run(() => startSession(id))"
+        @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
+        @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
+      />
+      <SatelliteLaunch class="satellites" :session-running="false" :in-orbit="0" @launch="launch" />
+      <SatellitesView :orbiting="orbiting" :tasks="tasks" :done="done" @act="act" />
+    </template>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
   </main>
@@ -107,6 +129,10 @@ h1 {
 .settings[aria-pressed='true'] {
   background: var(--sky-raised);
   color: var(--starlight);
+}
+
+.satellites {
+  margin-top: 32px;
 }
 
 .error {

@@ -2,6 +2,7 @@
 import type { ActiveSession } from "./ActiveSession";
 import type { KnownBrowser } from "./KnownBrowser";
 import type { ProfileSummary } from "./ProfileSummary";
+import type { Satellite } from "./Satellite";
 import type { Settings } from "./Settings";
 
 /**
@@ -19,4 +20,9 @@ browsers: Array<KnownBrowser>,
 /**
  * Whether this system can hide another app's windows, for app rules.
  */
-canHideApps: boolean, };
+canHideApps: boolean, 
+/**
+ * Satellites in orbit, back or on the task list, and tasks ticked off in the last day,
+ * oldest first.
+ */
+satellites: Array<Satellite>, };
