@@ -20,6 +20,7 @@ import {
   withRedirectSettings,
   withSessionOverridesSaved,
   withSessionToggle,
+  type Profile,
   type RedirectDestination,
   type RedirectSettings,
   type SiteLevel,
@@ -30,6 +31,16 @@ import {
 // Every change to sessions and profiles goes through these actions. Today they save to
 // extension storage; once the desktop app is connected, they'll forward to it instead,
 // and the UI won't need to change.
+
+// Profile edits read the saved profiles, change them and save them back. They run one at a
+// time, so a quick second edit can't start from profiles the first hasn't saved yet and
+// undo it.
+let profileEdits: Promise<unknown> = Promise.resolve();
+function editProfiles(edit: (list: Profile[]) => Profile[]): Promise<void> {
+  const next = profileEdits.then(async () => profiles.setValue(edit(await profiles.getValue())));
+  profileEdits = next.catch(() => {});
+  return next;
+}
 
 export async function startSession(profileId: string): Promise<void> {
   await activeSession.setValue({ id: crypto.randomUUID(), profileId, startedAt: Date.now() });
@@ -58,8 +69,7 @@ export async function setProfileToggle(
   toggleId: string,
   value: boolean,
 ): Promise<void> {
-  const profileList = await profiles.getValue();
-  await profiles.setValue(withProfileToggle(profileList, profileId, recipeId, toggleId, value));
+  await editProfiles((list) => withProfileToggle(list, profileId, recipeId, toggleId, value));
 }
 
 /** Keeps this session's changes to a site by saving them into the session's profile. */
@@ -77,42 +87,42 @@ export async function saveSessionChanges(recipeId: string): Promise<void> {
 /** Adds an empty profile and returns its id. */
 export async function createProfile(name = 'New profile'): Promise<string> {
   const id = crypto.randomUUID();
-  await profiles.setValue(withNewProfile(await profiles.getValue(), id, name));
+  await editProfiles((list) => withNewProfile(list, id, name));
   return id;
 }
 
 /** Copies a profile and returns the copy's id. */
 export async function duplicateProfile(profileId: string): Promise<string> {
   const id = crypto.randomUUID();
-  await profiles.setValue(withProfileDuplicated(await profiles.getValue(), profileId, id));
+  await editProfiles((list) => withProfileDuplicated(list, profileId, id));
   return id;
 }
 
 /** Deletes a profile, unless it's the one the running session uses. */
 export async function deleteProfile(profileId: string): Promise<void> {
   if ((await activeSession.getValue())?.profileId === profileId) return;
-  await profiles.setValue(withProfileRemoved(await profiles.getValue(), profileId));
+  await editProfiles((list) => withProfileRemoved(list, profileId));
 }
 
 /** Deletes several profiles at once, skipping the one the running session uses. At least one is always kept. */
 export async function deleteProfiles(profileIds: string[]): Promise<void> {
   const running = (await activeSession.getValue())?.profileId;
   const ids = profileIds.filter((id) => id !== running);
-  await profiles.setValue(withProfilesRemoved(await profiles.getValue(), ids));
+  await editProfiles((list) => withProfilesRemoved(list, ids));
 }
 
 export async function renameProfile(profileId: string, name: string): Promise<void> {
-  await profiles.setValue(withProfileRenamed(await profiles.getValue(), profileId, name));
+  await editProfiles((list) => withProfileRenamed(list, profileId, name));
 }
 
 /** Moves a profile earlier (-1) or later (1) in the list. */
 export async function moveProfile(profileId: string, offset: number): Promise<void> {
-  await profiles.setValue(withProfileMoved(await profiles.getValue(), profileId, offset));
+  await editProfiles((list) => withProfileMoved(list, profileId, offset));
 }
 
 /** Sets whether a profile allows, tames, redirects or restricts a site. */
 export async function setSiteLevel(profileId: string, recipeId: string, level: SiteLevel): Promise<void> {
-  await profiles.setValue(withSiteLevel(await profiles.getValue(), profileId, recipeId, level));
+  await editProfiles((list) => withSiteLevel(list, profileId, recipeId, level));
 }
 
 /** Adds page rules to a site, or changes the level of ones it has. Invalid paths are skipped. */
@@ -122,22 +132,27 @@ export async function setPageLevel(
   paths: string[],
   level: SiteLevel,
 ): Promise<void> {
-  await profiles.setValue(withPathRules(await profiles.getValue(), profileId, recipeId, paths, level));
+  await editProfiles((list) => withPathRules(list, profileId, recipeId, paths, level));
 }
 
 /** Removes a page rule, so the page follows its site's level again. */
 export async function removePageRule(profileId: string, recipeId: string, path: string): Promise<void> {
-  await profiles.setValue(withPathRuleRemoved(await profiles.getValue(), profileId, recipeId, path));
+  await editProfiles((list) => withPathRuleRemoved(list, profileId, recipeId, path));
 }
 
 /** Restores the starter profiles to how they shipped. The user's own profiles are kept. */
 export async function resetStarterProfiles(): Promise<void> {
-  await profiles.setValue(withStarterProfilesReset(await profiles.getValue(), starterProfiles));
+  await editProfiles((list) => withStarterProfilesReset(list, starterProfiles));
 }
 
-/** Changes how a profile handles redirected sites. */
-export async function setRedirectSettings(profileId: string, settings: RedirectSettings): Promise<void> {
-  await profiles.setValue(withRedirectSettings(await profiles.getValue(), profileId, settings));
+/** Changes how a profile handles redirected sites, starting from its saved settings. */
+export async function setRedirectSettings(
+  profileId: string,
+  change: (current: RedirectSettings) => RedirectSettings,
+): Promise<void> {
+  await editProfiles((list) =>
+    withRedirectSettings(list, profileId, change(redirectSettingsFor(list.find((p) => p.id === profileId)))),
+  );
 }
 
 /** Records a trip to a redirected site and returns its id. */
