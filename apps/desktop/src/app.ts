@@ -61,6 +61,25 @@ export const actOnSatellite = (id: string, action: SatelliteAction) => invoke<vo
 /** Everything logged from `from` up to (not including) `to` (epoch ms), for the weekly report. */
 export const activity = (from: number, to: number) => invoke<Activity>('activity', { from, to });
 
+type WeekInfo = { firstDay: number };
+
+/**
+ * The first day of the week as set on this computer, 0 being Sunday: from the system where the
+ * core can read it (macOS), otherwise the default for the window's language, otherwise Monday.
+ */
+export async function firstDayOfWeek(): Promise<number> {
+  const system = await invoke<number | null>('first_weekday');
+  if (system !== null) return system;
+  // Newer engines have getWeekInfo(); older ones had a weekInfo property instead.
+  const locale = new Intl.Locale(navigator.language) as Intl.Locale & {
+    getWeekInfo?: () => WeekInfo;
+    weekInfo?: WeekInfo;
+  };
+  const firstDay = (locale.getWeekInfo?.() ?? locale.weekInfo)?.firstDay;
+  // Counted from 1, for Monday, to 7, for Sunday.
+  return firstDay ? firstDay % 7 : 1;
+}
+
 /** Closes the satellite box and hands focus back to the app you were in. */
 export const closeCapture = () => invoke<void>('close_capture');
 

@@ -65,6 +65,15 @@ describe('weeks', () => {
     expect(weekStart(monday - 1)).toBe(new Date(2026, 9, 19).getTime());
   });
 
+  it('start on the first day of the week set on the computer', () => {
+    const sunday = new Date(2026, 9, 25).getTime();
+    expect(weekStart(at(2, 15, 30), 0)).toBe(sunday);
+    expect(weekStart(sunday, 0)).toBe(sunday);
+    expect(weekStart(sunday - 1, 0)).toBe(new Date(2026, 9, 18).getTime());
+    // Saturday, as in much of the Middle East.
+    expect(weekStart(at(-1, 9), 6)).toBe(new Date(2026, 9, 24).getTime());
+  });
+
   it('step a calendar week at a time, even over a daylight saving change', () => {
     for (const weeks of [-2, -1, 1, 2]) {
       expect(addWeeks(monday, weeks)).toBe(new Date(2026, 9, 26 + weeks * 7).getTime());
@@ -93,6 +102,13 @@ describe('formatHourRange', () => {
 });
 
 describe('weeklyReport', () => {
+  it('counts days from the start of the week, whichever day it is', () => {
+    const sunday = new Date(2026, 9, 25).getTime();
+    const sessions = [session(at(-1, 9), 30), session(at(0, 9), 20)];
+    const { focus } = weeklyReport(activity({ sessions }), sunday);
+    expect(focus.days).toEqual([30, 20, 0, 0, 0, 0, 0].map((m) => m * MIN));
+  });
+
   it('sums up focus by day and profile, with last week for the trend', () => {
     const { focus } = report({
       sessions: [

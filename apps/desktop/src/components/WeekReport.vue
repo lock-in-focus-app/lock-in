@@ -11,47 +11,57 @@ import {
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import { computed, ref, watch } from 'vue';
-import { activity } from '../app';
+import { activity, firstDayOfWeek } from '../app';
 
 // The weekly report: focus, distractions and satellites for one calendar week, worked out on
 // this device from what the app logged. It opens on this week; the arrows go back to earlier
-// ones, as far as the log goes.
+// ones, as far as the log goes. Weeks start on the first day of the week set on the computer.
 
-const thisWeek = weekStart(Date.now());
-const start = ref(thisWeek);
+const firstDay = ref(1);
+const ready = ref(false);
+const thisWeek = computed(() => weekStart(Date.now(), firstDay.value));
+const start = ref(thisWeek.value);
 const report = ref<WeeklyReport>();
 const firstLoggedAt = ref<number | null>(null);
 const error = ref('');
 
 const siteName = (recipeId: string) => recipes.find((r) => r.id === recipeId)?.name ?? recipeId;
 
-watch(
-  start,
-  async (week) => {
-    error.value = '';
-    try {
-      // The week before too, for the trends.
-      const logged = await activity(addWeeks(week, -1), addWeeks(week, 1));
-      // Skip it if the arrows moved on while it loaded.
-      if (week !== start.value) return;
-      firstLoggedAt.value = logged.firstLoggedAt;
-      report.value = weeklyReport(logged, week, siteName);
-    } catch (reason) {
-      error.value = `Couldn't load the week: ${String(reason)}`;
-    }
-  },
-  { immediate: true },
-);
+// Nothing is shown until the first day of the week is known, so the week doesn't jump.
+void firstDayOfWeek()
+  .catch(() => 1)
+  .then((day) => {
+    firstDay.value = day;
+    start.value = thisWeek.value;
+    ready.value = true;
+  });
 
-const firstWeek = computed(() => (firstLoggedAt.value === null ? thisWeek : weekStart(firstLoggedAt.value)));
+watch([start, ready], async ([week, isReady]) => {
+  if (!isReady) return;
+  error.value = '';
+  try {
+    // The week before too, for the trends.
+    const logged = await activity(addWeeks(week, -1), addWeeks(week, 1));
+    // Skip it if the arrows moved on while it loaded.
+    if (week !== start.value) return;
+    firstLoggedAt.value = logged.firstLoggedAt;
+    report.value = weeklyReport(logged, week, siteName);
+  } catch (reason) {
+    error.value = `Couldn't load the week: ${String(reason)}`;
+  }
+});
+
+const firstWeek = computed(() =>
+  firstLoggedAt.value === null ? thisWeek.value : weekStart(firstLoggedAt.value, firstDay.value),
+);
 // No trends against a week before anything was logged.
 const hasLastWeek = computed(() => start.value > firstWeek.value);
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
 const range = computed(() => `${dateFormat.format(start.value)} – ${dateFormat.format(addWeeks(start.value, 1) - 1)}`);
 const title = computed(() => {
-  if (start.value === thisWeek) return 'This week';
-  if (start.value === addWeeks(thisWeek, -1)) return 'Last week';
+  if (start.value === thisWeek.value) return 'This week';
+  if (start.value === addWeeks(thisWeek.value, -1)) return 'Last week';
   return range.value;
 });
 
@@ -131,7 +141,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 </script>
 
 <template>
-  <section class="week" aria-labelledby="week-title">
+  <section v-if="ready" class="week" aria-labelledby="week-title">
     <nav class="weeks" aria-label="Weeks">
       <button
         type="button"

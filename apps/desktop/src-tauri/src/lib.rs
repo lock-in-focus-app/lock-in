@@ -1,6 +1,7 @@
 mod apps;
 pub mod bridge;
 mod browsers;
+mod calendar;
 mod capture;
 mod commands;
 mod engine;
@@ -504,6 +505,7 @@ pub fn run() {
             commands::act_on_satellite,
             commands::close_capture,
             commands::activity,
+            commands::first_weekday,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lock In")

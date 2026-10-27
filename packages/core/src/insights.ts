@@ -2,17 +2,20 @@ import type { Activity } from './generated/Activity';
 import type { GateVisitRecord } from './generated/GateVisitRecord';
 import type { SessionRecord } from './generated/SessionRecord';
 
-// The weekly report, worked out from what the desktop app logged. Weeks run Monday to Sunday
-// in local time, so a day or an hour here is the one on the user's clock, and a week with a
-// daylight saving change is still seven days long.
+// The weekly report, worked out from what the desktop app logged. Weeks are seven days in local
+// time, starting on the first day of the week set on the user's computer, so a day or an hour
+// here is the one on their clock, and a week with a daylight saving change is still seven days.
 
 const minuteMs = 60_000;
 
-/** Midnight at the start of the Monday of the week `at` falls in, local time (epoch ms). */
-export function weekStart(at: number): number {
+/**
+ * Midnight at the start of the week `at` falls in, local time (epoch ms). `firstDay` is the day
+ * weeks start on, 0 being Sunday as in `Date.getDay`; Monday unless the computer says otherwise.
+ */
+export function weekStart(at: number, firstDay = 1): number {
   const date = new Date(at);
   date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  date.setDate(date.getDate() - ((date.getDay() - firstDay + 7) % 7));
   return date.getTime();
 }
 
@@ -23,7 +26,7 @@ export function addWeeks(start: number, weeks: number): number {
   return date.getTime();
 }
 
-/** Which day of the week starting at `start` the time `at` falls on, Monday being 0. */
+/** Which day of the week starting at `start` the time `at` falls on, its first day being 0. */
 function dayOfWeek(start: number, at: number): number {
   const day = new Date(at);
   day.setHours(0, 0, 0, 0);
@@ -53,9 +56,9 @@ export function formatHourRange(hour: number): string {
 }
 
 export interface WeeklyReport {
-  /** Midnight at the start of Monday, local time (epoch ms). */
+  /** Midnight at the start of the week, local time (epoch ms). */
   start: number;
-  /** Midnight at the start of the next Monday. */
+  /** Midnight at the start of the next week. */
   end: number;
   focus: FocusSummary;
   distractions: DistractionSummary;
@@ -72,7 +75,7 @@ export interface FocusSummary {
   overtimeMs: number;
   sessions: number;
   longestMs: number;
-  /** Focused time each day, Monday first. A session counts on the day it started. */
+  /** Focused time each day, the week's first day first. A session counts on the day it started. */
   days: number[];
   /** The most focused first. */
   profiles: { name: string; focusedMs: number; sessions: number }[];

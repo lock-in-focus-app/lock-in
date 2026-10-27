@@ -259,15 +259,10 @@ The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly te
 
 Insights are all computed locally.
 
-**In the desktop app:** "Your week" in the header, between sessions, opens the report for the calendar week (Monday to Sunday, local time), with arrows back to earlier weeks. The app's Rust core only reads the log for a range of dates; the report itself is worked out in `packages/core/src/insights.ts`, which knows the local time zone and can be shared with the extension later. It shows focus by day and profile with the change on last week; trips to redirected sites by hour, site and "why", how often you went back to focus, and grouped intentions; what became of the satellites launched; and up to three suggestions, each only when there's enough data behind it (a reason a site keeps pulling you in, the time of day focus goes best, a timer that fits how long sessions really run). The extension on its own keeps only a week of gate visits and no session log, so it has no report yet.
+**In the desktop app:** "Your week" in the header, between sessions, opens the report for the week in local time, starting on the first day of the week set on the computer (read from macOS's Language & Region settings, or the language's default elsewhere), with arrows back to earlier weeks. The app's Rust core only reads the log for a range of dates; the report itself is worked out in `packages/core/src/insights.ts`, which knows the local time zone and can be shared with the extension later. It shows focus by day and profile with the change on last week; trips to redirected sites by hour, site and "why", how often you went back to focus, and grouped intentions; what became of the satellites launched; and up to three suggestions, each only when there's enough data behind it (a reason a site keeps pulling you in, the time of day focus goes best, a timer that fits how long sessions really run). The extension on its own keeps only a week of gate visits and no session log, so it has no report yet.
 
 ## 7. Other features
-- **Session suggestions from apps** (off by default): opening an app or site you've linked to a profile, e.g. Obsidian → *Writing*, shows a small prompt: "Obsidian opened — start *Writing*?" with three choices:
-  - **Start**
-  - **Not now**
-  - **Snooze** for 30 min / 1 h / 3 h
-
-  It never starts a session silently. Calendar-based suggestions come later.
+- **Lock In observes; it doesn't interject.** It works quietly in the background and collects what happens, for the weekly report and the sky. It never prompts you to start a session or nudges you outside what you set up yourself. (Session suggestions from apps, e.g. "Obsidian opened — start *Writing*?", were considered and dropped for this reason.)
 - **App rules**: close or hide desktop apps (Discord, Steam, Slack) during a session.
 - **Session intention + reflection**: a one-line goal at the start, "did you do it?" at the end.
 - **Allowlist-only mode**: block everything except the listed sites.
@@ -364,7 +359,6 @@ lock-in/
 - ✅ Satellites (§4) in the desktop app: the Alt+P box, menu-bar capture, the post-session return, and the task list.
 - ✅ Satellites in the extension: capture from the popup and redirect pages, sent to the app when linked and kept by the extension when it runs alone.
 - ✅ Weekly report (§6) in the desktop app.
-- Session suggestions from apps.
 
 **Phase 4: The night sky**
 - Reward engine + sky renderer (§5): twinkling stars colored by profile, light pollution outside sessions and a clear sky during them, the "View sky" toggle, constellations, the Milky Way.

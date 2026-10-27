@@ -100,6 +100,13 @@ pub fn activity(app: AppHandle, from: i64, to: i64) -> Result<Activity> {
     crate::engine(&app).activity(from, to)
 }
 
+/// The first day of the week as set on this computer, 0 being Sunday, or null if the system
+/// doesn't say.
+#[tauri::command]
+pub fn first_weekday() -> Option<u8> {
+    crate::calendar::first_weekday()
+}
+
 /// Closes the satellite box and hands focus back to the app you were in.
 #[tauri::command]
 pub fn close_capture(app: AppHandle) -> Result<()> {
