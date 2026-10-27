@@ -3,6 +3,8 @@ import type { AppRule, SatelliteAction, SatelliteState, SessionRecord, Settings,
 import {
   constellationNames,
   constellations,
+  formatDuration,
+  planets,
   sessionSoFar,
   skyClarity,
   starColorFor,
@@ -32,7 +34,7 @@ import {
   useNow,
   useSnapshot,
 } from './app';
-import NightSky, { type SkyConstellation } from './components/NightSky.vue';
+import NightSky, { type SkyConstellation, type SkyPlanet } from './components/NightSky.vue';
 import ProfileList from './components/ProfileList.vue';
 import SettingsView from './components/SettingsView.vue';
 import SkyPage from './components/SkyPage.vue';
@@ -116,10 +118,11 @@ const loadNames = async () => {
   names.value = new Map((await savedNames()).map((saved) => [saved.id, saved.name]));
 };
 onMounted(() => run(loadNames));
+const skyStars = computed(() => stars(sessions.value));
 const skyConstellations = computed<(SkyConstellation & { named: boolean })[]>(() => {
   if (firstDay.value === undefined) return [];
   const colors = new Map(snapshot.value?.profiles.map((p) => [p.id, p.starColor]));
-  const list = constellations(stars(sessions.value), firstDay.value);
+  const list = constellations(skyStars.value, firstDay.value);
   const named = constellationNames(list, names.value);
   return list.map((constellation, i) => ({
     id: constellation.id,
@@ -134,6 +137,15 @@ const skyConstellations = computed<(SkyConstellation & { named: boolean })[]>(()
       magnitude: starMagnitude(star),
       sparkle: starSparkle(star),
     })),
+  }));
+});
+const monthName = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+const skyPlanets = computed<SkyPlanet[]>(() => {
+  const colors = new Map(snapshot.value?.profiles.map((p) => [p.id, p.starColor]));
+  return planets(skyStars.value).map((planet) => ({
+    ...planet,
+    label: `${monthName.format(planet.monthStart)} · ${formatDuration(planet.focusMs)}`,
+    tint: starColorFor(planet.topProfileId, colors.get(planet.topProfileId)),
   }));
 });
 const starCount = computed(() => skyConstellations.value.reduce((count, c) => count + c.stars.length, 0));
@@ -186,6 +198,7 @@ async function run(action: () => Promise<void>) {
 <template>
   <NightSky
     :constellations="skyConstellations"
+    :planets="skyPlanets"
     :clarity="clarity"
     :drift="exploring"
     :names="view === 'sky' && exploring"

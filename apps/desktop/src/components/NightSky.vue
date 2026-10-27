@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { skyPlaces } from '@lock-in/core';
+import { skyPlaces, type Planet } from '@lock-in/core';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { drawPlanet } from '../planet';
 
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
 // from the reward engine (packages/core/src/constellations.ts); this only draws them, with light
@@ -15,6 +16,11 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 //
 // With `drift` on (exploring the Sky page), the sky leans and zooms gently toward the pointer, like
 // nudging a telescope, with brighter (nearer) stars moving a little more for depth.
+//
+// Planets (one a month) sit nearer than the stars, around the edge of the constellations, the
+// newest largest. On the Sky, the last few months' are still; exploring shows them all, slowly
+// circling, with their moons going round. In the weekly report, the week's month's planet sits
+// faintly beside its constellation.
 
 export interface SkyStar {
   id: string;
@@ -38,9 +44,17 @@ export interface SkyConstellation {
   lines: [number, number][];
 }
 
+/**
+ * A month's planet, with what to show beneath it on hover (its month and focus time) and the star
+ * color of its month's top profile, which tints its glow.
+ */
+export type SkyPlanet = Planet & { label: string; tint: string };
+
 const props = defineProps<{
   /** Oldest first. */
   constellations: SkyConstellation[];
+  /** Oldest first. */
+  planets?: SkyPlanet[];
   /** How clear the sky should be, from 0 (hazy) to 1 (clear). The haze drifts there slowly. */
   clarity: number;
   /** Whether the sky drifts toward the pointer. */
@@ -69,6 +83,11 @@ const weekMs = 7 * 24 * 60 * 60_000;
 const reach = { x: 1.15, up: 0.6, down: 1 };
 /** How much closer together constellations sit on the Sky than while exploring. They overlap a little. */
 const skyGather = 0.5;
+/** How many months' planets the Sky shows; exploring shows them all. */
+const skyPlanets = 6;
+/** How long planets take to circle the sky while exploring. */
+const planetLapMs = 8 * 60_000;
+const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
 let context: CanvasRenderingContext2D | null = null;
 let frame = 0;
@@ -81,10 +100,13 @@ let font = 'system-ui, sans-serif';
 let aim = { x: 0, y: 0, zoom: 0 };
 const lens = { x: 0, y: 0, zoom: 0 };
 const sprites = new Map<string, HTMLCanvasElement>();
+/** How far planets have gone round while exploring, in radians. Planets spin and moons go round with it. */
+let orbit = 0;
 
 /**
- * Where a constellation is: its middle (as shares of the sky's width and height), how big one of
- * its units is (as a share of the width), how bright it is overall, and how visible its name is.
+ * Where a constellation or planet is: its middle (as shares of the sky's width and height), how
+ * big one of its units is or the planet's radius (as a share of the width), how bright it is
+ * overall, and how visible its name is.
  */
 interface Place {
   x: number;
@@ -95,13 +117,24 @@ interface Place {
   /** How much it stands out, as if hovered, from 0 to 1: the week the report is showing. */
   lift: number;
 }
-/** Where each constellation has got to on its way to where the layout puts it. */
+/**
+ * Where each constellation and planet has got to on its way to where the layout puts it. Planets
+ * are kept under `planet:` and their id, since a month's first star can also start a week.
+ */
 const shown = new Map<string, Place>();
-/** How brightly each constellation shines from being hovered, from 0 to 1. */
+/** How brightly each constellation and planet shines from being hovered, from 0 to 1. */
 const shine = new Map<string, number>();
 let hovered: string | undefined;
 /** Where each constellation was last drawn, in canvas pixels, to find the one under the pointer. */
 let drawnBoxes: { id: string; left: number; right: number; top: number; bottom: number }[] = [];
+/** Where each planet was last drawn, in canvas pixels. */
+let drawnPlanets: { key: string; x: number; y: number; radius: number }[] = [];
+const planetKey = (planet: SkyPlanet) => `planet:${planet.id}`;
+/** The month a time falls in, counted from year 0, so months can be subtracted. */
+function monthNumber(at: number): number {
+  const date = new Date(at);
+  return date.getFullYear() * 12 + date.getMonth();
+}
 
 /** A soft glow with a bright core in `color`, drawn once and stamped for every star of that color. */
 function sprite(color: string): HTMLCanvasElement {
@@ -137,6 +170,22 @@ function targets(width: number, height: number): Map<string, Place> {
         alpha: weeks === 0 ? 1 : 0.4,
         label: 0,
         lift: weeks === 0 ? 1 : 0,
+      });
+    }
+    // The week's month's planet off to the right of its constellation's name, clear of the
+    // header's text, and the others in month order past it, out of sight.
+    const month = monthNumber(props.week + weekMs / 2);
+    const scale = window.devicePixelRatio || 1;
+    for (const planet of props.planets ?? []) {
+      const months = monthNumber(planet.monthStart) - month;
+      const radius = Math.min(width, height) * 0.05 * (0.45 + 0.55 * planet.size);
+      places.set(planetKey(planet), {
+        x: Math.min(0.88, 1 - (radius * 2.2) / width) + months * 0.9,
+        y: (128 * scale) / height,
+        unit: radius / width,
+        alpha: months === 0 ? 0.55 : 0,
+        label: 0,
+        lift: 0,
       });
     }
     return places;
@@ -179,6 +228,31 @@ function targets(width: number, height: number): Map<string, Place> {
       lift: 0,
     });
   });
+  // Planets around the edge of the constellations, the newest up to the right and older ones
+  // further round, smaller and fainter, as if further away. A little in from the area's edge on
+  // the bottom, so they don't sit under the cards.
+  const planets = props.planets ?? [];
+  const across = ((area.right - area.left) / 2) * 0.92;
+  const down = ((area.bottom - area.top) / 2) * 0.95;
+  const base = Math.min(width, height) * (props.drift ? 0.065 : 0.055);
+  planets.forEach((planet, i) => {
+    const age = planets.length - 1 - i;
+    const angle = -0.3 * Math.PI + age * goldenAngle + orbit;
+    const radius = (base * (0.45 + 0.55 * planet.size)) / (1 + 0.25 * age);
+    // Room for its ring, so it isn't cut off at the window's side.
+    const room = radius * 2.3;
+    const x = Math.min(width - room, Math.max(room, middle.x + Math.cos(angle) * across));
+    const y = middle.y + Math.sin(angle) * down * (Math.sin(angle) > 0 ? 0.8 : 1);
+    const shownHere = props.drift || age < skyPlanets;
+    places.set(planetKey(planet), {
+      x: x / width,
+      y: y / height,
+      unit: radius / width,
+      alpha: shownHere ? Math.max(0.35, 1 - (props.drift ? 0.06 : 0.1) * age) : 0,
+      label: props.names ? 1 : 0,
+      lift: 0,
+    });
+  });
   return places;
 }
 
@@ -186,7 +260,8 @@ function targets(width: number, height: number): Map<string, Place> {
 function glide(elapsed: number, width: number, height: number): boolean {
   const follow = still.matches ? 1 : 1 - Math.exp(-elapsed / (glideMs / 3));
   let moving = false;
-  for (const [id, target] of targets(width, height)) {
+  const goals = targets(width, height);
+  for (const [id, target] of goals) {
     const place = shown.get(id);
     if (!place) {
       shown.set(id, { ...target });
@@ -201,18 +276,20 @@ function glide(elapsed: number, width: number, height: number): boolean {
       }
     }
   }
-  // Forget constellations that are gone, e.g. with the sample data.
-  if (shown.size > props.constellations.length) {
-    const ids = new Set(props.constellations.map((c) => c.id));
-    for (const id of shown.keys()) if (!ids.has(id)) shown.delete(id);
+  // Forget constellations and planets that are gone, e.g. with the sample data.
+  for (const id of shown.keys()) {
+    if (!goals.has(id)) {
+      shown.delete(id);
+      shine.delete(id);
+    }
   }
   const brighten = still.matches ? 1 : 1 - Math.exp(-elapsed / (shineMs / 3));
-  for (const constellation of props.constellations) {
-    const level = shine.get(constellation.id) ?? 0;
-    const target = constellation.id === hovered ? 1 : 0;
-    if (Math.abs(target - level) < 0.005) shine.set(constellation.id, target);
+  for (const id of goals.keys()) {
+    const level = shine.get(id) ?? 0;
+    const target = id === hovered ? 1 : 0;
+    if (Math.abs(target - level) < 0.005) shine.set(id, target);
     else {
-      shine.set(constellation.id, level + (target - level) * brighten);
+      shine.set(id, level + (target - level) * brighten);
       moving = true;
     }
   }
@@ -324,6 +401,31 @@ function draw(time: number) {
   }
   drawnBoxes = boxes;
 
+  // Planets, nearer than the stars, so drawn over them.
+  const planetSpots: typeof drawnPlanets = [];
+  for (const planet of props.planets ?? []) {
+    const key = planetKey(planet);
+    const place = shown.get(key);
+    if (!place || place.alpha <= 0.01) continue;
+    const at = drifted(place.x, place.y, 1.6);
+    const glow = shine.get(key) ?? 0;
+    const x = at.x * width;
+    const y = at.y * height;
+    const radius = place.unit * width * (1 + (at.zoom - 1) / 2) * (1 + 0.06 * glow);
+    if (x + radius * 3 < 0 || x - radius * 3 > width) continue;
+    const alpha = place.alpha * (1 - 0.6 * haze) * (0.9 + 0.1 * glow);
+    drawPlanet(c, planet, { x, y, radius, alpha, glow, tint: planet.tint, turn: orbit, time, still: still.matches });
+    planetSpots.push({ key, x, y, radius });
+    if (place.label * glow > 0.01) {
+      // Its month and focus time, beneath it while it's hovered.
+      c.globalAlpha = place.label * glow * 0.95 * (1 - 0.4 * haze);
+      c.fillStyle = '#f3f0e6';
+      const half = c.measureText(planet.label).width / 2 + 6 * scale;
+      c.fillText(planet.label, Math.min(width - half, Math.max(half, x)), y + radius * 1.3 + 6 * scale);
+    }
+  }
+  drawnPlanets = planetSpots;
+
   if (haze > 0.01) {
     // Light pollution: a pale wash, thickest near the horizon, with the town's warm glow under it.
     c.globalAlpha = haze;
@@ -345,6 +447,9 @@ function draw(time: number) {
 function tick(time: number) {
   const elapsed = lastTime ? time - lastTime : 0;
   lastTime = time;
+  // Planets circle only while exploring, and not at all under reduced motion.
+  const circling = !!props.drift && props.week === undefined && !still.matches && !!props.planets?.length;
+  if (circling) orbit += (elapsed / planetLapMs) * Math.PI * 2;
   const hazing = Math.abs(props.clarity - shownClarity) > 0.002;
   if (hazing) {
     shownClarity += (props.clarity - shownClarity) * (1 - Math.exp(-elapsed / (hazeDriftMs / 3)));
@@ -359,7 +464,7 @@ function tick(time: number) {
     lens.zoom += (aim.zoom - lens.zoom) * follow;
   }
   const sky = canvas.value;
-  const gliding = sky ? glide(elapsed, sky.width, sky.height) : false;
+  const gliding = (sky ? glide(elapsed, sky.width, sky.height) : false) || circling;
   // Under reduced motion nothing twinkles, so the loop stops once everything has settled.
   const moving = !still.matches || hazing;
   if (!moving || panning || gliding || time - lastDrawn >= frameMs) draw(time);
@@ -390,7 +495,10 @@ function hover(event: PointerEvent) {
     const scale = window.devicePixelRatio || 1;
     const x = event.clientX * scale;
     const y = event.clientY * scale;
-    found = drawnBoxes.find((box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)?.id;
+    // Planets first, since they're drawn over the stars.
+    found =
+      [...drawnPlanets].reverse().find((p) => Math.hypot(x - p.x, y - p.y) <= p.radius * 1.3)?.key ??
+      drawnBoxes.find((box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)?.id;
   }
   if (found !== hovered) {
     hovered = found;
@@ -404,7 +512,7 @@ function settle() {
   wake();
 }
 
-watch(() => [props.constellations, props.clarity, props.names, props.week, props.drift], wake);
+watch(() => [props.constellations, props.planets, props.clarity, props.names, props.week, props.drift], wake);
 watch(
   () => props.drift,
   (drift) => !drift && settle(),
