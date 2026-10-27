@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import type { AppRule, SatelliteAction, SatelliteState, SessionRecord, Settings, TimerSettings } from '@lock-in/core';
+import type {
+  AppRule,
+  GateVisitRecord,
+  SatelliteAction,
+  SatelliteState,
+  SessionRecord,
+  Settings,
+  SkyState,
+  TimerSettings,
+} from '@lock-in/core';
 import {
+  comets,
   constellationNames,
   constellations,
   formatDuration,
   planets,
+  rareEvents,
   sessionSoFar,
   skyClarity,
   starColorFor,
@@ -12,6 +23,7 @@ import {
   starMagnitude,
   stars,
   starSparkle,
+  weekStart,
 } from '@lock-in/core';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
@@ -29,12 +41,20 @@ import {
   setProfileStarColor,
   setProfileTimer,
   setSettings,
+  skySeen,
+  skyState,
   spendEmergencyPass,
   startSession,
+  turnedBack,
   useNow,
   useSnapshot,
 } from './app';
-import NightSky, { type SkyConstellation, type SkyPlanet } from './components/NightSky.vue';
+import NightSky, {
+  type SkyComet,
+  type SkyConstellation,
+  type SkyEvent,
+  type SkyPlanet,
+} from './components/NightSky.vue';
 import ProfileList from './components/ProfileList.vue';
 import SettingsView from './components/SettingsView.vue';
 import SkyPage from './components/SkyPage.vue';
@@ -92,11 +112,11 @@ const now = useNow();
 const minute = computed(() => Math.floor(now.value / 60_000));
 const loadLog = async () => void (log.value = await sessionLog());
 onMounted(() => run(loadLog));
-// A session that just ended is in the log now.
+// A session that just ended is in the log now, with any trips to sites during it.
 watch(
   () => snapshot.value?.session?.id,
   (id, previous) => {
-    if (previous && !id) void run(loadLog);
+    if (previous && !id) void run(loadLog).then(() => run(loadSky));
   },
 );
 const sessions = computed(() => {
@@ -139,10 +159,72 @@ const skyConstellations = computed<(SkyConstellation & { named: boolean })[]>(()
     })),
   }));
 });
+// Comets and rare events, worked out from the log, trips that went back to focus and this
+// device's secret.
+const sky = ref<SkyState>();
+const resisted = ref<GateVisitRecord[]>([]);
+const loadSky = async () => {
+  // When the Sky last showed new things is kept here as it changes, so it's only read once.
+  sky.value ??= await skyState();
+  resisted.value = await turnedBack();
+};
+onMounted(() => run(loadSky));
+const rare = computed(() => (sky.value ? rareEvents(log.value, sky.value.secret) : []));
+const allComets = computed(() => (sky.value ? comets(resisted.value, sky.value.secret) : []));
+const constellationOfWeek = computed(() => new Map(skyConstellations.value.map((c) => [c.weekStart, c.id])));
+const weekConstellation = (at: number) =>
+  firstDay.value === undefined ? undefined : constellationOfWeek.value.get(weekStart(at, firstDay.value));
+// By when its session started, like its star, though it's dated by when the session ended.
+const skyEvents = computed<SkyEvent[]>(() => {
+  const started = new Map(log.value.map((session) => [session.id, session.startedAt]));
+  return rare.value.map((event) => ({
+    ...event,
+    constellationId: weekConstellation(started.get(event.id) ?? event.at),
+  }));
+});
+/** The most comets a constellation shows, the latest. */
+const cometsPerWeek = 3;
+const thisWeek = computed(() => (firstDay.value === undefined ? 0 : weekStart(minute.value * 60_000, firstDay.value)));
+// The Sky shows this week's comets; exploring and the weekly report show each week's.
+const skyComets = computed<SkyComet[]>(() => {
+  const byWeek = new Map<string, SkyComet[]>();
+  for (const comet of allComets.value) {
+    const constellationId = weekConstellation(comet.at);
+    if (!constellationId) continue;
+    byWeek.set(constellationId, [...(byWeek.get(constellationId) ?? []), { ...comet, constellationId }]);
+  }
+  const all = [...byWeek.values()].flatMap((list) => list.slice(-cometsPerWeek));
+  return exploring.value || reportWeek.value !== undefined ? all : all.filter((comet) => comet.at >= thisWeek.value);
+});
+// Each plays once, the next time the Sky is shown between sessions, then counts as seen.
+const visible = ref(document.visibilityState === 'visible');
+const onVisibility = () => (visible.value = document.visibilityState === 'visible');
+onMounted(() => document.addEventListener('visibilitychange', onVisibility));
+onUnmounted(() => document.removeEventListener('visibilitychange', onVisibility));
+const playNow = ref<string[]>([]);
+const unseen = computed(() => {
+  const seenAt = sky.value?.seenAt;
+  if (seenAt === undefined || view.value !== 'sky' || !visible.value || snapshot.value?.session) return [];
+  return [
+    ...skyEvents.value.map((event) => ({ key: `event:${event.id}`, at: event.at })),
+    ...skyComets.value.map((comet) => ({ key: `comet:${comet.id}`, at: comet.at })),
+  ]
+    .filter((item) => item.at > seenAt)
+    .sort((a, b) => a.at - b.at);
+});
+watch(unseen, (items) => {
+  const latest = items[items.length - 1]?.at;
+  if (latest === undefined || !sky.value) return;
+  // A few at most, the latest.
+  playNow.value = items.slice(-4).map((item) => item.key);
+  sky.value = { ...sky.value, seenAt: latest };
+  void run(() => skySeen(latest));
+});
+
 const monthName = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
 const skyPlanets = computed<SkyPlanet[]>(() => {
   const colors = new Map(snapshot.value?.profiles.map((p) => [p.id, p.starColor]));
-  return planets(skyStars.value).map((planet) => ({
+  return planets(skyStars.value, rare.value).map((planet) => ({
     ...planet,
     label: `${monthName.format(planet.monthStart)} · ${formatDuration(planet.focusMs)}`,
     tint: starColorFor(planet.topProfileId, colors.get(planet.topProfileId)),
@@ -172,6 +254,7 @@ const sampleData = (action: 'add' | 'remove') =>
     await (action === 'add' ? addSampleData() : removeSampleData());
     await loadLog();
     await loadNames();
+    await loadSky();
   });
 
 const inState = (state: SatelliteState) => snapshot.value?.satellites.filter((s) => s.state === state) ?? [];
@@ -203,6 +286,9 @@ async function run(action: () => Promise<void>) {
     :drift="exploring"
     :names="view === 'sky' && exploring"
     :week="reportWeek"
+    :comets="skyComets"
+    :events="skyEvents"
+    :play="playNow"
   />
   <main>
     <header>
@@ -252,6 +338,8 @@ async function run(action: () => Promise<void>) {
           v-else-if="view === 'week'"
           :first-day="firstDay"
           :constellation="reportConstellation"
+          :events="rare"
+          :comets="allComets"
           @week="(week: number) => (reportWeek = week)"
           @rename="rename"
         />

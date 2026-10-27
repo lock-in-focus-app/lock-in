@@ -17,6 +17,7 @@ export type * from './generated/SatelliteRecord';
 export type * from './generated/SatelliteState';
 export type * from './generated/SessionRecord';
 export type * from './generated/Settings';
+export type * from './generated/SkyState';
 export type * from './generated/Snapshot';
 export type * from './generated/Strictness';
 export type * from './generated/TimerEnd';
@@ -105,6 +106,7 @@ export {
   type Hsl,
   type Moon,
   type Planet,
+  type PlanetEvent,
   type PlanetForm,
   type PlanetKind,
   type PlanetRing,
@@ -112,6 +114,16 @@ export {
   type RingStyle,
   type SurfaceFeature,
 } from './planets';
+export {
+  comets,
+  planetEventKinds,
+  rareEvents,
+  type Comet,
+  type PlanetEventKind,
+  type RareEvent,
+  type RareEventKind,
+  type SkyEventKind,
+} from './events';
 export { endLock, formatClock, timerStatus, unlockText, type TimerStatus } from './timer';
 export {
   cleanedSatelliteText,

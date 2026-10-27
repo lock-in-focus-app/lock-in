@@ -7,6 +7,8 @@ import {
   maxConstellationNameLength,
   weeklyReport,
   weekStart,
+  type Comet,
+  type RareEvent,
   type SiteDistractions,
   type WeeklyReport,
 } from '@lock-in/core';
@@ -21,12 +23,16 @@ import WeekPicker from './WeekPicker.vue';
 // this device from what the app logged. It opens on this week; the arrows go back to earlier
 // ones, as far as the log goes. Weeks start on the first day of the week set on the computer.
 // The week's constellation shows softly behind the header (drawn by the sky), named beneath it.
+// Anything rare that happened in the sky that week is noted quietly at the end.
 
 const props = defineProps<{
   /** The first day of the week, 0 being Sunday. */
   firstDay: number;
   /** The constellation of the week being shown, if it has one. */
   constellation?: { id: string; name: string; named: boolean };
+  /** Every rare event and comet, oldest first. */
+  events: RareEvent[];
+  comets: Comet[];
 }>();
 const emit = defineEmits<{
   /** The start of the week being shown, whenever it changes. */
@@ -174,6 +180,32 @@ const outcomes = computed(() => {
     .filter((part) => typeof part === 'string')
     .join(' · ');
 });
+
+const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' });
+const month = new Intl.DateTimeFormat(undefined, { month: 'long' });
+const inWeek = (at: number) => at >= start.value && at < addWeeks(start.value, 1);
+/** What happened and on which day, e.g. "An aurora, for your longest session yet" on "Friday". */
+function eventLine(event: RareEvent) {
+  const planet = `${month.format(event.at)}'s planet`;
+  const what = {
+    shootingStar: 'a shooting star',
+    meteorShower: 'a meteor shower',
+    aurora: 'an aurora',
+    supernova: 'a supernova',
+    moonCrash: `a moon crashed into ${planet}`,
+    split: `a chunk broke off ${planet}`,
+    shatter: `${planet} shattered into a ring of debris`,
+  }[event.kind];
+  const why =
+    event.reason === 'longestSession'
+      ? ', for your longest session yet'
+      : event.reason === 'longestStreak'
+        ? `, for your longest streak yet: ${event.streakDays} days in a row`
+        : '';
+  return { id: event.id, what: `${what[0]!.toUpperCase()}${what.slice(1)}${why}`, day: weekday.format(event.at) };
+}
+const skyLines = computed(() => props.events.filter((event) => inWeek(event.at)).map(eventLine));
+const weekComets = computed(() => props.comets.filter((comet) => inWeek(comet.at)).length);
 
 const empty = computed(() => !focus.value?.sessions && !distractions.value?.visits && !satellites.value?.launched);
 </script>
@@ -336,6 +368,17 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
             <h3 id="satellites">Satellites</h3>
             <p class="big">{{ satellites.launched }} <span class="dim">launched</span></p>
             <p v-if="outcomes" class="dim">{{ outcomes }}</p>
+          </section>
+
+          <section v-if="skyLines.length || weekComets" class="card" aria-labelledby="in-the-sky">
+            <h3 id="in-the-sky">In the sky</h3>
+            <ul class="rows">
+              <li v-for="line in skyLines" :key="line.id">
+                <span>{{ line.what }}</span>
+                <span class="dim">{{ line.day }}</span>
+              </li>
+            </ul>
+            <p v-if="weekComets" class="dim">{{ plural(weekComets, 'comet') }} for going back to focus</p>
           </section>
 
           <section v-if="report.suggestions.length" class="card" aria-labelledby="suggestions">

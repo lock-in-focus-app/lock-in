@@ -4,10 +4,10 @@
 use tauri::AppHandle;
 
 use crate::apps::{AppRule, InstalledApp};
-use crate::engine::{Activity, ConstellationName, Snapshot};
+use crate::engine::{Activity, ConstellationName, SkyState, Snapshot};
 use crate::error::{Error, Result};
 use crate::satellites::SatelliteAction;
-use crate::session::{EndReason, SessionRecord};
+use crate::session::{EndReason, GateVisit, SessionRecord};
 use crate::settings::Settings;
 use crate::timer::TimerSettings;
 
@@ -117,6 +117,24 @@ pub fn constellation_names(app: AppHandle) -> Result<Vec<ConstellationName>> {
 #[tauri::command]
 pub fn name_constellation(app: AppHandle, id: String, name: String) -> Result<()> {
     crate::engine(&app).name_constellation(&id, &name)
+}
+
+/// The night sky's secret for rare events, and when the Sky last showed new things.
+#[tauri::command]
+pub fn sky_state(app: AppHandle) -> Result<SkyState> {
+    crate::engine(&app).sky_state(crate::now_ms())
+}
+
+/// Notes that the Sky has shown everything up to `at` (epoch ms), so it plays once.
+#[tauri::command]
+pub fn sky_seen(app: AppHandle, at: i64) -> Result<()> {
+    crate::engine(&app).sky_seen(at, crate::now_ms())
+}
+
+/// Trips to redirected sites that went back to focus, oldest first, for comets.
+#[tauri::command]
+pub fn turned_back(app: AppHandle) -> Result<Vec<GateVisit>> {
+    crate::engine(&app).turned_back()
 }
 
 /// Adds six weeks of made-up sessions, so the sky and the weekly report can be tried without

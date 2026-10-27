@@ -212,18 +212,22 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
   The current month's planet changes as you focus; earlier months stay exactly as they ended.
 - **Its glow is its own.** A soft glow in the planet's own color follows its shape (a star glows star-shaped). Some rings take the star color of the profile you focused on most that month, so a Writing-heavy September might wear a gold ring.
 - **Where they sit.** Planets are nearer than the stars, around the edge of the constellations, the current month's largest and up to the right, older ones further round, smaller and fainter. The Sky shows the last 6 months' planets, still. Explore shows them all, slowly circling (a lap every 8 minutes), spinning so their surfaces turn, with their moons going round, and hovering one shows its month and focus time beneath it. In the weekly report, the week's month's planet sits faintly beside its constellation's name. Under reduced motion they never move.
-- **Moons from streaks.** A streak of days with focus earns a moon on the day it reaches 3, 7 and 14 days in a row, then every week after, around that day's month's planet (at most 3 per planet). Nothing announces a moon; it's just there. A missed day starts a new streak but never takes a moon away. Moons from rare events come with them (slice 5). Moons vary in size and color, some icy, some cratered.
+- **Moons from streaks.** A streak of days with focus earns a moon on the day it reaches 3, 7 and 14 days in a row, then every week after, around that day's month's planet (at most 3 per planet). Nothing announces a moon; it's just there. A missed day starts a new streak but never takes a moon away. Moons vary in size and color, some icy, some cratered.
 - **Kept light:** a planet that isn't moving is drawn once and reused as an image, so the Sky page stays cheap however detailed planets get; only Explore draws them fresh each frame.
 - **Changing the looks later** redraws everyone's past planets, since they come from the seed. Once people have planets, new kinds, shapes and styles are added at the end of their lists (or the generator gets a version), so existing planets keep their look.
-- **Later:** your best month so far gets a faint halo around its planet, with the other personal-best events (slice 5).
+- **Your best month so far** has a faint pale-gold halo around its planet, once there are two months to compare.
+- **Things that happen to a planet.** Now and then a rare event happens to the month's planet instead of the sky (see Rare events), and stays: a **moon crashes into it**, leaving a glowing crater; a **chunk breaks off** and drifts beside it, its broken side glowing; or it **shatters** into a ring of debris circling it, with glowing cracks left on it. At most one a month, and only once the planet is round.
 
 ### Comets: resisting a distraction
-- Leaving the intention gate for "Back to focus" instead of continuing can bring a comet.
+- Leaving the intention gate for "Back to focus" instead of continuing can bring a comet: a 1 in 4 chance.
 - **Don't reward the trip, reward the turn-around.** Only the first resist per site per day counts, and the daily chance doesn't grow with more visits, so going to a site just to resist it earns nothing. Comets stay rare enough to be a nice surprise, not a target. (General reasoning, not research: worth revisiting if it seems to pull people toward the sites.)
+- A comet glides in the first time the Sky shows it, then stays faintly beside its week's constellation, its tails streaming away. The Sky shows this week's; Explore and the weekly report show each week's (the latest 3 a week).
 
 ### Rare events
-- Each finished session rolls a very small chance of something special, rising with the time you've focused today: a shooting star, a meteor shower, an aurora, a supernova. Personal bests (longest session, a streak record) can trigger one for sure.
-- The roll uses a random secret kept on the device, so events can't be predicted or replayed.
+- Each finished session rolls a very small chance of something special, for its minutes (about 2.5% an hour early in the day, so splitting a session earns nothing), rising to 4 times as likely by 4 hours of focus that day: a **shooting star** (most often), a **meteor shower**, an **aurora** across the top of the sky, or a **supernova** (rarest), which flares and leaves a small nebula in its week's constellation. About 1 in 4 happen to the month's planet instead (see Planets).
+- **Personal bests always bring one** of the bigger ones: a new longest session (after the first 10) or the day a streak of days passes your longest yet (from 3 days).
+- The roll uses a random secret kept on the device, so events can't be predicted or replayed. Each roll only looks at what came before it, so nothing that happened changes as the log grows.
+- **Nothing pops up.** An event plays once, gently, the next time the Sky is shown between sessions (usually right as a session ends), and the weekly report notes it quietly under "In the sky" ("A meteor shower · Tuesday"). Under reduced motion, what stays just appears, and a passing one shows still and fades.
 - Later, some events leave a collectable for the observing spot.
 
 ### Light pollution
@@ -269,7 +273,7 @@ The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly te
 - The sky only renders while its window is open and visible, and twinkling stops under `prefers-reduced-motion`.
 
 ### Architecture
-- A reward engine turns the session log into plain events: minutes, overtime minutes, streak days, distractions resisted, satellites parked, rare events. Like the weekly report, the app's Rust core supplies the log and the engine itself is TypeScript in `packages/core`, unit-tested. The device's secret for rare events is generated once and kept in the app's database.
+- A reward engine turns the session log into plain events: minutes, overtime minutes, streak days, distractions resisted, satellites parked, rare events. Like the weekly report, the app's Rust core supplies the log and the engine itself is TypeScript in `packages/core`, unit-tested. The device's secret for rare events is generated once and kept in the app's database, with when the Sky last showed new things; the events themselves aren't saved.
 - Given the same log and the device's secret, it always produces the same sky, so the sky rebuilds after an import or a sync.
 - The sky is one swappable renderer over those events, so the community can build other "worlds" later.
 
@@ -398,8 +402,9 @@ Built in slices, one PR each:
 2. ✅ **The Sky as home:** the Sky page with its profile buttons, the session over the sky, satellites and tasks, the telescope drift and Explore; the Profiles page for editing only; and animations for the weekly report's calendar (switching weeks and months, opening and closing it).
 3. ✅ **Weekly constellations:** naming, names shown beneath them on hover in Explore, the close-together layout on the Sky page and the spread-out week-order layout in the weekly report, and the week's constellation behind the report's header and week title.
 4. ✅ **Planets and moons:** a seeded planet for every month with focus, one of six kinds of world, forming from dust to a lumpy rock to a round world and gaining its surface, rare unusual shapes (star, pumpkin, gem, peanut, flat, ring world, linked rings), rings in six styles (then a crossing ring), glass shells, an atmosphere and an aurora as the month's focus grows, tinted by the month's top profile and spinning in Explore; moons from streaks; planets framing the constellations on the Sky, circling in Explore with hover labels, and beside the week's constellation in the report.
-5. **Comets** for resisted distractions, **rare events** (including a halo for your best month's planet, and things that happen to a planet: a moon crashing into it, a split with a chunk sticking out, or shattering with debris floating round it), streak stats, and **satellites in the sky** (the ones in orbit and on the task list drawn as small satellites circling).
-6. **Performance at scale:** pan and zoom, the spatial index, cached static layers, and older constellations folding into the Milky Way.
+5. ✅ **Comets and rare events:** comets for going back to focus, staying beside their week's constellation; shooting stars, meteor showers, auroras and supernovae from a chance roll with the device's secret, and for personal bests; things that happen to the month's planet (a moon crash, a chunk breaking off, shattering); a halo for your best month's planet; each playing once on the Sky and noted in the weekly report.
+6. **Streak stats and satellites in the sky:** current and longest streaks in the weekly report (never a broken streak), and satellites in orbit and on the task list drawn as small satellites circling, their text on hover in Explore only.
+7. **Performance at scale:** pan and zoom, the spatial index, cached static layers, and older constellations folding into the Milky Way.
 
 **Phase 5: Polish & release**
 - **Milestone color themes** (idea from Nike Run Club's milestone levels; brainstorm with the UI redesign): huge lifetime milestones (total focus hours, e.g. 100, 500, 1,000, 5,000) unlock new colors for the app's UI, like the glass cards' glow and the tab pill. Once unlocked, you pick which one to use, and can always go back. Earned only by focusing, never bought, and unlocked quietly (it's there in Settings next time you look; nothing pops up).

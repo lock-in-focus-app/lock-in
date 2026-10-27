@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::apps::{self, AppRule};
@@ -17,6 +17,7 @@ const ACTIVE_SESSION: &str = "activeSession";
 const SETTINGS: &str = "settings";
 const BROWSERS: &str = "browsers";
 const BROKEN_SESSION: &str = "brokenSession";
+const SKY: &str = "sky";
 
 /// Emergency passes come back a week after they're used.
 const PASS_WEEK_MS: i64 = 7 * 24 * 60 * 60_000;
@@ -93,6 +94,18 @@ pub struct ProfileSummary {
 pub struct ConstellationName {
     pub id: String,
     pub name: String,
+}
+
+/// What the night sky keeps for itself (PLAN §5). Rare events are worked out from the session
+/// log and this device's secret, so they can't be predicted from the log alone, and `seen_at` is
+/// when the Sky last showed new ones, so each plays once.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SkyState {
+    pub secret: String,
+    /// Epoch milliseconds.
+    pub seen_at: i64,
 }
 
 /// The longest name a constellation can have, in characters (as in packages/core).
@@ -615,6 +628,51 @@ impl Engine {
         self.store.name_constellation(id, cleaned_name(name).as_deref())
     }
 
+    /// The night sky's secret and when it last showed new things. The first time, it makes a new
+    /// secret, and everything from before counts as seen, so it doesn't all play at once.
+    pub fn sky_state(&self, now: i64) -> Result<SkyState> {
+        if let Some(saved) = self.store.load::<SkyState>(SKY)? {
+            return Ok(saved.value);
+        }
+        let state = SkyState {
+            // Random from the system's secure source.
+            secret: uuid::Uuid::new_v4().simple().to_string(),
+            seen_at: now,
+        };
+        self.store.save(
+            SKY,
+            &Synced {
+                value: state.clone(),
+                updated_at: now,
+            },
+        )?;
+        Ok(state)
+    }
+
+    /// Notes that the Sky has shown everything up to `at`. It never goes back, or past now.
+    pub fn sky_seen(&self, at: i64, now: i64) -> Result<()> {
+        let mut state = self.sky_state(now)?;
+        state.seen_at = state.seen_at.max(at.min(now));
+        self.store.save(
+            SKY,
+            &Synced {
+                value: state,
+                updated_at: now,
+            },
+        )
+    }
+
+    /// Trips to redirected sites that went back to focus instead of continuing, oldest first,
+    /// for comets.
+    pub fn turned_back(&self) -> Result<Vec<GateVisit>> {
+        let visits = self.store.gate_visits()?;
+        Ok(visits
+            .into_iter()
+            .map(|(_, visit)| visit)
+            .filter(|visit| !visit.continued)
+            .collect())
+    }
+
     /// Adds six weeks of made-up sessions and gate visits for the current profiles, for trying
     /// the app in development builds.
     pub fn add_samples(&mut self, now: i64) -> Result<()> {
@@ -775,6 +833,50 @@ mod tests {
         assert!(engine.store.gate_visits().unwrap().is_empty());
         let names = engine.constellation_names().unwrap();
         assert_eq!(names.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(), [real.id]);
+    }
+
+    #[test]
+    fn keeps_one_sky_secret_and_only_moves_seen_forward() {
+        let engine = engine();
+        let first = engine.sky_state(1_000).unwrap();
+        assert_eq!(first.seen_at, 1_000);
+        assert_eq!(first.secret.len(), 32);
+        assert_eq!(engine.sky_state(5_000).unwrap(), first);
+
+        engine.sky_seen(3_000, 4_000).unwrap();
+        assert_eq!(engine.sky_state(0).unwrap().seen_at, 3_000);
+        engine.sky_seen(2_000, 4_000).unwrap();
+        assert_eq!(engine.sky_state(0).unwrap().seen_at, 3_000);
+        // Never past now, so a wrong time can't hide what's still to come.
+        engine.sky_seen(i64::MAX, 6_000).unwrap();
+        let after = engine.sky_state(0).unwrap();
+        assert_eq!((after.seen_at, &after.secret), (6_000, &first.secret));
+        assert_ne!(
+            Engine::load(Store::open_in_memory().unwrap(), 0)
+                .unwrap()
+                .sky_state(0)
+                .unwrap()
+                .secret,
+            after.secret
+        );
+    }
+
+    #[test]
+    fn hands_the_sky_trips_that_went_back_to_focus() {
+        let engine = engine();
+        let visit = |id: &str, continued| GateVisit {
+            id: id.into(),
+            recipe_id: "reddit".into(),
+            at: 1_000,
+            destination: Some("gate".into()),
+            why: None,
+            intention: None,
+            continued,
+        };
+        engine.record_gate_visit(visit("back", false)).unwrap();
+        engine.record_gate_visit(visit("went", true)).unwrap();
+        let ids: Vec<_> = engine.turned_back().unwrap().into_iter().map(|v| v.id).collect();
+        assert_eq!(ids, ["back"]);
     }
 
     #[test]
