@@ -113,7 +113,7 @@ export async function openPopup({ browser, extension }: TestBrowser, tab: Page):
   await tab.triggerExtensionAction(extension);
   const target = await browser.waitForTarget((t) => t.url().endsWith('/popup.html') && !earlier.has(t));
   const popup = (await target.asPage())!;
-  await popup.setViewport({ width: 300, height: 520 });
+  // No setViewport here: Chrome doesn't let a popup's size be overridden, it sizes itself to its content.
   await popup.waitForSelector('main');
   await wait(300);
   return popup;
