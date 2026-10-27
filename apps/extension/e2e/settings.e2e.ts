@@ -86,19 +86,19 @@ describe('settings page', () => {
     await clickSwitch('Require a reason to continue');
     await page.select('select[aria-label="When a pass runs out"]', 'redirect');
     await page.select('select[aria-label="Wait before Continue"]', 'fixed');
-    await wait(100);
-    const wait10 = await page.$('input[aria-label="Wait in seconds"]');
-    await wait10!.click({ count: 3 });
-    await wait10!.type('999');
+    // The seconds field shows up once the change to a fixed wait has saved.
+    const seconds = await page.waitForSelector('input[aria-label="Wait in seconds"]');
+    await seconds!.click({ count: 3 });
+    await seconds!.type('999');
     await page.keyboard.press('Tab');
-    await wait(150);
 
-    const { gate } = await deepWork();
-    expect(gate).toMatchObject({
-      requireReason: true,
-      onPassExpiry: 'redirect',
-      wait: { mode: 'fixed', seconds: 300 },
-    });
+    await expect
+      .poll(async () => (await deepWork()).gate)
+      .toMatchObject({
+        requireReason: true,
+        onPassExpiry: 'redirect',
+        wait: { mode: 'fixed', seconds: 300 },
+      });
     expect(await page.$eval('input[aria-label="Wait in seconds"]', (input) => input.value)).toBe('300');
   });
 
