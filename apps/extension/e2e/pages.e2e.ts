@@ -41,9 +41,10 @@ describe('page rules', () => {
   /** Changes the page the way a single-page app does, then gives Lock In time to react. */
   const pushPath = async (path: string, expectRedirect: boolean) => {
     await tab.evaluate((p) => history.pushState({}, '', p), path);
+    // Staying put can only be checked by waiting a moment.
     if (!expectRedirect) return wait(300);
     // The site's own pushState counts as a navigation too, so wait for the URL instead.
-    for (let waited = 0; waited < 3000 && !tab.url().startsWith('chrome-extension:'); waited += 50) await wait(50);
+    await expect.poll(() => tab.url()).toMatch(/^chrome-extension:/);
     await tab.waitForSelector('main');
   };
 
@@ -68,7 +69,7 @@ describe('page rules', () => {
     it('tames the rest of the site', async () => {
       await tab.goto(youtube('/'));
       expect(tab.url()).toBe(youtube('/'));
-      expect((await visibility(tab, ['home'])).home).toBe(false);
+      await expect.poll(async () => (await visibility(tab, ['home'])).home).toBe(false);
     });
 
     it('opens an allowed page inside a redirected site, most specific rule first', async () => {
@@ -106,7 +107,6 @@ describe('page rules', () => {
     it('lets a pass through', async () => {
       const session = (await stored(control)).activeSession;
       await setStored(control, { activeSession: { ...session, passes: { youtube: Date.now() + 60_000 } } });
-      await wait(300);
       await tab.goto(youtube('/watch?v=1'));
       await pushPath('/shorts/xyz', false);
       expect(tab.url()).toBe(youtube('/shorts/xyz'));
@@ -114,7 +114,6 @@ describe('page rules', () => {
 
     it('does nothing once the session ends', async () => {
       await setStored(control, { activeSession: null });
-      await wait(300);
       await tab.goto(reddit('/r/writing'));
       await pushPath('/r/all', false);
       expect(tab.url()).toBe(reddit('/r/all'));
@@ -160,12 +159,13 @@ describe('page rules in settings', () => {
 
   it('adds suggested pages in one click', async () => {
     await buttonIn(redditRow, '+ Redirect r/all & Popular');
-    await wait(150);
-    expect((await writing('reddit'))?.paths).toEqual([
-      { path: '/r/all', level: 'redirected' },
-      { path: '/r/popular', level: 'redirected' },
-    ]);
-    expect(await buttonsIn(redditRow)).not.toContain('+ Redirect r/all & Popular');
+    await expect
+      .poll(async () => (await writing('reddit'))?.paths)
+      .toEqual([
+        { path: '/r/all', level: 'redirected' },
+        { path: '/r/popular', level: 'redirected' },
+      ]);
+    await expect.poll(() => buttonsIn(redditRow)).not.toContain('+ Redirect r/all & Popular');
   });
 
   it('only suggests redirecting pages of sites that are open', async () => {
@@ -177,8 +177,7 @@ describe('page rules in settings', () => {
     await buttonIn(xRow, '+ Page rule');
     await page.type(`${xRow} input`, '/i/bookmarks');
     await page.keyboard.press('Enter');
-    await wait(150);
-    expect((await writing('x'))?.paths).toEqual([{ path: '/i/bookmarks', level: 'allowed' }]);
+    await expect.poll(async () => (await writing('x'))?.paths).toEqual([{ path: '/i/bookmarks', level: 'allowed' }]);
   });
 
   it('adds a typed page, rejecting ones that are not plain paths', async () => {
@@ -190,11 +189,12 @@ describe('page rules in settings', () => {
     await page.click(`${youtubeRow} input`, { count: 3 });
     await page.type(`${youtubeRow} input`, 'https://www.youtube.com/feed/trending/');
     await page.keyboard.press('Enter');
-    await wait(150);
-    expect((await writing('youtube'))?.paths).toEqual([
-      { path: '/shorts', level: 'redirected' },
-      { path: '/feed/trending', level: 'redirected' },
-    ]);
+    await expect
+      .poll(async () => (await writing('youtube'))?.paths)
+      .toEqual([
+        { path: '/shorts', level: 'redirected' },
+        { path: '/feed/trending', level: 'redirected' },
+      ]);
   });
 
   it('changes and removes page rules', async () => {
@@ -203,11 +203,13 @@ describe('page rules in settings', () => {
         [...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Restricted') as HTMLElement
       ).click(),
     );
-    await wait(150);
-    expect((await writing('youtube'))?.paths?.[1]).toEqual({ path: '/feed/trending', level: 'restricted' });
+    await expect
+      .poll(async () => (await writing('youtube'))?.paths?.[1])
+      .toEqual({ path: '/feed/trending', level: 'restricted' });
 
     await page.click('[aria-label="Remove /feed/trending"]');
-    await wait(150);
-    expect((await writing('youtube'))?.paths).toEqual([{ path: '/shorts', level: 'redirected' }]);
+    await expect
+      .poll(async () => (await writing('youtube'))?.paths)
+      .toEqual([{ path: '/shorts', level: 'redirected' }]);
   });
 });

@@ -2,7 +2,7 @@ import type { Profile } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { controlPage, launch, setStored, startSession, urls, visibility, wait, type TestBrowser } from './harness';
+import { controlPage, launch, setStored, startSession, urls, visibility, type TestBrowser } from './harness';
 
 // Every built-in recipe, tamed with every toggle on, against its fixture page.
 const everything: Profile = {
@@ -20,10 +20,17 @@ describe('built-in recipes', () => {
   let control: Page;
   let tab: Page;
 
-  /** Single-page apps change the path without loading a new page. */
+  /**
+   * Single-page apps change the path without loading a new page. Lock In keeps the path it
+   * has applied on <html> while a site is tamed, so this waits until it has caught up.
+   */
   const pushPath = async (path: string) => {
     await tab.evaluate((p) => history.pushState({}, '', p), path);
-    await wait(100);
+    await tab.waitForFunction(
+      (p) => document.documentElement.getAttribute('data-lock-in-path') === new URL(p, location.href).pathname,
+      {},
+      path,
+    );
   };
 
   beforeAll(async () => {
@@ -176,8 +183,7 @@ describe('built-in recipes', () => {
     expect(await tab.$eval('html', (html) => html.getAttribute('data-lock-in-path'))).toBe('/');
 
     await setStored(control, { activeSession: null });
-    await wait(300);
-    expect(await tab.$eval('html', (html) => html.getAttribute('data-lock-in-path'))).toBeNull();
+    await expect.poll(() => tab.$eval('html', (html) => html.getAttribute('data-lock-in-path'))).toBeNull();
     expect((await visibility(tab, ['pin'])).pin).toBe(true);
   });
 });
