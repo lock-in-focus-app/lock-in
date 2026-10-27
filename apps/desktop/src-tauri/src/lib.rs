@@ -1,6 +1,7 @@
 mod apps;
 pub mod bridge;
 mod browsers;
+mod capture;
 mod commands;
 mod engine;
 mod error;
@@ -9,6 +10,7 @@ mod idle;
 mod launches;
 mod link;
 mod processes;
+mod satellites;
 mod session;
 mod settings;
 mod store;
@@ -61,6 +63,15 @@ pub(crate) fn end_session(app: &AppHandle, reason: EndReason) -> Result<()> {
     engine(app).end_session(now_ms(), reason)?;
     changed(app);
     Ok(())
+}
+
+/// Tells the window and the menu bar that satellites changed. Nothing else depends on them.
+pub(crate) fn satellites_changed(app: &AppHandle) {
+    let snapshot = engine(app).snapshot(now_ms());
+    let _ = app.emit("snapshot", &snapshot);
+    if let Err(error) = tray::refresh(app, &snapshot) {
+        eprintln!("Lock In: couldn't update the menu bar: {error}");
+    }
 }
 
 /// Tells the window and the menu bar about a change, and schedules the session's timer, idle
@@ -417,6 +428,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(capture::plugin())
         .setup(|app| {
             // Lock In lives in the menu bar, with no Dock icon until its window opens.
             #[cfg(target_os = "macos")]
@@ -436,8 +448,10 @@ pub fn run() {
             launches::listen(Arc::clone(&wake.0));
             app.manage(wake);
             app.manage(link::Links::default());
+            app.manage(capture::CameFrom::default());
 
             tray::create(app.handle(), &snapshot)?;
+            capture::listen(app.handle());
             watch_idle(
                 app.handle(),
                 session.as_ref().map(|s| s.id.clone()),
@@ -460,16 +474,21 @@ pub fn run() {
             open_window(app.handle())?;
             Ok(())
         })
-        .on_window_event(|window, event| {
+        .on_window_event(|window, event| match event {
             // Closing the window destroys it, webview and all, so only the small core keeps running.
-            if let WindowEvent::Destroyed = event {
+            WindowEvent::Destroyed if window.label() == MAIN_WINDOW => {
                 #[cfg(target_os = "macos")]
                 let _ = window
                     .app_handle()
                     .set_activation_policy(tauri::ActivationPolicy::Accessory);
-                #[cfg(not(target_os = "macos"))]
-                let _ = window;
             }
+            // The satellite box goes away when you click somewhere else, like Spotlight.
+            WindowEvent::Focused(false) if window.label() == capture::WINDOW => {
+                if let Err(error) = capture::close(window.app_handle(), false) {
+                    eprintln!("Lock In: couldn't close the satellite box: {error}");
+                }
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             commands::snapshot,
@@ -481,6 +500,9 @@ pub fn run() {
             commands::forget_browser,
             commands::set_profile_apps,
             commands::installed_apps,
+            commands::launch_satellite,
+            commands::act_on_satellite,
+            commands::close_capture,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lock In")

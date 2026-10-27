@@ -13,6 +13,7 @@ pub enum Error {
     /// A Hard session's timer is still running.
     Locked,
     NoPassesLeft,
+    UnknownSatellite,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -29,6 +30,7 @@ impl fmt::Display for Error {
             Error::UnknownProfile => f.write_str("that profile doesn't exist"),
             Error::Locked => f.write_str("this session is in Hard mode until its timer is done"),
             Error::NoPassesLeft => f.write_str("no emergency passes are left this week"),
+            Error::UnknownSatellite => f.write_str("that satellite is already gone"),
         }
     }
 }

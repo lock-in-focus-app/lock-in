@@ -4,6 +4,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::error::Result;
+use crate::satellites::{Satellite, SatelliteState};
 use crate::session::{EndReason, GateVisit, SessionRecord};
 
 /// A value that's kept in step with the extension, with when it last changed. The newest
@@ -16,7 +17,8 @@ pub struct Synced<T> {
     pub updated_at: i64,
 }
 
-/// The app's SQLite database: the profiles, the running session and the session log.
+/// The app's SQLite database: the profiles, the running session, the session log and
+/// satellites.
 pub struct Store {
     db: Connection,
 }
@@ -60,6 +62,20 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE sessions ADD COLUMN broken INTEGER NOT NULL DEFAULT 0;
 "#,
+    // Satellites that are done or deleted stay, for insights, but deleted ones lose their text.
+    r#"
+    CREATE TABLE satellites (
+        id TEXT PRIMARY KEY,
+        text TEXT NOT NULL,
+        launched_at INTEGER NOT NULL,
+        session_id TEXT,
+        state TEXT NOT NULL,
+        state_at INTEGER NOT NULL,
+        snoozes INTEGER NOT NULL DEFAULT 0,
+        tasked_at INTEGER
+    );
+    CREATE INDEX satellites_state ON satellites (state);
+"#,
 ];
 
 impl Store {
@@ -70,6 +86,11 @@ impl Store {
     #[cfg(test)]
     pub fn open_in_memory() -> Result<Self> {
         Self::migrated(Connection::open_in_memory()?)
+    }
+
+    #[cfg(test)]
+    pub fn db_for_tests(&self) -> &Connection {
+        &self.db
     }
 
     fn migrated(mut db: Connection) -> Result<Self> {
@@ -105,8 +126,8 @@ impl Store {
         save(&self.db, key, synced)
     }
 
-    /// Logs a finished session and saves the new state in one go, so a crash can't log a
-    /// session that still looks like it's running.
+    /// Logs a finished session, saves the new state and brings satellites back, all in one go,
+    /// so a crash can't log a session that still looks like it's running.
     pub fn end_session<T: Serialize>(&mut self, record: &SessionRecord, key: &str, synced: &Synced<T>) -> Result<()> {
         let tx = self.db.transaction()?;
         tx.execute(
@@ -128,8 +149,66 @@ impl Store {
             ],
         )?;
         save(&tx, key, synced)?;
+        tx.execute(
+            "UPDATE satellites SET state = ?1, state_at = ?2 WHERE state = ?3",
+            params![
+                SatelliteState::Back.as_str(),
+                record.ended_at,
+                SatelliteState::Orbiting.as_str()
+            ],
+        )?;
         tx.commit()?;
         Ok(())
+    }
+
+    pub fn save_satellite(&self, satellite: &Satellite, session_id: Option<&str>) -> Result<()> {
+        self.db.execute(
+            "INSERT INTO satellites (id, text, launched_at, session_id, state, state_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?3)",
+            params![
+                satellite.id,
+                satellite.text,
+                satellite.launched_at,
+                session_id,
+                satellite.state.as_str()
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Moves a satellite to `state`, counting snoozes and when it first became a task.
+    pub fn move_satellite(&self, id: &str, state: SatelliteState, now: i64) -> Result<()> {
+        let extra = match state {
+            SatelliteState::Orbiting => ", snoozes = snoozes + 1",
+            SatelliteState::Task => ", tasked_at = COALESCE(tasked_at, ?3)",
+            SatelliteState::Deleted => ", text = ''",
+            SatelliteState::Back | SatelliteState::Done => "",
+        };
+        self.db.execute(
+            &format!("UPDATE satellites SET state = ?2, state_at = ?3{extra} WHERE id = ?1"),
+            params![id, state.as_str(), now],
+        )?;
+        Ok(())
+    }
+
+    /// The satellites still in orbit, back or on the task list, oldest first.
+    pub fn live_satellites(&self) -> Result<Vec<Satellite>> {
+        let mut statement = self.db.prepare(
+            "SELECT id, text, launched_at, state FROM satellites
+             WHERE state NOT IN (?1, ?2) ORDER BY launched_at",
+        )?;
+        let rows = statement.query_map(
+            params![SatelliteState::Done.as_str(), SatelliteState::Deleted.as_str()],
+            |row| {
+                Ok(Satellite {
+                    id: row.get(0)?,
+                    text: row.get(1)?,
+                    launched_at: row.get(2)?,
+                    state: SatelliteState::parse(&row.get::<_, String>(3)?).unwrap_or(SatelliteState::Back),
+                })
+            },
+        )?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
     /// Saves a trip to a redirected site. The extension sends it again as the user answers

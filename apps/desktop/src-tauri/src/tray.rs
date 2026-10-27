@@ -1,9 +1,10 @@
 use tauri::image::Image;
-use tauri::menu::{Menu, MenuBuilder, MenuEvent};
+use tauri::menu::{Menu, MenuBuilder, MenuEvent, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Wry};
 
 use crate::engine::Snapshot;
+use crate::satellites::SatelliteState;
 
 const TRAY_ID: &str = "main";
 const START_PREFIX: &str = "start:";
@@ -30,6 +31,20 @@ pub fn refresh(app: &AppHandle, snapshot: &Snapshot) -> tauri::Result<()> {
 
 fn menu(app: &AppHandle, snapshot: &Snapshot) -> tauri::Result<Menu<Wry>> {
     let mut builder = MenuBuilder::new(app);
+    // Satellites that came back wait quietly here and in the window. Nothing pops up when a
+    // session ends, so it never pulls you out of the flow.
+    let back = snapshot
+        .satellites
+        .iter()
+        .filter(|s| s.state == SatelliteState::Back)
+        .count();
+    if back > 0 && snapshot.session.is_none() {
+        let label = match back {
+            1 => "1 satellite came back…".to_string(),
+            n => format!("{n} satellites came back…"),
+        };
+        builder = builder.text("back", label).separator();
+    }
     builder = match &snapshot.session {
         Some(session) => builder
             .item(&disabled(app, &format!("Locked in · {}", session.profile_name))?)
@@ -42,8 +57,13 @@ fn menu(app: &AppHandle, snapshot: &Snapshot) -> tauri::Result<Menu<Wry>> {
             builder
         }
     };
+    // The accelerator is only shown here; the hotkey itself works from anywhere (capture.rs).
+    let launch = MenuItemBuilder::with_id("satellite", "Launch a satellite…")
+        .accelerator("Alt+P")
+        .build(app)?;
     builder
         .separator()
+        .item(&launch)
         .text("open", "Open Lock In…")
         .text("quit", "Quit Lock In")
         .build()
@@ -65,7 +85,8 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
                 None => crate::end_session(app, crate::session::EndReason::Stopped),
             }
         }
-        "open" => crate::open_window(app),
+        "open" | "back" => crate::open_window(app),
+        "satellite" => crate::capture::open(app),
         "quit" => {
             app.exit(0);
             Ok(())

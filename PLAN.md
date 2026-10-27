@@ -154,12 +154,20 @@ To make the name instantly clear:
 - On first use, a one-line tooltip with a tiny animation shows the thought orbiting the session timer.
 
 **Capture from anywhere:**
-- a global hotkey (opens a tiny spotlight-style box)
+- a global hotkey, **Alt+P** (Option+P on a Mac), which opens a tiny spotlight-style box. Return launches the thought and hands focus straight back to the app you were in; Escape or clicking elsewhere closes it. (Option+P normally types π, which Lock In takes over while it's running; the hotkey becomes changeable in Settings later.)
 - the menu-bar icon
 - the extension popup
 - every redirect page
 
-**Return:** when a session ends, you see "3 satellites came back". Review them as a checklist: done / snooze to the next break / turn into a task / delete.
+**Return:** nothing pops up when a session ends, so it never pulls you out of the flow (the same idea as the quiet timer). The satellites wait for you: the window shows "3 satellites came back" above the profiles, and the menu bar has a quiet "3 satellites came back…" line. Review them as a checklist:
+- **Done:** ticked off.
+- **Snooze:** back into orbit; it comes back when the next session ends.
+- **Task:** onto the task list.
+- **Delete:** gone. Its text is erased; only the fact that one was parked is kept, for insights.
+
+**Between sessions**, a launched thought shows on the dashboard as "in orbit" and comes back when the next session ends. During a session, the window only shows how many are in orbit, not what they say.
+
+**The task list** is a checklist on the dashboard, kept in the app, as long as you like. Later: export to Reminders, Todoist and the like.
 
 Satellites also count in insights, e.g. "You parked 12 thoughts this week instead of acting on them."
 
@@ -347,7 +355,8 @@ lock-in/
 - ✅ App rules, SQLite. The session log keeps everything the rewards will need later (§5), so stardust and the sky can be worked out from past sessions once they ship. (On macOS, app launches come from `NSWorkspace` notifications; Linux has no unprivileged equivalent, so it checks every 10 seconds during sessions, about 9 ms each.)
 
 **Phase 3: Satellites & insights**
-- Global-hotkey capture and the post-session return.
+- Satellites (§4) in the desktop app: the Alt+P box, menu-bar capture, the post-session return, and the task list.
+- Satellites in the extension: capture from the popup and redirect pages, sent to the app when linked and kept by the extension when it runs alone.
 - Weekly report.
 - Session suggestions from apps.
 
@@ -355,9 +364,10 @@ lock-in/
 - Reward engine + sky renderer (§5): twinkling stars colored by profile, light pollution outside sessions and a clear sky during them, the "View sky" toggle, constellations, the Milky Way.
 - Seeded planets and moons, comets for resisted distractions, rare events.
 - Streaks and stardust (earned and shown; nothing to spend it on yet).
+- Satellites in the sky: the ones in orbit and on the task list drawn as small satellites circling.
 
 **Phase 5: Polish & release**
-- UI redesign: the floating-card look from the reference images. Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
+- UI redesign: the floating-card look from the reference images, and the satellites' first-use tooltip and animation (§4). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.

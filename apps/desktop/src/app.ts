@@ -1,4 +1,4 @@
-import type { AppRule, InstalledApp, Settings, Snapshot, TimerSettings } from '@lock-in/core';
+import type { AppRule, InstalledApp, SatelliteAction, Settings, Snapshot, TimerSettings } from '@lock-in/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { onUnmounted, ref } from 'vue';
@@ -44,3 +44,14 @@ export const installedApps = () => invoke<InstalledApp[]>('installed_apps');
 export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings });
 
 export const forgetBrowser = (path: string) => invoke<void>('forget_browser', { path });
+
+/** Launches a thought into orbit. Resolves to whether there was anything to launch. */
+export const launchSatellite = (text: string) => invoke<boolean>('launch_satellite', { text });
+
+export const actOnSatellite = (id: string, action: SatelliteAction) => invoke<void>('act_on_satellite', { id, action });
+
+/** Closes the satellite box and hands focus back to the app you were in. */
+export const closeCapture = () => invoke<void>('close_capture');
+
+/** The longest satellite kept, as in satellites.rs. */
+export const maxSatelliteLength = 500;

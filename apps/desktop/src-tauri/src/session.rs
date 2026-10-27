@@ -225,7 +225,7 @@ impl GateVisit {
     }
 }
 
-fn truncate(text: &mut String, max_chars: usize) {
+pub(crate) fn truncate(text: &mut String, max_chars: usize) {
     if let Some((index, _)) = text.char_indices().nth(max_chars) {
         text.truncate(index);
     }
