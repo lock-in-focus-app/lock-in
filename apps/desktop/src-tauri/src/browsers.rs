@@ -29,8 +29,6 @@ pub struct KnownBrowser {
     pub path: String,
 }
 
-/// How often a running session checks its browsers.
-pub const CHECK_EVERY_MS: i64 = 10_000;
 /// How long a browser can go without its link before it's a problem. The extension relinks
 /// within a few seconds when it reloads or updates, or when the app or browser starts.
 const GRACE_MS: i64 = 20_000;
@@ -80,6 +78,19 @@ pub struct BrowserWatch {
 }
 
 impl BrowserWatch {
+    /// When the next step for a browser without its link is due (epoch ms): its warning, or
+    /// closing it. The session's watch wakes up then to check again.
+    pub fn next_due(&self, response: Response) -> Option<i64> {
+        self.quiet
+            .values()
+            .filter_map(|quiet| match quiet.acted_at {
+                None => Some(quiet.since + GRACE_MS),
+                Some(at) if response != Response::Warn => Some(at + CLOSE_AFTER_MS),
+                Some(_) => None,
+            })
+            .min()
+    }
+
     /// Takes the known browsers that are running and the process ids of the browsers that are
     /// linked, and returns what to do now.
     pub fn check(&mut self, now: i64, running: &[Running], linked: &HashSet<u32>, response: Response) -> Vec<Action> {
@@ -122,6 +133,8 @@ mod tests {
     use super::*;
 
     const SEC: i64 = 1_000;
+    /// How often these tests check, as Linux does during a session.
+    const CHECK_EVERY_MS: i64 = 10_000;
 
     fn chrome() -> Running {
         Running {
@@ -224,6 +237,24 @@ mod tests {
             .flat_map(|i| watch.check(i * CHECK_EVERY_MS, &[chrome()], &none, response))
             .collect();
         assert!(matches!(actions.as_slice(), [Action::Warn { .. }]));
+    }
+
+    #[test]
+    fn says_when_the_next_step_is_due() {
+        let mut watch = BrowserWatch::default();
+        let none = linked(&[]);
+        let medium = Response::to(Some(Strictness::Medium), true);
+        assert_eq!(watch.next_due(medium), None);
+        watch.check(5 * SEC, &[chrome()], &none, medium);
+        assert_eq!(watch.next_due(medium), Some(25 * SEC));
+        // Checking exactly then warns, and the close is due a minute later.
+        assert_eq!(watch.check(25 * SEC, &[chrome()], &none, medium).len(), 1);
+        assert_eq!(watch.next_due(medium), Some(85 * SEC));
+        // With only a warning to give, nothing more is due once it's given.
+        assert_eq!(watch.next_due(Response::Warn), None);
+        // Linked again: nothing due.
+        watch.check(30 * SEC, &[chrome()], &linked(&[7]), medium);
+        assert_eq!(watch.next_due(medium), None);
     }
 
     #[test]

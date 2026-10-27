@@ -1,12 +1,23 @@
 <script setup lang="ts">
-import type { ProfileSummary, Strictness, TimerEnd, TimerSettings } from '@lock-in/core';
+import type { AppRule, ProfileSummary, Strictness, TimerEnd, TimerSettings } from '@lock-in/core';
 import { ref } from 'vue';
+import AppRulesEditor from './AppRulesEditor.vue';
 import TimerEditor from './TimerEditor.vue';
 
-defineProps<{ profiles: ProfileSummary[] }>();
-const emit = defineEmits<{ start: [profileId: string]; 'set-timer': [profileId: string, timer: TimerSettings] }>();
+defineProps<{ profiles: ProfileSummary[]; canHideApps: boolean }>();
+const emit = defineEmits<{
+  start: [profileId: string];
+  'set-timer': [profileId: string, timer: TimerSettings];
+  'set-apps': [profileId: string, apps: AppRule[]];
+}>();
 
-const editing = ref<string>();
+// Which profile's timer or apps are open, one at a time.
+type Panel = 'timer' | 'apps';
+const editing = ref<{ profileId: string; panel: Panel }>();
+const isOpen = (profileId: string, panel: Panel) =>
+  editing.value?.profileId === profileId && editing.value.panel === panel;
+const toggle = (profileId: string, panel: Panel) =>
+  (editing.value = isOpen(profileId, panel) ? undefined : { profileId, panel });
 
 const endLabels: Record<TimerEnd, string> = {
   silent: 'ends silently',
@@ -24,6 +35,12 @@ function timerSummary(timer: TimerSettings): string {
   if (timer.minutes <= 0) return 'No timer';
   return `${timer.minutes} min timer${strictnessLabels[timer.strictness]} · ${endLabels[timer.onEnd]}`;
 }
+
+function summary(profile: ProfileSummary): string {
+  const apps = profile.apps.length;
+  const appCount = apps === 0 ? '' : ` · ${apps} ${apps === 1 ? 'app' : 'apps'}`;
+  return timerSummary(profile.timer) + appCount;
+}
 </script>
 
 <template>
@@ -34,26 +51,41 @@ function timerSummary(timer: TimerSettings): string {
         <div class="row">
           <button class="profile" type="button" @click="emit('start', profile.id)">
             <span class="name">{{ profile.name }}</span>
-            <span class="summary">{{ timerSummary(profile.timer) }}</span>
+            <span class="summary">{{ summary(profile) }}</span>
           </button>
           <button
             class="edit"
             type="button"
-            :aria-expanded="editing === profile.id"
+            :aria-expanded="isOpen(profile.id, 'timer')"
             :aria-label="`Timer for ${profile.name}`"
-            @click="editing = editing === profile.id ? undefined : profile.id"
+            @click="toggle(profile.id, 'timer')"
           >
             Timer
           </button>
+          <button
+            class="edit"
+            type="button"
+            :aria-expanded="isOpen(profile.id, 'apps')"
+            :aria-label="`Apps for ${profile.name}`"
+            @click="toggle(profile.id, 'apps')"
+          >
+            Apps
+          </button>
         </div>
         <TimerEditor
-          v-if="editing === profile.id"
+          v-if="isOpen(profile.id, 'timer')"
           :timer="profile.timer"
           @update:timer="emit('set-timer', profile.id, $event)"
         />
+        <AppRulesEditor
+          v-if="isOpen(profile.id, 'apps')"
+          :apps="profile.apps"
+          :can-hide="canHideApps"
+          @update:apps="emit('set-apps', profile.id, $event)"
+        />
       </li>
     </ul>
-    <p class="help">Sites for each profile are set in the browser extension's settings.</p>
+    <p class="help">Sites for each profile are set in the browser extension's settings, and apps here.</p>
   </section>
 </template>
 

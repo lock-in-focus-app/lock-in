@@ -15,4 +15,8 @@ passesLeft: number,
 /**
  * The browsers that have linked to the app, which are watched during sessions.
  */
-browsers: Array<KnownBrowser>, };
+browsers: Array<KnownBrowser>, 
+/**
+ * Whether this system can hide another app's windows, for app rules.
+ */
+canHideApps: boolean, };

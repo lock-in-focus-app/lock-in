@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { Settings, TimerSettings } from '@lock-in/core';
+import type { AppRule, Settings, TimerSettings } from '@lock-in/core';
 import { ref } from 'vue';
 import {
   endSession,
   forgetBrowser,
+  setProfileApps,
   setProfileTimer,
   setSettings,
   spendEmergencyPass,
@@ -58,8 +59,10 @@ async function run(action: () => Promise<void>) {
     <ProfileList
       v-else-if="snapshot"
       :profiles="snapshot.profiles"
+      :can-hide-apps="snapshot.canHideApps"
       @start="(id: string) => run(() => startSession(id))"
       @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
+      @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
     />
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>

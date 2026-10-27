@@ -1,3 +1,4 @@
+mod apps;
 pub mod bridge;
 mod browsers;
 mod commands;
@@ -5,6 +6,7 @@ mod engine;
 mod error;
 mod hosts;
 mod idle;
+mod launches;
 mod link;
 mod processes;
 mod session;
@@ -13,14 +15,16 @@ mod store;
 mod timer;
 mod tray;
 
-use std::path::Path;
-use std::sync::{Mutex, MutexGuard};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
+use tokio::sync::Notify;
 
+use apps::AppWatch;
 use browsers::{Action, BrowserWatch, Response};
 use engine::Engine;
 use error::Result;
@@ -60,7 +64,7 @@ pub(crate) fn end_session(app: &AppHandle, reason: EndReason) -> Result<()> {
 }
 
 /// Tells the window and the menu bar about a change, and schedules the session's timer, idle
-/// check and browser check.
+/// check, and its check on browsers and apps.
 pub(crate) fn changed(app: &AppHandle) {
     // Copy what's needed and let go of the engine first, so the menu bar (which runs on the
     // main thread) never waits on a lock another thread holds.
@@ -78,19 +82,37 @@ pub(crate) fn changed(app: &AppHandle) {
         session.as_ref().map(|s| s.id.clone()),
         snapshot.settings.idle_minutes,
     );
-    watch_browsers(app, session.as_ref().map(|s| s.id.clone()));
+    watch_session(app, session.as_ref().map(|s| s.id.clone()));
+    wake_watch(app);
     schedule_timer(app, session, snapshot.session.map(|s| s.profile_name));
 }
 
-/// The running session's check on its browsers, and the session it's for.
+/// The running session's check on its browsers and apps, and the session it's for.
 #[derive(Default)]
-struct BrowserTask(Mutex<Option<(String, JoinHandle<()>)>>);
+struct WatchTask(Mutex<Option<(String, JoinHandle<()>)>>);
 
-/// Checks every few seconds while a session runs for known browsers running without the
-/// extension, and acts on them as Settings and the session's strictness say (browsers.rs).
-/// Sessions whose profile doesn't tame any sites leave the browsers alone.
-fn watch_browsers(app: &AppHandle, session_id: Option<String>) {
-    let task = app.state::<BrowserTask>();
+/// Wakes the session's check on browsers and apps. Wake-ups that come while it's busy aren't
+/// lost: the next wait returns straight away.
+#[derive(Default)]
+struct WatchWake(Arc<Notify>);
+
+/// Has the running session check its browsers and apps now: an app launched or was unhidden
+/// (launches.rs), a browser linked or unlinked, or something else changed.
+pub(crate) fn wake_watch(app: &AppHandle) {
+    app.state::<WatchWake>().0.notify_one();
+}
+
+/// While a session runs, checks when it starts and whenever it's woken (`wake_watch`):
+/// - for the apps its profile closes or hides (apps.rs), which go as soon as it starts and
+///   again whenever they're opened or unhidden;
+/// - for known browsers running without the extension, acting on them as Settings and the
+///   session's strictness say (browsers.rs). Sessions whose profile doesn't tame any sites
+///   leave the browsers alone.
+///
+/// Between wake-ups it only waits on a timer when a browser's warning or close is due, or
+/// where app launches can't be heard (Linux), so it doesn't tick away during a session.
+fn watch_session(app: &AppHandle, session_id: Option<String>) {
+    let task = app.state::<WatchTask>();
     let mut task = task.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     // Unlike the timer, it keeps going through changes to the same session, which happen
     // all the time while browsers sync, so its count towards closing a browser isn't lost.
@@ -104,39 +126,101 @@ fn watch_browsers(app: &AppHandle, session_id: Option<String>) {
 
     let app = app.clone();
     let id = session_id.clone();
+    let wake = Arc::clone(&app.state::<WatchWake>().0);
     let handle = tauri::async_runtime::spawn(async move {
-        let mut watch = BrowserWatch::default();
+        let mut browser_watch = BrowserWatch::default();
+        let mut app_watch = AppWatch::default();
         loop {
-            tokio::time::sleep(Duration::from_millis(browsers::CHECK_EVERY_MS as u64)).await;
             let now = now_ms();
-            let (paths, response) = {
+            let (browser_paths, response, app_rules, profile_name) = {
                 let engine = engine(&app);
                 let Some(session) = engine.session().filter(|s| s.id == id) else {
                     return;
                 };
-                let paths: Vec<_> = if engine.profile_tames_sites(&session.profile_id) {
+                let browser_paths: Vec<PathBuf> = if engine.profile_tames_sites(&session.profile_id) {
                     engine.browsers().iter().map(|b| b.path.clone().into()).collect()
                 } else {
                     Vec::new()
                 };
                 let close = engine.settings().close_browsers;
-                (paths, Response::to(session.lock(now), close))
+                (
+                    browser_paths,
+                    Response::to(session.lock(now), close),
+                    engine.profile_apps(&session.profile_id),
+                    engine.profile_name(&session.profile_id),
+                )
             };
-            if paths.is_empty() {
+            if browser_paths.is_empty() {
                 // Nothing to watch right now, e.g. every site in the profile is allowed.
-                watch = BrowserWatch::default();
-                continue;
+                browser_watch = BrowserWatch::default();
             }
-            let running = tauri::async_runtime::spawn_blocking(move || processes::running(&paths))
-                .await
-                .unwrap_or_default();
-            let linked = link::linked_browsers(&app);
-            for action in watch.check(now, &running, &linked, response) {
-                act_on_browser(&app, &id, action);
+
+            let mut paths = browser_paths.clone();
+            paths.extend(app_rules.iter().map(|rule| PathBuf::from(&rule.path)));
+            if !paths.is_empty() {
+                let running = tauri::async_runtime::spawn_blocking(move || processes::running(&paths))
+                    .await
+                    .unwrap_or_default();
+                act_on_apps(&app, &profile_name, app_watch.check(&running, &app_rules));
+                if !browser_paths.is_empty() {
+                    let browsers: Vec<_> = running
+                        .into_iter()
+                        .filter(|process| browser_paths.contains(&process.path))
+                        .collect();
+                    let linked = link::linked_browsers(&app);
+                    for action in browser_watch.check(now, &browsers, &linked, response) {
+                        act_on_browser(&app, &id, action);
+                    }
+                }
+            }
+
+            let due = browser_watch.next_due(response).map(|at| at - now_ms());
+            let wait = [due, launches::POLL_EVERY_MS].into_iter().flatten().min();
+            match wait {
+                // Capped at a minute, since a computer that sleeps meanwhile would otherwise
+                // leave the timer running long past when it's due.
+                Some(ms) => {
+                    let ms = ms.clamp(0, 60_000) as u64;
+                    let _ = tokio::time::timeout(Duration::from_millis(ms), wake.notified()).await;
+                }
+                None => wake.notified().await,
             }
         }
     });
     *task = Some((session_id, handle));
+}
+
+/// Closes and hides the session's apps, and says which were closed the first time.
+fn act_on_apps(app: &AppHandle, profile_name: &str, actions: Vec<apps::Action>) {
+    let mut closed = Vec::new();
+    for action in actions {
+        match action {
+            apps::Action::Close { pid, name, first } => {
+                if processes::quit(pid) && first {
+                    closed.push(name);
+                }
+            }
+            apps::Action::Hide { pid } => {
+                processes::hide(pid);
+            }
+        }
+    }
+    let Some((last, rest)) = closed.split_last() else {
+        return;
+    };
+    let (names, them) = if rest.is_empty() {
+        (last.clone(), "it")
+    } else {
+        (format!("{} and {last}", rest.join(", ")), "them")
+    };
+    let notification = app
+        .notification()
+        .builder()
+        .title(format!("Closed {names}"))
+        .body(format!("{profile_name} keeps {them} closed until the session ends."));
+    if let Err(error) = notification.show() {
+        eprintln!("Lock In: couldn't show the app rules notification: {error}");
+    }
 }
 
 fn act_on_browser(app: &AppHandle, session_id: &str, action: Action) {
@@ -347,7 +431,10 @@ pub fn run() {
             app.manage(Mutex::new(engine));
             app.manage(TimerTask::default());
             app.manage(IdleTask::default());
-            app.manage(BrowserTask::default());
+            app.manage(WatchTask::default());
+            let wake = WatchWake::default();
+            launches::listen(Arc::clone(&wake.0));
+            app.manage(wake);
             app.manage(link::Links::default());
 
             tray::create(app.handle(), &snapshot)?;
@@ -356,7 +443,7 @@ pub fn run() {
                 session.as_ref().map(|s| s.id.clone()),
                 snapshot.settings.idle_minutes,
             );
-            watch_browsers(app.handle(), session.as_ref().map(|s| s.id.clone()));
+            watch_session(app.handle(), session.as_ref().map(|s| s.id.clone()));
             schedule_timer(app.handle(), session, snapshot.session.map(|s| s.profile_name));
             tauri::async_runtime::spawn(link::serve(app.handle().clone()));
             match std::env::current_exe() {
@@ -392,6 +479,8 @@ pub fn run() {
             commands::use_emergency_pass,
             commands::set_settings,
             commands::forget_browser,
+            commands::set_profile_apps,
+            commands::installed_apps,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lock In")
