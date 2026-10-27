@@ -74,6 +74,17 @@ pub fn run() -> i32 {
         link_number += 1;
 
         let (receive, mut send) = stream.split();
+        // Tells the app which browser this is, so it can tell if that browser runs without the
+        // extension. The browser started this process, so it's the parent. (Windows starts it
+        // through cmd.exe, so this waits for Windows support.)
+        #[cfg(unix)]
+        {
+            let line = format!(
+                "{{\"type\":\"bridge\",\"browserPid\":{}}}\n",
+                std::os::unix::process::parent_id()
+            );
+            let _ = send.write_all(line.as_bytes());
+        }
         let to_browser = Arc::clone(&stdout);
         let app_gone = events.clone();
         let number = link_number;

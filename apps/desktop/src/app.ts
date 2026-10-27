@@ -36,3 +36,5 @@ export const setProfileTimer = (profileId: string, timer: TimerSettings) =>
   invoke<void>('set_profile_timer', { profileId, timer });
 
 export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings });
+
+export const forgetBrowser = (path: string) => invoke<void>('forget_browser', { path });

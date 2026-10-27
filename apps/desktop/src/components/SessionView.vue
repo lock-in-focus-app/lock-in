@@ -42,6 +42,9 @@ const detail = computed(() => {
     <p class="label">Locked in · {{ session.profileName }}</p>
     <p class="clock" :class="{ done: status.state === 'done' }">{{ clock }}</p>
     <p class="detail">{{ detail }}</p>
+    <p v-if="session.broken" class="broken">
+      Counts as broken: a browser had to be closed for running without the extension.
+    </p>
     <EndEarly
       v-if="endingEarly && lock"
       class="end-early"
@@ -65,6 +68,12 @@ const detail = computed(() => {
   margin: 0;
   color: var(--dim);
   font-size: 13px;
+}
+
+.broken {
+  margin: 8px 0 0;
+  color: var(--dim);
+  font-size: 12px;
 }
 
 .clock {

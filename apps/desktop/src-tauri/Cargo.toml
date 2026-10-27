@@ -32,6 +32,8 @@ ts-rs = "12"
 interprocess = { version = "2.4", features = ["tokio"] }
 dirs = "7"
 uuid = { version = "1", features = ["v4"] }
+# Finding and closing browsers that run without the extension during a session.
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 
 # Reading the system's idle time. Both are already used inside Tauri, so they add no new crates.
 [target.'cfg(target_os = "macos")'.dependencies]
