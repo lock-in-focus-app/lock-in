@@ -28,6 +28,8 @@ const satellites = (state: SatelliteState) => snapshot.value?.satellites.filter(
 const back = computed(() => satellites('back'));
 const orbiting = computed(() => satellites('orbiting'));
 const tasks = computed(() => satellites('task'));
+// The latest first. The core only sends tasks ticked off in the last day.
+const done = computed(() => satellites('done').sort((a, b) => b.stateAt - a.stateAt));
 const launch = (text: string) => run(async () => void (await launchSatellite(text)));
 const act = (id: string, action: SatelliteAction) => run(() => actOnSatellite(id, action));
 
@@ -82,7 +84,7 @@ async function run(action: () => Promise<void>) {
         @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
       />
       <SatelliteLaunch class="satellites" :session-running="false" :in-orbit="0" @launch="launch" />
-      <SatellitesView :orbiting="orbiting" :tasks="tasks" @act="act" />
+      <SatellitesView :orbiting="orbiting" :tasks="tasks" :done="done" @act="act" />
     </template>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>

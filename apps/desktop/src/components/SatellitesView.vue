@@ -2,8 +2,9 @@
 import type { Satellite, SatelliteAction } from '@lock-in/core';
 import SatelliteItem from './SatelliteItem.vue';
 
-// Between sessions: the satellites still in orbit, and the task list.
-defineProps<{ orbiting: Satellite[]; tasks: Satellite[] }>();
+// Between sessions: the satellites still in orbit, and the task list with what was ticked off
+// in the last day, which can be unticked in case it was by accident.
+defineProps<{ orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] }>();
 const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
 </script>
 
@@ -21,9 +22,9 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
     </ul>
   </section>
 
-  <section v-if="tasks.length" aria-labelledby="tasks">
+  <section v-if="tasks.length || done.length" aria-labelledby="tasks">
     <p id="tasks" class="label">Tasks</p>
-    <ul class="tasks">
+    <ul v-if="tasks.length" class="tasks">
       <li v-for="task in tasks" :key="task.id">
         <label>
           <input type="checkbox" @change="emit('act', task.id, 'done')" />
@@ -39,6 +40,17 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
         </button>
       </li>
     </ul>
+    <template v-if="done.length">
+      <p class="label done-label">Done · last 24 hours</p>
+      <ul class="tasks">
+        <li v-for="task in done" :key="task.id" class="done">
+          <label title="Untick to put it back on the list">
+            <input type="checkbox" checked @change="emit('act', task.id, 'task')" />
+            <span>{{ task.text }}</span>
+          </label>
+        </li>
+      </ul>
+    </template>
   </section>
 </template>
 
@@ -85,6 +97,19 @@ ul {
 
 input {
   accent-color: var(--glow);
+}
+
+.done-label {
+  margin-top: 12px;
+}
+
+.tasks li.done {
+  background: none;
+}
+
+.done span {
+  color: var(--dim);
+  text-decoration: line-through;
 }
 
 .delete {

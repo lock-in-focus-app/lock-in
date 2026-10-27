@@ -22,6 +22,7 @@ browsers: Array<KnownBrowser>,
  */
 canHideApps: boolean, 
 /**
- * Satellites in orbit, back or on the task list, oldest first.
+ * Satellites in orbit, back or on the task list, and tasks ticked off in the last day,
+ * oldest first.
  */
 satellites: Array<Satellite>, };

@@ -167,7 +167,9 @@ To make the name instantly clear:
 
 **Between sessions**, a launched thought shows on the dashboard as "in orbit" and comes back when the next session ends. During a session, the window only shows how many are in orbit, not what they say.
 
-**The task list** is a checklist on the dashboard, kept in the app, as long as you like. Later: export to Reminders, Todoist and the like.
+**The task list** is a checklist on the dashboard, kept in the app, as long as you like. Ticked-off tasks stay underneath for 24 hours ("Done · last 24 hours"), so one ticked by accident can be unticked; after that they drop off the list (they're still kept for insights). Later: export to Reminders, Todoist and the like.
+
+**The look (with the UI redesign in Phase 5):** dreamy and slow. Tiny satellites drift around the UI in lazy orbits among faint, twinkling stars, e.g. around the launch box and the task list, and a launched thought visibly lifts off and joins them. It should feel calm, never busy: slow loops of tens of seconds, soft glows, nothing that flickers or pulls the eye during a session. It's drawn with CSS or a small canvas (no animation library) and stays still with reduced motion.
 
 Satellites also count in insights, e.g. "You parked 12 thoughts this week instead of acting on them."
 
@@ -367,7 +369,7 @@ lock-in/
 - Satellites in the sky: the ones in orbit and on the task list drawn as small satellites circling.
 
 **Phase 5: Polish & release**
-- UI redesign: the floating-card look from the reference images, and the satellites' first-use tooltip and animation (§4). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
+- UI redesign: the floating-card look from the reference images, and the satellites' dreamy orbiting look, first-use tooltip and animation (§4). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.

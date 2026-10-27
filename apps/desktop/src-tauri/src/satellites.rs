@@ -6,6 +6,9 @@ use crate::session::truncate;
 /// The longest satellite kept. The box limits it too; this is a backstop.
 pub const MAX_TEXT: usize = 500;
 
+/// How long a ticked-off task stays on the list, so one ticked by accident can be unticked.
+pub const DONE_TASKS_SHOWN_MS: i64 = 24 * 60 * 60_000;
+
 /// A thought launched to come back later, so it doesn't pull you out of the session.
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -16,6 +19,8 @@ pub struct Satellite {
     /// Epoch milliseconds.
     pub launched_at: i64,
     pub state: SatelliteState,
+    /// When it got to its state (epoch ms).
+    pub state_at: i64,
 }
 
 /// Where a satellite is.
@@ -29,7 +34,7 @@ pub enum SatelliteState {
     Back,
     /// On the task list.
     Task,
-    /// Ticked off.
+    /// Ticked off. Tasks stay on the list for a day after that, in case it was by accident.
     Done,
     /// Deleted. Its text is gone; it's only kept so insights can count it.
     Deleted,
@@ -56,11 +61,6 @@ impl SatelliteState {
             _ => None,
         }
     }
-
-    /// Whether it's still shown: in orbit, back, or on the task list.
-    pub fn is_live(self) -> bool {
-        !matches!(self, SatelliteState::Done | SatelliteState::Deleted)
-    }
 }
 
 /// What to do with a satellite, from the return checklist or the task list.
@@ -71,7 +71,7 @@ pub enum SatelliteAction {
     Done,
     /// Back into orbit, to come back when the next session ends.
     Snooze,
-    /// Onto the task list.
+    /// Onto the task list, or back onto it after being ticked off.
     Task,
     Delete,
 }

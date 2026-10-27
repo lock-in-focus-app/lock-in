@@ -437,7 +437,7 @@ pub fn run() {
             // The same folder Tauri would pick, worked out without Tauri so the bridge finds it too.
             let dir = link::data_dir().ok_or("no data folder")?;
             create_private_dir(&dir)?;
-            let engine = Engine::load(Store::open(&dir.join("lock-in.db"))?)?;
+            let engine = Engine::load(Store::open(&dir.join("lock-in.db"))?, now_ms())?;
             let snapshot = engine.snapshot(now_ms());
             let session = engine.session().cloned();
             app.manage(Mutex::new(engine));

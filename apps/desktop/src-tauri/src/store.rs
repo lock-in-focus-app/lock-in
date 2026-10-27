@@ -191,20 +191,29 @@ impl Store {
         Ok(())
     }
 
-    /// The satellites still in orbit, back or on the task list, oldest first.
-    pub fn live_satellites(&self) -> Result<Vec<Satellite>> {
+    /// The satellites still in orbit, back or on the task list, and tasks ticked off since
+    /// `done_since`, oldest first.
+    pub fn shown_satellites(&self, done_since: i64) -> Result<Vec<Satellite>> {
         let mut statement = self.db.prepare(
-            "SELECT id, text, launched_at, state FROM satellites
-             WHERE state NOT IN (?1, ?2) ORDER BY launched_at",
+            "SELECT id, text, launched_at, state, state_at FROM satellites
+             WHERE state IN (?1, ?2, ?3) OR (state = ?4 AND tasked_at IS NOT NULL AND state_at >= ?5)
+             ORDER BY launched_at",
         )?;
         let rows = statement.query_map(
-            params![SatelliteState::Done.as_str(), SatelliteState::Deleted.as_str()],
+            params![
+                SatelliteState::Orbiting.as_str(),
+                SatelliteState::Back.as_str(),
+                SatelliteState::Task.as_str(),
+                SatelliteState::Done.as_str(),
+                done_since
+            ],
             |row| {
                 Ok(Satellite {
                     id: row.get(0)?,
                     text: row.get(1)?,
                     launched_at: row.get(2)?,
                     state: SatelliteState::parse(&row.get::<_, String>(3)?).unwrap_or(SatelliteState::Back),
+                    state_at: row.get(4)?,
                 })
             },
         )?;

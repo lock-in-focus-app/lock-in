@@ -8,4 +8,8 @@ export type Satellite = { id: string, text: string,
 /**
  * Epoch milliseconds.
  */
-launchedAt: number, state: SatelliteState, };
+launchedAt: number, state: SatelliteState, 
+/**
+ * When it got to its state (epoch ms).
+ */
+stateAt: number, };
