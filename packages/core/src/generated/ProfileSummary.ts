@@ -2,4 +2,8 @@
 import type { AppRule } from "./AppRule";
 import type { TimerSettings } from "./TimerSettings";
 
-export type ProfileSummary = { id: string, name: string, timer: TimerSettings, apps: Array<AppRule>, };
+export type ProfileSummary = { id: string, name: string, timer: TimerSettings, apps: Array<AppRule>, 
+/**
+ * The color of its stars, if it was given one.
+ */
+starColor: string | null, };

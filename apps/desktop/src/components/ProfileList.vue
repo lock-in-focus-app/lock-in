@@ -1,18 +1,23 @@
 <script setup lang="ts">
 import type { AppRule, ProfileSummary, Strictness, TimerEnd, TimerSettings } from '@lock-in/core';
+import { starColorFor } from '@lock-in/core';
 import { ref } from 'vue';
 import AppRulesEditor from './AppRulesEditor.vue';
+import StarColorPicker from './StarColorPicker.vue';
+import { vTilt } from '../tilt';
 import TimerEditor from './TimerEditor.vue';
+import Unfold from './Unfold.vue';
 
 defineProps<{ profiles: ProfileSummary[]; canHideApps: boolean }>();
 const emit = defineEmits<{
   start: [profileId: string];
   'set-timer': [profileId: string, timer: TimerSettings];
   'set-apps': [profileId: string, apps: AppRule[]];
+  'set-star-color': [profileId: string, color: string];
 }>();
 
-// Which profile's timer or apps are open, one at a time.
-type Panel = 'timer' | 'apps';
+// Which profile's timer, apps or star color is open, one at a time.
+type Panel = 'timer' | 'apps' | 'star';
 const editing = ref<{ profileId: string; panel: Panel }>();
 const isOpen = (profileId: string, panel: Panel) =>
   editing.value?.profileId === profileId && editing.value.panel === panel;
@@ -48,9 +53,14 @@ function summary(profile: ProfileSummary): string {
     <p class="label">Start a session</p>
     <ul>
       <li v-for="profile in profiles" :key="profile.id">
-        <div class="row">
+        <div v-tilt class="row">
           <button class="profile" type="button" @click="emit('start', profile.id)">
-            <span class="name">{{ profile.name }}</span>
+            <span class="name">
+              <span class="star" :style="{ color: starColorFor(profile.id, profile.starColor) }" aria-hidden="true"
+                >✦</span
+              >
+              {{ profile.name }}
+            </span>
             <span class="summary">{{ summary(profile) }}</span>
           </button>
           <button
@@ -71,18 +81,41 @@ function summary(profile: ProfileSummary): string {
           >
             Apps
           </button>
+          <button
+            class="edit"
+            type="button"
+            :aria-expanded="isOpen(profile.id, 'star')"
+            :aria-label="`Star color for ${profile.name}`"
+            @click="toggle(profile.id, 'star')"
+          >
+            Star
+          </button>
         </div>
-        <TimerEditor
-          v-if="isOpen(profile.id, 'timer')"
-          :timer="profile.timer"
-          @update:timer="emit('set-timer', profile.id, $event)"
-        />
-        <AppRulesEditor
-          v-if="isOpen(profile.id, 'apps')"
-          :apps="profile.apps"
-          :can-hide="canHideApps"
-          @update:apps="emit('set-apps', profile.id, $event)"
-        />
+        <Unfold>
+          <div v-if="editing?.profileId === profile.id" :key="editing.panel" class="panel-space">
+            <div class="card panel">
+              <TimerEditor
+                v-if="editing.panel === 'timer'"
+                :timer="profile.timer"
+                @update:timer="emit('set-timer', profile.id, $event)"
+              />
+              <AppRulesEditor
+                v-else-if="editing.panel === 'apps'"
+                :apps="profile.apps"
+                :can-hide="canHideApps"
+                @update:apps="emit('set-apps', profile.id, $event)"
+              />
+              <div v-else class="star-panel">
+                <p>The color of this profile's stars in your sky.</p>
+                <StarColorPicker
+                  :color="starColorFor(profile.id, profile.starColor)"
+                  :profile-name="profile.name"
+                  @update:color="emit('set-star-color', profile.id, $event)"
+                />
+              </div>
+            </div>
+          </div>
+        </Unfold>
       </li>
     </ul>
     <p class="help">Sites for each profile are set in the browser extension's settings, and apps here.</p>
@@ -111,25 +144,19 @@ ul {
 
 .row {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
 }
 
 .profile {
   flex: 1;
   display: grid;
   gap: 2px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
-  background: var(--sky-raised);
-  transition:
-    background 150ms,
-    transform 150ms;
-}
-
-.profile:hover,
-.edit:hover,
-.edit[aria-expanded='true'] {
-  background: var(--sky-hover);
+  background: none;
+  transition: transform 150ms;
 }
 
 .profile:active {
@@ -140,20 +167,51 @@ ul {
   font-weight: 600;
 }
 
+.star {
+  margin-right: 2px;
+  text-shadow: 0 0 6px currentColor;
+}
+
 .summary {
   color: var(--dim);
   font-size: 12px;
 }
 
-.edit {
-  padding: 0 12px;
-  background: var(--sky-raised);
+.panel-space {
+  padding-top: 6px;
+}
+
+.star-panel {
+  padding: 12px;
+}
+
+.star-panel p {
+  margin: 0 0 8px;
   color: var(--dim);
   font-size: 12px;
 }
 
+.edit {
+  align-self: stretch;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: none;
+  color: var(--dim);
+  font-size: 12px;
+  transition:
+    background 300ms,
+    color 300ms;
+}
+
+.edit:hover,
+.edit[aria-expanded='true'] {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--starlight);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .profile {
+  .profile,
+  .edit {
     transition: none;
   }
 }

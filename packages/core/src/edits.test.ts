@@ -114,7 +114,7 @@ describe('managing profiles', () => {
 
   it('adds a new, empty profile at the end', () => {
     const next = withNewProfile(profiles, 'new', '  Reading   time ');
-    expect(next.at(-1)).toEqual({ id: 'new', name: 'Reading time', sites: [] });
+    expect(next.at(-1)).toEqual({ id: 'new', name: 'Reading time', starColor: '#f5c86b', sites: [] });
     expect(withNewProfile(profiles, 'new', '  ').at(-1)!.name).toBe('New profile');
   });
 

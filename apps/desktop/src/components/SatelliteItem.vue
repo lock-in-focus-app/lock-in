@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Satellite, SatelliteAction } from '@lock-in/core';
+import { vTilt } from '../tilt';
 
 defineProps<{ satellite: Satellite; actions: SatelliteAction[] }>();
 const emit = defineEmits<{ act: [action: SatelliteAction] }>();
@@ -13,7 +14,7 @@ const labels: Record<SatelliteAction, { text: string; title: string }> = {
 </script>
 
 <template>
-  <li class="satellite">
+  <li v-tilt class="satellite">
     <p class="text">{{ satellite.text }}</p>
     <div class="actions">
       <button
@@ -35,8 +36,6 @@ const labels: Record<SatelliteAction, { text: string; title: string }> = {
   display: grid;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
 }
 
 .text {

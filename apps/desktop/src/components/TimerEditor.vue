@@ -73,11 +73,9 @@ function save(patch: Partial<TimerSettings>) {
 </template>
 
 <style scoped>
+/* Shown inside a glass card (ProfileList.vue). */
 .editor {
-  margin-top: 4px;
   padding: 4px 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
 }
 
 .row {

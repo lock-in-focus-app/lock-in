@@ -38,6 +38,7 @@ export {
   withSessionOverridesSaved,
   withSessionToggle,
   withSiteLevel,
+  withStarColor,
   withStarterProfilesReset,
 } from './edits';
 export {
@@ -73,6 +74,21 @@ export {
 } from './settings';
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';
+export {
+  isStarColor,
+  newStarColor,
+  sessionSoFar,
+  skyClarity,
+  smallestStarMinutes,
+  starColorFor,
+  starColors,
+  stardust,
+  starMagnitude,
+  starPalette,
+  stars,
+  starSparkle,
+  type Star,
+} from './sky';
 export { endLock, formatClock, timerStatus, unlockText, type TimerStatus } from './timer';
 export {
   cleanedSatelliteText,

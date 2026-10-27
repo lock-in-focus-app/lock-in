@@ -19,7 +19,7 @@ const placeholder = computed(
 </script>
 
 <template>
-  <form class="launch" @submit.prevent="launch">
+  <form class="card launch" @submit.prevent="launch">
     <label class="label" for="satellite">Satellites · thoughts for later</label>
     <div class="row">
       <input
@@ -42,7 +42,8 @@ const placeholder = computed(
 <style scoped>
 .launch {
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  padding: 12px;
   text-align: left;
 }
 

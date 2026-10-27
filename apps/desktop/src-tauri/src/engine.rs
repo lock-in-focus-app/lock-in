@@ -5,7 +5,9 @@ use crate::apps::{self, AppRule};
 use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
 use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteRecord, SatelliteState};
-use crate::session::{EndReason, GateVisit, Profile, Session, SessionRecord, starter_profiles, truncate};
+use crate::session::{
+    EndReason, GateVisit, Profile, Session, SessionRecord, is_star_color, starter_profiles, truncate,
+};
 use crate::settings::Settings;
 use crate::store::{Store, Synced};
 use crate::timer::{Strictness, TimerSettings};
@@ -79,6 +81,8 @@ pub struct ProfileSummary {
     pub name: String,
     pub timer: TimerSettings,
     pub apps: Vec<AppRule>,
+    /// The color of its stars, if it was given one.
+    pub star_color: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -174,6 +178,7 @@ impl Engine {
                     name: p.name.clone(),
                     timer: p.timer(),
                     apps: p.apps(),
+                    star_color: p.star_color(),
                 })
                 .collect(),
             session: self.session().map(|s| ActiveSession {
@@ -383,6 +388,26 @@ impl Engine {
         Ok(())
     }
 
+    /// Sets the color of a profile's stars, a hex color like "#f5c86b".
+    pub fn set_profile_star_color(&mut self, profile_id: &str, color: &str, now: i64) -> Result<()> {
+        if !is_star_color(color) {
+            return Err(Error::InvalidStarColor);
+        }
+        let mut profiles = self.profiles.value.clone();
+        let profile = profiles
+            .iter_mut()
+            .find(|p| p.id == profile_id)
+            .ok_or(Error::UnknownProfile)?;
+        profile.set_star_color(color);
+        let synced = Synced {
+            value: profiles,
+            updated_at: now,
+        };
+        self.store.save(PROFILES, &synced)?;
+        self.profiles = synced;
+        Ok(())
+    }
+
     /// The profiles and session with when they last changed, for sending to the extension.
     pub fn synced(&self) -> (&Synced<Vec<Profile>>, &Synced<Option<Session>>) {
         (&self.profiles, &self.session)
@@ -554,9 +579,26 @@ impl Engine {
     }
 
     /// The session log, oldest first.
-    #[allow(dead_code)] // Read by the night sky once it lands.
     pub fn session_log(&self) -> Result<Vec<SessionRecord>> {
         self.store.sessions()
+    }
+
+    /// Adds six weeks of made-up sessions and gate visits for the current profiles, for trying
+    /// the app in development builds.
+    pub fn add_samples(&mut self, now: i64) -> Result<()> {
+        let profiles: Vec<_> = self
+            .profiles
+            .value
+            .iter()
+            .map(|p| (p.id.clone(), p.name.clone()))
+            .collect();
+        let (sessions, visits) = crate::samples::sample_log(now, &profiles);
+        self.store.add_samples(&sessions, &visits)
+    }
+
+    /// Removes all sample data, leaving real sessions and visits as they are.
+    pub fn remove_samples(&self) -> Result<()> {
+        self.store.remove_samples()
     }
 
     /// Everything logged from `from` up to (not including) `to`, for the weekly report.
@@ -645,6 +687,46 @@ mod tests {
         assert_eq!(deep_work.timer().minutes, crate::timer::MAX_MINUTES);
         assert_eq!(deep_work.timer().on_end, TimerEnd::Alert);
         assert_eq!(reloaded.profiles.updated_at, 7);
+    }
+
+    #[test]
+    fn sets_star_colors_and_keeps_the_starter_ones() {
+        let mut engine = engine();
+        let color = |engine: &Engine, id: &str| {
+            let profiles = engine.snapshot(0).profiles;
+            profiles.into_iter().find(|p| p.id == id).unwrap().star_color
+        };
+        assert_eq!(color(&engine, "writing").as_deref(), Some("#f5c86b"));
+
+        engine.set_profile_star_color("writing", "#9FE3C9", 3).unwrap();
+        assert_eq!(color(&engine, "writing").as_deref(), Some("#9fe3c9"));
+        assert_eq!(engine.profiles.updated_at, 3);
+        for bad in ["red", "#9fe3c", "#9fe3c9ff", "#gggggg", "url(x)"] {
+            assert!(matches!(
+                engine.set_profile_star_color("writing", bad, 4),
+                Err(Error::InvalidStarColor)
+            ));
+        }
+        assert!(matches!(
+            engine.set_profile_star_color("nope", "#9fe3c9", 4),
+            Err(Error::UnknownProfile)
+        ));
+        assert_eq!(color(&engine, "writing").as_deref(), Some("#9fe3c9"));
+    }
+
+    #[test]
+    fn adds_and_removes_samples_without_touching_real_sessions() {
+        let mut engine = engine();
+        engine.start_session("writing", 1_000).unwrap();
+        let real = engine.end_session(1_000 + 50 * MIN, EndReason::Stopped).unwrap();
+        engine.add_samples(1_800_000_000_000).unwrap();
+        let log = engine.session_log().unwrap();
+        assert!(log.len() > 20);
+        assert!(log.contains(&real));
+
+        engine.remove_samples().unwrap();
+        assert_eq!(engine.session_log().unwrap(), vec![real]);
+        assert!(engine.store.gate_visits().unwrap().is_empty());
     }
 
     fn remote_session(id: &str, profile_id: &str, timer: Option<TimerSettings>) -> Session {

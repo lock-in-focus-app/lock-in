@@ -24,7 +24,7 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
 
   <section v-if="tasks.length || done.length" aria-labelledby="tasks">
     <p id="tasks" class="label">Tasks</p>
-    <ul v-if="tasks.length" class="tasks">
+    <ul v-if="tasks.length" class="card tasks">
       <li v-for="task in tasks" :key="task.id">
         <label>
           <input type="checkbox" @change="emit('act', task.id, 'done')" />
@@ -42,7 +42,7 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
     </ul>
     <template v-if="done.length">
       <p class="label done-label">Done · last 24 hours</p>
-      <ul class="tasks">
+      <ul class="card tasks">
         <li v-for="task in done" :key="task.id" class="done">
           <label title="Untick to put it back on the list">
             <input type="checkbox" checked @change="emit('act', task.id, 'task')" />
@@ -74,16 +74,16 @@ ul {
 }
 
 .tasks {
-  gap: 2px;
+  gap: 0;
+  padding: 4px;
 }
 
 .tasks li {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: var(--sky-raised);
+  padding: 6px 8px;
+  border-radius: 10px;
 }
 
 .tasks label {
@@ -101,10 +101,6 @@ input {
 
 .done-label {
   margin-top: 12px;
-}
-
-.tasks li.done {
-  background: none;
 }
 
 .done span {

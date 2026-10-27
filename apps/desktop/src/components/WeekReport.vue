@@ -200,7 +200,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
     </p>
 
     <template v-else-if="report && focus && distractions && satellites">
-      <section aria-labelledby="focus">
+      <section class="card" aria-labelledby="focus">
         <h3 id="focus">Focus</h3>
         <p class="big">
           {{ formatDuration(focus.focusedMs) }} <span class="dim">focused</span>
@@ -227,7 +227,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
         </template>
       </section>
 
-      <section aria-labelledby="distractions">
+      <section class="card" aria-labelledby="distractions">
         <h3 id="distractions">Distractions</h3>
         <p class="big">
           {{ distractions.visits }}
@@ -270,13 +270,13 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
         </template>
       </section>
 
-      <section aria-labelledby="satellites">
+      <section class="card" aria-labelledby="satellites">
         <h3 id="satellites">Satellites</h3>
         <p class="big">{{ satellites.launched }} <span class="dim">launched</span></p>
         <p v-if="outcomes" class="dim">{{ outcomes }}</p>
       </section>
 
-      <section v-if="report.suggestions.length" aria-labelledby="suggestions">
+      <section v-if="report.suggestions.length" class="card" aria-labelledby="suggestions">
         <h3 id="suggestions">Suggestions</h3>
         <ul class="tips">
           <li v-for="tip in report.suggestions" :key="tip">{{ tip }}</li>
@@ -340,7 +340,8 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 }
 
 section section {
-  margin-top: 24px;
+  margin-top: 12px;
+  padding: 14px 16px;
 }
 
 h3 {
