@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planetKinds, planets, type Planet, type PlanetKind } from './planets';
+import { oddShapes, planetKinds, planets, type Planet } from './planets';
 import type { Star } from './sky';
 
 const MIN = 60_000;
@@ -86,7 +86,7 @@ describe('planets', () => {
 
   it('gains its kind’s surface, rings, an atmosphere and an aurora with more focus', () => {
     for (const kind of planetKinds) {
-      const month = october(kind);
+      const month = october((p) => p.kind === kind && p.shape === 'round');
       const round = month(12);
       expect(round.rings).toEqual([]);
       expect(round.glow).toBe(0);
@@ -101,11 +101,12 @@ describe('planets', () => {
 
       const most = month(80);
       expect(most.size).toBe(1);
-      expect(most.glow).toBe(1);
+      // A glass shell takes the place of most of the glow.
+      expect(Math.max(most.glow, most.shell)).toBe(1);
       expect(most.aurora).toBe(1);
       expect(most.flattening).toBe(1);
       expect(most.rings.every((ring) => ring.amount === 1)).toBe(true);
-      expect(most.features.length).toBeLessThanOrEqual(8);
+      expect(most.features.length).toBeLessThanOrEqual(kind === 'lava' ? 42 : kind === 'marble' ? 16 : 10);
       expect(most.bands.length).toBeLessThanOrEqual(6);
       expect(most.caps > 0).toBe(kind === 'ice' || kind === 'rocky' || kind === 'ocean');
       expect(most.storm?.strength).toBe(kind === 'gas' ? 1 : undefined);
@@ -115,7 +116,7 @@ describe('planets', () => {
   it('gives each planet a ring style of its own, and a second ring crossing the first', () => {
     const styles = new Set<string>();
     for (let i = 0; i < 40; i++) {
-      const month = october(undefined, `ring${i}`);
+      const month = october((p) => p.shape !== 'donut' && p.shape !== 'linked', `ring${i}`);
       const [first] = month(25).rings;
       styles.add(first!.style);
       const later = month(50).rings;
@@ -129,7 +130,49 @@ describe('planets', () => {
         expect(Math.abs(later[1]!.tilt - first!.tilt)).toBeGreaterThan(0.4);
       }
     }
-    expect(styles).toEqual(new Set(['single', 'stacked', 'halo', 'clumpy']));
+    for (const style of ['single', 'stacked', 'halo', 'clumpy', 'electric']) expect(styles).toContain(style);
+  });
+
+  it('sometimes gives an ice world a frosted ring, and some rings the top profile’s color', () => {
+    const rings = Array.from(
+      { length: 80 },
+      (_, i) => october((p) => p.kind === 'ice' && p.shape === 'round', `frost${i}`)(25).rings[0]!,
+    );
+    expect(rings.some((ring) => ring.style === 'frosted')).toBe(true);
+    expect(new Set(rings.map((ring) => ring.tinted))).toEqual(new Set([true, false]));
+  });
+
+  it('gives about one month in three an unusual shape, which comes through from 20 to 45 hours', () => {
+    const shapes = Array.from({ length: 600 }, (_, i) => october(undefined, `shape${i}`)(1).shape);
+    const odd = shapes.filter((shape) => shape !== 'round');
+    expect(odd.length / shapes.length).toBeGreaterThan(0.25);
+    expect(odd.length / shapes.length).toBeLessThan(0.42);
+    expect(new Set(odd)).toEqual(new Set(oddShapes));
+
+    const month = october((p) => p.shape === 'star');
+    expect(month(19).shapeAmount).toBe(0);
+    expect(month(19).form).toBe('round');
+    expect(month(30).shapeAmount).toBeGreaterThan(0);
+    expect(month(30).shapeAmount).toBeLessThan(1);
+    expect(month(45).shapeAmount).toBe(1);
+    expect(month(30).shapeSeed).toEqual(month(1).shapeSeed);
+    expect(october((p) => p.shape === 'round')(80).shapeAmount).toBe(0);
+  });
+
+  it('gives ring worlds and linked rings no rings of their own', () => {
+    for (const shape of ['donut', 'linked'] as const) {
+      expect(october((p) => p.shape === shape)(80).rings).toEqual([]);
+    }
+  });
+
+  it('gives rocky worlds craters or bumps, and some planets a glass shell with their atmosphere', () => {
+    const rocky = Array.from({ length: 40 }, (_, i) => october((p) => p.kind === 'rocky', `rock${i}`)(12).rockySurface);
+    expect(new Set(rocky)).toEqual(new Set(['craters', 'bumps']));
+    const shells = Array.from({ length: 80 }, (_, i) => october(undefined, `shell${i}`));
+    expect(shells.every((month) => month(25).shell === 0)).toBe(true);
+    const shelled = shells.filter((month) => month(40).shell > 0).length;
+    expect(shelled).toBeGreaterThan(5);
+    expect(shelled).toBeLessThan(40);
   });
 
   it('remembers the profile with the most focus in the month, to tint it', () => {
@@ -141,15 +184,16 @@ describe('planets', () => {
 
 /**
  * A month in October 2026 with `hours` of focus, always with the same first star, so only the
- * hours change. With `kind`, it's a month whose planet is that kind of world.
+ * hours change. With `match`, it's a month whose planet matches it (by its kind or shape).
  */
-function october(kind?: PlanetKind, seed = 'october'): (hours: number) => Planet {
+function october(match?: (planet: Planet) => boolean, seed = 'october'): (hours: number) => Planet {
   const first = star(9, 1);
   const month = (id: string) => (hours: number) => planets([{ ...first, id, focusedMs: hours * HOUR }])[0]!;
-  for (let i = 0; ; i++) {
+  for (let i = 0; i < 10_000; i++) {
     const id = `${seed}${i}`;
-    if (!kind || month(id)(1).kind === kind) return month(id);
+    if (!match || match(month(id)(1))) return month(id);
   }
+  throw new Error('no month matches');
 }
 
 describe('moons', () => {
