@@ -140,12 +140,14 @@ const skyConstellations = computed<(SkyConstellation & { named: boolean })[]>(()
   }));
 });
 const monthName = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
-const skyPlanets = computed<SkyPlanet[]>(() =>
-  planets(skyStars.value).map((planet) => ({
+const skyPlanets = computed<SkyPlanet[]>(() => {
+  const colors = new Map(snapshot.value?.profiles.map((p) => [p.id, p.starColor]));
+  return planets(skyStars.value).map((planet) => ({
     ...planet,
     label: `${monthName.format(planet.monthStart)} · ${formatDuration(planet.focusMs)}`,
-  })),
-);
+    tint: starColorFor(planet.topProfileId, colors.get(planet.topProfileId)),
+  }));
+});
 const starCount = computed(() => skyConstellations.value.reduce((count, c) => count + c.stars.length, 0));
 const reportConstellation = computed(() => skyConstellations.value.find((c) => c.weekStart === reportWeek.value));
 const rename = (id: string, name: string) =>

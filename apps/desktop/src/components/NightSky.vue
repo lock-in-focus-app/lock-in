@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { skyPlaces, type Hsl, type Planet } from '@lock-in/core';
+import { skyPlaces, type Planet } from '@lock-in/core';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { drawPlanet } from '../planet';
 
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
 // from the reward engine (packages/core/src/constellations.ts); this only draws them, with light
@@ -43,8 +44,11 @@ export interface SkyConstellation {
   lines: [number, number][];
 }
 
-/** A month's planet, with what to show beneath it on hover: its month and focus time. */
-export type SkyPlanet = Planet & { label: string };
+/**
+ * A month's planet, with what to show beneath it on hover (its month and focus time) and the star
+ * color of its month's top profile, which tints its glow.
+ */
+export type SkyPlanet = Planet & { label: string; tint: string };
 
 const props = defineProps<{
   /** Oldest first. */
@@ -83,8 +87,6 @@ const skyGather = 0.5;
 const skyPlanets = 6;
 /** How long planets take to circle the sky while exploring. */
 const planetLapMs = 8 * 60_000;
-/** How much faster moons go round than planets do, for a moon two planet radii out. */
-const moonSpeed = 6;
 const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
 let context: CanvasRenderingContext2D | null = null;
@@ -98,7 +100,7 @@ let font = 'system-ui, sans-serif';
 let aim = { x: 0, y: 0, zoom: 0 };
 const lens = { x: 0, y: 0, zoom: 0 };
 const sprites = new Map<string, HTMLCanvasElement>();
-/** How far planets (and their moons) have gone round while exploring, in radians. */
+/** How far planets have gone round while exploring, in radians. Planets spin and moons go round with it. */
 let orbit = 0;
 
 /**
@@ -412,7 +414,7 @@ function draw(time: number) {
     const radius = place.unit * width * (1 + (at.zoom - 1) / 2) * (1 + 0.06 * glow);
     if (x + radius * 3 < 0 || x - radius * 3 > width) continue;
     const alpha = place.alpha * (1 - 0.6 * haze) * (0.9 + 0.1 * glow);
-    drawPlanet(c, planet, x, y, radius, alpha, glow);
+    drawPlanet(c, planet, { x, y, radius, alpha, glow, tint: planet.tint, turn: orbit, time, still: still.matches });
     planetSpots.push({ key, x, y, radius });
     if (place.label * glow > 0.01) {
       // Its month and focus time, beneath it while it's hovered.
@@ -440,154 +442,6 @@ function draw(time: number) {
     c.fillRect(0, 0, width, height);
   }
   lastDrawn = time;
-}
-
-const hsl = ([h, s, l]: Hsl, alpha = 1, lighter = 0) =>
-  `hsl(${h} ${s}% ${Math.min(100, Math.max(0, l + lighter))}% / ${alpha})`;
-
-/**
- * Draws a planet with its middle at `x`, `y` and a `radius` in canvas pixels: its atmosphere,
- * rings and moons, with the far half of each ring and moon orbit behind it. Lit from the top left.
- */
-function drawPlanet(
-  c: CanvasRenderingContext2D,
-  planet: SkyPlanet,
-  x: number,
-  y: number,
-  radius: number,
-  alpha: number,
-  glow: number,
-) {
-  const { body, band, ring } = planet.colors;
-  c.globalAlpha = alpha;
-
-  const atmosphere = planet.glow + 0.35 * glow;
-  if (atmosphere > 0) {
-    const outer = radius * (1.25 + 0.3 * planet.glow);
-    const haze = c.createRadialGradient(x, y, radius * 0.85, x, y, outer);
-    haze.addColorStop(0, hsl(body, 0.45 * Math.min(1, atmosphere), 18));
-    haze.addColorStop(1, hsl(body, 0, 18));
-    c.fillStyle = haze;
-    c.beginPath();
-    c.arc(x, y, outer, 0, Math.PI * 2);
-    c.fill();
-  }
-
-  // Rings, as ellipses leaning with the planet: the far half now, the near half over the planet.
-  // A wide ring gets a dark gap through it, like Saturn's.
-  const rings: { across: number; width: number; color: string; gap?: boolean }[] = [];
-  if (planet.ring > 0) {
-    const across = radius * (1.5 + 0.4 * planet.ring);
-    const thick = radius * (0.08 + 0.2 * planet.ring);
-    rings.push({
-      across,
-      width: thick,
-      color: hsl(ring, 0.42 * Math.min(1, planet.ring + 0.2)),
-      gap: planet.ring > 0.5,
-    });
-    if (planet.outerRing > 0) {
-      rings.push({
-        across: across + thick * 0.5 + radius * 0.14,
-        width: radius * 0.05,
-        color: hsl(ring, 0.3 * planet.outerRing, 4),
-      });
-    }
-  }
-  const strokeRings = (from: number, to: number) => {
-    for (const r of rings) {
-      c.beginPath();
-      c.ellipse(x, y, r.across, r.across * planet.ringTilt, planet.tilt, from, to);
-      c.strokeStyle = r.color;
-      c.lineWidth = r.width;
-      c.stroke();
-      if (r.gap) {
-        c.strokeStyle = 'rgb(6 9 20 / 0.45)';
-        c.lineWidth = r.width * 0.12;
-        c.stroke();
-      }
-    }
-  };
-  // Moons go round on a leaning orbit too, the outer ones slower.
-  const moons = planet.moons.map((moon) => {
-    const angle = moon.angle + (orbit * moonSpeed * 2) / moon.orbit;
-    const across = Math.cos(angle) * moon.orbit * radius;
-    const down = Math.sin(angle) * moon.orbit * radius * 0.32;
-    return {
-      moon,
-      x: x + across * Math.cos(planet.tilt) - down * Math.sin(planet.tilt),
-      y: y + across * Math.sin(planet.tilt) + down * Math.cos(planet.tilt),
-      behind: Math.sin(angle) < 0,
-    };
-  });
-  const drawMoons = (behind: boolean) => {
-    for (const m of moons) {
-      if (m.behind !== behind) continue;
-      const size = Math.max(1.5, m.moon.size * radius);
-      const lit = c.createRadialGradient(m.x - size * 0.4, m.y - size * 0.4, 0, m.x, m.y, size * 1.2);
-      lit.addColorStop(0, hsl(m.moon.color, 1, 12));
-      lit.addColorStop(1, hsl(m.moon.color, 1, -38));
-      c.fillStyle = lit;
-      c.beginPath();
-      c.arc(m.x, m.y, size, 0, Math.PI * 2);
-      c.fill();
-    }
-  };
-
-  drawMoons(true);
-  strokeRings(Math.PI, Math.PI * 2);
-
-  c.save();
-  c.beginPath();
-  c.arc(x, y, radius, 0, Math.PI * 2);
-  c.clip();
-  const surface = c.createRadialGradient(x - radius * 0.35, y - radius * 0.35, 0, x, y, radius * 1.3);
-  surface.addColorStop(0, hsl(body, 1, 12));
-  surface.addColorStop(0.6, hsl(body));
-  surface.addColorStop(1, hsl(body, 1, -16));
-  c.fillStyle = surface;
-  c.fillRect(x - radius, y - radius, radius * 2, radius * 2);
-  // Bands across it, soft at their edges, leaning with its rings.
-  c.translate(x, y);
-  c.rotate(planet.tilt);
-  for (const b of planet.bands) {
-    const middle = b.at * radius;
-    const half = b.width * radius * 0.13;
-    const stripe = c.createLinearGradient(0, middle - half, 0, middle + half);
-    stripe.addColorStop(0, hsl(band, 0));
-    stripe.addColorStop(0.5, hsl(band, 0.55));
-    stripe.addColorStop(1, hsl(band, 0));
-    c.fillStyle = stripe;
-    c.fillRect(-radius, middle - half, radius * 2, half * 2);
-  }
-  if (planet.storm) {
-    const { x: sx, y: sy, strength } = planet.storm;
-    const eye = c.createRadialGradient(sx * radius, sy * radius, 0, sx * radius, sy * radius, radius * 0.2);
-    eye.addColorStop(0, hsl(band, 0.75 * strength, 20));
-    eye.addColorStop(0.6, hsl(band, 0.45 * strength, -6));
-    eye.addColorStop(1, hsl(band, 0));
-    c.fillStyle = eye;
-    c.beginPath();
-    c.ellipse(sx * radius, sy * radius, radius * 0.2, radius * 0.11, 0, 0, Math.PI * 2);
-    c.fill();
-  }
-  c.setTransform(1, 0, 0, 1, 0, 0);
-  // Its night side, away from the light.
-  const night = c.createRadialGradient(
-    x - radius * 0.45,
-    y - radius * 0.45,
-    radius * 0.4,
-    x - radius * 0.2,
-    y - radius * 0.2,
-    radius * 1.7,
-  );
-  night.addColorStop(0, 'rgb(6 9 20 / 0)');
-  night.addColorStop(1, 'rgb(6 9 20 / 0.85)');
-  c.fillStyle = night;
-  c.fillRect(x - radius, y - radius, radius * 2, radius * 2);
-  c.restore();
-
-  strokeRings(0, Math.PI);
-  drawMoons(false);
 }
 
 function tick(time: number) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planets } from './planets';
+import { planetKinds, planets, type Planet, type PlanetKind } from './planets';
 import type { Star } from './sky';
 
 const MIN = 60_000;
@@ -48,11 +48,12 @@ describe('planets', () => {
     expect(october!.focusMs).toBe(2.5 * HOUR);
   });
 
-  it('looks the same every time, and different from month to month', () => {
-    const sky = [star(8, 3), star(9, 3)];
+  it('looks the same every time, and never the same kind of world two months running', () => {
+    const sky = Array.from({ length: 24 }, (_, i) => star(i, 3));
     expect(planets(sky.map((s) => ({ ...s })))).toEqual(planets(sky));
-    const [september, october] = planets(sky);
-    expect(september!.colors).not.toEqual(october!.colors);
+    const kinds = planets(sky).map((p) => p.kind);
+    kinds.slice(1).forEach((kind, i) => expect(kind).not.toBe(kinds[i]));
+    expect(new Set(kinds)).toEqual(new Set(planetKinds));
   });
 
   it('keeps a finished month as it was when later months come', () => {
@@ -62,38 +63,94 @@ describe('planets', () => {
     expect(after).toEqual(before);
   });
 
-  it('grows as the month goes on, and gains details with more focus', () => {
-    // The same month, with more and more focus.
-    const first = star(9, 1);
-    const month = (hours: number) => planets([{ ...first, focusedMs: hours * HOUR }])[0]!;
-    const little = month(1);
-    expect(little.bands).toEqual([]);
-    expect(little.glow).toBe(0);
-    expect(little.ring).toBe(0);
-    expect(little.storm).toBeUndefined();
+  it('takes shape as the month goes on: dust, then a lumpy rock, then a round world', () => {
+    const month = october();
+    const dust = month(1);
+    expect(dust.form).toBe('dust');
+    expect(dust.dust).toBe(1);
+    expect(dust.features).toEqual([]);
 
-    const some = month(10);
-    expect(some.size).toBeGreaterThan(little.size);
-    expect(some.bands.length).toBeGreaterThan(0);
-    expect(some.glow).toBeGreaterThan(0);
-    expect(some.ring).toBe(0);
+    const lumpy = month(6);
+    expect(lumpy.form).toBe('lumpy');
+    expect(lumpy.dust).toBe(0);
+    expect(lumpy.lumpiness).toBeGreaterThan(0);
+    expect(lumpy.lumpiness).toBeLessThan(dust.lumpiness);
 
-    const lots = month(25);
-    expect(lots.ring).toBeGreaterThan(0);
-    expect(lots.bands.length).toBeGreaterThan(some.bands.length);
-    // The bands it had stay where they were.
-    expect(lots.bands.slice(0, some.bands.length)).toEqual(some.bands);
-    expect(lots.colors).toEqual(some.colors);
+    const round = month(12);
+    expect(round.form).toBe('round');
+    expect(round.lumpiness).toBe(0);
+    expect(round.size).toBeGreaterThan(lumpy.size);
+    expect(round.colors).toEqual(dust.colors);
+    expect(round.outline).toEqual(dust.outline);
+  });
 
-    const most = month(80);
-    expect(most.size).toBe(1);
-    expect(most.ring).toBe(1);
-    expect(most.glow).toBe(1);
-    expect(most.outerRing).toBe(1);
-    expect(most.storm?.strength).toBe(1);
-    expect(most.bands.length).toBeLessThanOrEqual(6);
+  it('gains its kind’s surface, rings, an atmosphere and an aurora with more focus', () => {
+    for (const kind of planetKinds) {
+      const month = october(kind);
+      const round = month(12);
+      expect(round.rings).toEqual([]);
+      expect(round.glow).toBe(0);
+      if (kind === 'gas') expect(round.bands.length).toBeGreaterThan(0);
+      else expect(round.features.length).toBeGreaterThan(0);
+
+      const ringed = month(25);
+      expect(ringed.rings).toHaveLength(1);
+      // What it had stays where it was.
+      expect(ringed.features.slice(0, round.features.length)).toEqual(round.features);
+      expect(ringed.bands.slice(0, round.bands.length)).toEqual(round.bands);
+
+      const most = month(80);
+      expect(most.size).toBe(1);
+      expect(most.glow).toBe(1);
+      expect(most.aurora).toBe(1);
+      expect(most.flattening).toBe(1);
+      expect(most.rings.every((ring) => ring.amount === 1)).toBe(true);
+      expect(most.features.length).toBeLessThanOrEqual(8);
+      expect(most.bands.length).toBeLessThanOrEqual(6);
+      expect(most.caps > 0).toBe(kind === 'ice' || kind === 'rocky' || kind === 'ocean');
+      expect(most.storm?.strength).toBe(kind === 'gas' ? 1 : undefined);
+    }
+  });
+
+  it('gives each planet a ring style of its own, and a second ring crossing the first', () => {
+    const styles = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      const month = october(undefined, `ring${i}`);
+      const [first] = month(25).rings;
+      styles.add(first!.style);
+      const later = month(50).rings;
+      if (first!.style === 'stacked') {
+        // Stacked rings get more layers instead.
+        expect(later).toHaveLength(1);
+        expect(later[0]!.layers).toBeGreaterThan(first!.layers);
+      } else {
+        expect(later).toHaveLength(2);
+        expect(later[0]!.tilt).toBe(first!.tilt);
+        expect(Math.abs(later[1]!.tilt - first!.tilt)).toBeGreaterThan(0.4);
+      }
+    }
+    expect(styles).toEqual(new Set(['single', 'stacked', 'halo', 'clumpy']));
+  });
+
+  it('remembers the profile with the most focus in the month, to tint it', () => {
+    const sky = [star(9, 1, 2), { ...star(9, 2), profileId: 'writing' }, { ...star(9, 3, 1.5), profileId: 'writing' }];
+    expect(planets(sky)[0]!.topProfileId).toBe('writing');
+    expect(planets(sky.slice(0, 2))[0]!.topProfileId).toBe('deep-work');
   });
 });
+
+/**
+ * A month in October 2026 with `hours` of focus, always with the same first star, so only the
+ * hours change. With `kind`, it's a month whose planet is that kind of world.
+ */
+function october(kind?: PlanetKind, seed = 'october'): (hours: number) => Planet {
+  const first = star(9, 1);
+  const month = (id: string) => (hours: number) => planets([{ ...first, id, focusedMs: hours * HOUR }])[0]!;
+  for (let i = 0; ; i++) {
+    const id = `${seed}${i}`;
+    if (!kind || month(id)(1).kind === kind) return month(id);
+  }
+}
 
 describe('moons', () => {
   it('earns a moon when a streak reaches 3, 7 and 14 days, around that month’s planet', () => {
