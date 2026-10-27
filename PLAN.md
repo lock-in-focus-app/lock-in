@@ -344,7 +344,7 @@ lock-in/
 - ✅ Menu-bar app, session engine, quiet timer + idle detection.
 - ✅ Strictness levels + emergency passes.
 - ✅ Native Messaging link + extension heartbeat: if the extension goes quiet during a session, warn → close that browser → count the session as broken, depending on strictness. The app and extension each work alone, so it only watches sessions whose profile tames sites, and closing is opt-in in Settings.
-- ✅ App rules, SQLite. The session log keeps everything the rewards will need later (§5), so stardust and the sky can be worked out from past sessions once they ship. (App launches are spotted by a 10-second check during sessions for now, about 9 ms each; macOS's `NSWorkspace` launch notifications could replace it.)
+- ✅ App rules, SQLite. The session log keeps everything the rewards will need later (§5), so stardust and the sky can be worked out from past sessions once they ship. (On macOS, app launches come from `NSWorkspace` notifications; Linux has no unprivileged equivalent, so it checks every 10 seconds during sessions, about 9 ms each.)
 
 **Phase 3: Satellites & insights**
 - Global-hotkey capture and the post-session return.

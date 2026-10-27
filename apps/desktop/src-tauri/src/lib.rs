@@ -6,6 +6,7 @@ mod engine;
 mod error;
 mod hosts;
 mod idle;
+mod launches;
 mod link;
 mod processes;
 mod session;
@@ -15,12 +16,13 @@ mod timer;
 mod tray;
 
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
+use tokio::sync::Notify;
 
 use apps::AppWatch;
 use browsers::{Action, BrowserWatch, Response};
@@ -81,6 +83,7 @@ pub(crate) fn changed(app: &AppHandle) {
         snapshot.settings.idle_minutes,
     );
     watch_session(app, session.as_ref().map(|s| s.id.clone()));
+    wake_watch(app);
     schedule_timer(app, session, snapshot.session.map(|s| s.profile_name));
 }
 
@@ -88,12 +91,26 @@ pub(crate) fn changed(app: &AppHandle) {
 #[derive(Default)]
 struct WatchTask(Mutex<Option<(String, JoinHandle<()>)>>);
 
-/// Checks every few seconds while a session runs:
+/// Wakes the session's check on browsers and apps. Wake-ups that come while it's busy aren't
+/// lost: the next wait returns straight away.
+#[derive(Default)]
+struct WatchWake(Arc<Notify>);
+
+/// Has the running session check its browsers and apps now: an app launched or was unhidden
+/// (launches.rs), a browser linked or unlinked, or something else changed.
+pub(crate) fn wake_watch(app: &AppHandle) {
+    app.state::<WatchWake>().0.notify_one();
+}
+
+/// While a session runs, checks when it starts and whenever it's woken (`wake_watch`):
 /// - for the apps its profile closes or hides (apps.rs), which go as soon as it starts and
-///   again whenever they're opened;
+///   again whenever they're opened or unhidden;
 /// - for known browsers running without the extension, acting on them as Settings and the
 ///   session's strictness say (browsers.rs). Sessions whose profile doesn't tame any sites
 ///   leave the browsers alone.
+///
+/// Between wake-ups it only waits on a timer when a browser's warning or close is due, or
+/// where app launches can't be heard (Linux), so it doesn't tick away during a session.
 fn watch_session(app: &AppHandle, session_id: Option<String>) {
     let task = app.state::<WatchTask>();
     let mut task = task.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -109,6 +126,7 @@ fn watch_session(app: &AppHandle, session_id: Option<String>) {
 
     let app = app.clone();
     let id = session_id.clone();
+    let wake = Arc::clone(&app.state::<WatchWake>().0);
     let handle = tauri::async_runtime::spawn(async move {
         let mut browser_watch = BrowserWatch::default();
         let mut app_watch = AppWatch::default();
@@ -155,7 +173,18 @@ fn watch_session(app: &AppHandle, session_id: Option<String>) {
                     }
                 }
             }
-            tokio::time::sleep(Duration::from_millis(browsers::CHECK_EVERY_MS as u64)).await;
+
+            let due = browser_watch.next_due(response).map(|at| at - now_ms());
+            let wait = [due, launches::POLL_EVERY_MS].into_iter().flatten().min();
+            match wait {
+                // Capped at a minute, since a computer that sleeps meanwhile would otherwise
+                // leave the timer running long past when it's due.
+                Some(ms) => {
+                    let ms = ms.clamp(0, 60_000) as u64;
+                    let _ = tokio::time::timeout(Duration::from_millis(ms), wake.notified()).await;
+                }
+                None => wake.notified().await,
+            }
         }
     });
     *task = Some((session_id, handle));
@@ -403,6 +432,9 @@ pub fn run() {
             app.manage(TimerTask::default());
             app.manage(IdleTask::default());
             app.manage(WatchTask::default());
+            let wake = WatchWake::default();
+            launches::listen(Arc::clone(&wake.0));
+            app.manage(wake);
             app.manage(link::Links::default());
 
             tray::create(app.handle(), &snapshot)?;

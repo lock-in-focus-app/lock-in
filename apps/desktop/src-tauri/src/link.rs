@@ -178,6 +178,7 @@ async fn handle(app: AppHandle, stream: Stream) {
             browser_pid: None,
         },
     );
+    crate::wake_watch(&app);
 
     let (receive, mut send) = stream.split();
     let writer = async {
@@ -202,6 +203,8 @@ async fn handle(app: AppHandle, stream: Stream) {
         _ = reader => {}
     }
     links.links().remove(&id);
+    // A browser that's still running without its link has had the extension turned off.
+    crate::wake_watch(&app);
 }
 
 fn on_message(app: &AppHandle, link_id: u64, line: &str) {
@@ -239,6 +242,7 @@ fn on_message(app: &AppHandle, link_id: u64, line: &str) {
             if let Some(link) = app.state::<Links>().links().get_mut(&link_id) {
                 link.browser_pid = Some(browser_pid);
             }
+            crate::wake_watch(app);
             // Looking it up reads the system's process list, so it's done off this task.
             let app = app.clone();
             tauri::async_runtime::spawn_blocking(move || remember_browser(&app, browser_pid));
