@@ -372,6 +372,7 @@ lock-in/
 
 **Phase 5: Polish & release**
 - UI redesign: the floating-card look from the reference images, and the satellites' dreamy orbiting look, first-use tooltip and animation (§4). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
+- A short tutorial for new users, in the app and the extension: a skippable walkthrough of starting a session, profiles and site levels, the redirect page, launching and reviewing satellites (Alt+P and the popup), and linking the app to the browser. It can be replayed from Settings.
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.
