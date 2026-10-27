@@ -53,5 +53,4 @@ export const actOnSatellite = (id: string, action: SatelliteAction) => invoke<vo
 /** Closes the satellite box and hands focus back to the app you were in. */
 export const closeCapture = () => invoke<void>('close_capture');
 
-/** The longest satellite kept, as in satellites.rs. */
-export const maxSatelliteLength = 500;
+export { maxSatelliteLength } from '@lock-in/core';

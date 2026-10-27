@@ -11,7 +11,8 @@ import {
 // connects (Native Messaging), and the bridge says "linked" once it reaches the running app.
 // While linked, the profiles and the session stay in step with the app and every other
 // linked browser: each side sends its changes, and the newest change wins. Without the app,
-// none of this does anything and the extension works on its own.
+// none of this does anything and the extension works on its own. Satellites are handed over
+// to the app, which keeps them; without it, the extension keeps them itself.
 
 type SyncedKey = 'profiles' | 'activeSession';
 
@@ -63,6 +64,7 @@ export function linkDesktopApp(): void {
         send({ type: 'hello', protocol: linkProtocol, browser: import.meta.env.BROWSER });
         await sendState(['profiles', 'activeSession']);
         for (const visit of await gateVisits.getValue()) send({ type: 'gateVisit', visit });
+        await handOverSatellites();
         break;
       case 'unlinked':
         linked = false;
@@ -70,6 +72,9 @@ export function linkDesktopApp(): void {
         break;
       case 'state':
         await applyState(message);
+        break;
+      case 'satelliteKept':
+        await forgetSatellite(message.id);
         break;
     }
   }
@@ -92,6 +97,18 @@ export function linkDesktopApp(): void {
     const before = new Map((previous ?? []).map((visit) => [visit.id, JSON.stringify(visit)]));
     for (const visit of visits) {
       if (before.get(visit.id) !== JSON.stringify(visit)) send({ type: 'gateVisit', visit });
+    }
+  });
+
+  // Satellites go to the app, which keeps them from then on. Each stays here until the app
+  // says it has it, so one launched as the link drops is handed over next time instead.
+  async function handOverSatellites() {
+    for (const satellite of await satellites.getValue()) send({ type: 'satellite', satellite });
+  }
+  satellites.watch((list, previous) => {
+    const before = new Set((previous ?? []).map((satellite) => satellite.id));
+    for (const satellite of list) {
+      if (!before.has(satellite.id)) send({ type: 'satellite', satellite });
     }
   });
 

@@ -71,4 +71,12 @@ export {
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';
 export { endLock, formatClock, timerStatus, unlockText, type TimerStatus } from './timer';
+export {
+  cleanedSatelliteText,
+  doneTasksShownMs,
+  maxSatelliteLength,
+  withSatelliteAction,
+  withSatelliteLaunched,
+  withSatellitesBack,
+} from './satellites';
 export { desktopHostName, linkProtocol, type FromDesktop, type Synced, type ToDesktop } from './link';

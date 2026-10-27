@@ -26,12 +26,15 @@ process.stdin.on('data', (chunk) => {
 });
 process.stdin.on('end', () => process.exit(0));
 let sent = 0;
-watchFile(${JSON.stringify(outbox)}, { interval: 50 }, () => {
+const sendNew = () => {
   const lines = readFileSync(${JSON.stringify(outbox)}, 'utf8').split('\\n').filter(Boolean);
   for (const line of lines.slice(sent)) send(JSON.parse(line));
   sent = lines.length;
-});
+};
 for (const message of ${JSON.stringify(greeting)}) send(message);
+// A test can send before Chrome has started this process, so anything already waiting goes first.
+sendNew();
+watchFile(${JSON.stringify(outbox)}, { interval: 50 }, sendNew);
 `;
 
 export interface FakeDesktopApp {

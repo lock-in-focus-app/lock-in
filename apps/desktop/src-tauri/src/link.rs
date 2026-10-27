@@ -16,6 +16,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc;
 
 use crate::browsers::KnownBrowser;
+use crate::satellites::Satellite;
 use crate::session::{GateVisit, Profile, Session};
 use crate::store::Synced;
 
@@ -68,6 +69,10 @@ pub enum FromExtension {
     GateVisit {
         visit: GateVisit,
     },
+    /// A satellite launched in the browser, for the app to keep from now on.
+    Satellite {
+        satellite: Satellite,
+    },
     /// From the bridge itself, before anything from the extension: the browser it links.
     Bridge {
         browser_pid: u32,
@@ -85,6 +90,8 @@ pub enum ToExtension<'a> {
         profiles: &'a Synced<Vec<Profile>>,
         active_session: &'a Synced<Option<Session>>,
     },
+    /// The app has the satellite now, so the extension can let it go.
+    SatelliteKept { id: &'a str },
 }
 
 /// A connected bridge: a queue of lines to send it, and the browser it links, once it says.
@@ -111,6 +118,16 @@ pub fn broadcast(app: &AppHandle) {
     let Some(line) = state_line(app) else { return };
     for link in app.state::<Links>().links().values() {
         let _ = link.sender.send(line.clone());
+    }
+}
+
+/// Sends a message to one browser.
+fn send(app: &AppHandle, link_id: u64, message: &ToExtension) {
+    let Ok(line) = serde_json::to_string(message) else {
+        return;
+    };
+    if let Some(link) = app.state::<Links>().links().get(&link_id) {
+        let _ = link.sender.send(line.into());
     }
 }
 
@@ -238,6 +255,22 @@ fn on_message(app: &AppHandle, link_id: u64, line: &str) {
                 eprintln!("Lock In: couldn't log a gate visit: {error}");
             }
         }
+        FromExtension::Satellite { satellite } => {
+            let id = satellite.id.clone();
+            let adopted = crate::engine(app).adopt_satellite(satellite, crate::now_ms());
+            match adopted {
+                Ok(new) => {
+                    if new {
+                        crate::satellites_changed(app);
+                    }
+                    // Also when it's one the app already had, or empty: either way the
+                    // browser can let it go.
+                    send(app, link_id, &ToExtension::SatelliteKept { id: &id });
+                }
+                // Not confirmed, so the browser keeps it and hands it over again next time.
+                Err(error) => eprintln!("Lock In: couldn't keep a satellite from the browser: {error}"),
+            }
+        }
         FromExtension::Bridge { browser_pid } => {
             if let Some(link) = app.state::<Links>().links().get_mut(&link_id) {
                 link.browser_pid = Some(browser_pid);
@@ -310,6 +343,13 @@ mod tests {
             FromExtension::GateVisit { .. }
         ));
 
+        let satellite = r#"{"type":"satellite","satellite":{"id":"s","text":"call Sam","launchedAt":1,"state":"back","stateAt":2}}"#;
+        let FromExtension::Satellite { satellite } = serde_json::from_str(satellite).unwrap() else {
+            panic!("not a satellite message");
+        };
+        assert_eq!(satellite.state, crate::satellites::SatelliteState::Back);
+        assert_eq!(satellite.state_at, 2);
+
         let bridge = r#"{"type":"bridge","browserPid":42}"#;
         assert!(matches!(
             serde_json::from_str(bridge).unwrap(),
@@ -339,6 +379,9 @@ mod tests {
             line,
             r#"{"type":"state","profiles":{"value":[],"updatedAt":1},"activeSession":{"value":null,"updatedAt":2}}"#
         );
+
+        let kept = serde_json::to_string(&ToExtension::SatelliteKept { id: "s" }).unwrap();
+        assert_eq!(kept, r#"{"type":"satelliteKept","id":"s"}"#);
     }
 
     #[test]

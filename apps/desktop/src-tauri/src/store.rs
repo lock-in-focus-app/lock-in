@@ -161,19 +161,24 @@ impl Store {
         Ok(())
     }
 
-    pub fn save_satellite(&self, satellite: &Satellite, session_id: Option<&str>) -> Result<()> {
-        self.db.execute(
-            "INSERT INTO satellites (id, text, launched_at, session_id, state, state_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?3)",
+    /// Saves a new satellite, launched here or handed over by the extension, in whatever state
+    /// it got to. One that's already saved is left as it is. Returns whether it was new.
+    pub fn save_satellite(&self, satellite: &Satellite, session_id: Option<&str>) -> Result<bool> {
+        let tasked = matches!(satellite.state, SatelliteState::Task | SatelliteState::Done);
+        let added = self.db.execute(
+            "INSERT OR IGNORE INTO satellites (id, text, launched_at, session_id, state, state_at, tasked_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 satellite.id,
                 satellite.text,
                 satellite.launched_at,
                 session_id,
-                satellite.state.as_str()
+                satellite.state.as_str(),
+                satellite.state_at,
+                tasked.then_some(satellite.state_at)
             ],
         )?;
-        Ok(())
+        Ok(added > 0)
     }
 
     /// Moves a satellite to `state`, counting snoozes and when it first became a task.
