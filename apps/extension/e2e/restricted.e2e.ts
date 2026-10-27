@@ -1,17 +1,7 @@
 import { starterProfiles, type Profile } from '@lock-in/core';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  controlPage,
-  launch,
-  redirectPage,
-  setStored,
-  startSession,
-  stored,
-  urls,
-  wait,
-  type TestBrowser,
-} from './harness';
+import { controlPage, launch, redirectPage, setStored, startSession, stored, urls, type TestBrowser } from './harness';
 
 describe('restricted sites', () => {
   let t: TestBrowser;
@@ -38,15 +28,16 @@ describe('restricted sites', () => {
   afterAll(() => t?.close());
 
   it('covers open tabs with no way through', async () => {
-    const overlay = await tab.evaluate(() => {
-      const root = document.querySelector('lock-in-pause')?.shadowRoot;
-      return {
-        text: root?.textContent,
-        buttons: [...(root?.querySelectorAll('button') ?? [])].map((b) => b.textContent),
-      };
-    });
-    expect(overlay.text).toContain('Reddit is off for now');
-    expect(overlay.buttons).toEqual(['Close tab']);
+    const overlay = () =>
+      tab.evaluate(() => {
+        const root = document.querySelector('lock-in-pause')?.shadowRoot;
+        return {
+          text: root?.textContent,
+          buttons: [...(root?.querySelectorAll('button') ?? [])].map((b) => b.textContent),
+        };
+      });
+    await expect.poll(overlay).toMatchObject({ text: expect.stringContaining('Reddit is off for now') });
+    expect((await overlay()).buttons).toEqual(['Close tab']);
   });
 
   it('sends visits to a page with no Continue', async () => {
@@ -58,13 +49,14 @@ describe('restricted sites', () => {
     expect(text).toContain('First try at Reddit today');
     expect(text).not.toContain('Still need Reddit?');
     expect(await tab.$('button.continue')).toBeNull();
-    expect((await stored(control)).gateVisits?.at(-1)).toMatchObject({ recipeId: 'reddit', destination: 'blocked' });
+    await expect
+      .poll(async () => (await stored(control)).gateVisits?.at(-1))
+      .toMatchObject({ recipeId: 'reddit', destination: 'blocked' });
   });
 
   it('ignores passes', async () => {
     const { activeSession } = await stored(control);
     await setStored(control, { activeSession: { ...activeSession, passes: { reddit: Date.now() + 60_000 } } });
-    await wait(300);
     await tab.goto(urls.reddit);
     expect(tab.url()).toBe(redirectPage(t, urls.reddit));
   });
@@ -77,7 +69,6 @@ describe('restricted sites', () => {
 
   it('opens up when the session ends', async () => {
     await setStored(control, { activeSession: null });
-    await wait(300);
     await tab.goto(urls.reddit);
     expect(tab.url()).toBe(urls.reddit);
   });

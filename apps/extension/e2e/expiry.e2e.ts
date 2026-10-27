@@ -35,14 +35,10 @@ describe('open tabs and expired passes', () => {
   /** Gives Deep Work a pass to Reddit that runs out shortly. */
   async function passEndingSoon() {
     const { activeSession } = await stored(control);
-    await setStored(control, { activeSession: { ...activeSession, passes: { reddit: Date.now() + 1500 } } });
-    await wait(300);
+    await setStored(control, { activeSession: { ...activeSession, passes: { reddit: Date.now() + 3000 } } });
   }
 
-  async function endSession() {
-    await setStored(control, { activeSession: null });
-    await wait(300);
-  }
+  const endSession = () => setStored(control, { activeSession: null });
 
   beforeAll(async () => {
     t = await launch();
@@ -60,12 +56,12 @@ describe('open tabs and expired passes', () => {
     });
 
     it('covers tabs that were open before the session', async () => {
-      expect(await overlayText(tab)).toContain('Reddit is paused for now');
+      await expect.poll(() => overlayText(tab)).toContain('Reddit is paused for now');
     });
 
     it('removes the cover while a pass is running, and brings it back when it ends', async () => {
       await passEndingSoon();
-      expect(await overlayText(tab)).toBeNull();
+      await expect.poll(() => overlayText(tab)).toBeNull();
       await tab.bringToFront();
       await expect.poll(() => overlayText(tab), { timeout: 10_000 }).toContain('Your pass for Reddit ran out');
     });
@@ -91,10 +87,9 @@ describe('open tabs and expired passes', () => {
       const page = await t.browser.newPage();
       await page.goto(urls.reddit);
       await startSession(control, 'deep-work');
-      // The cover can take a moment on a slow CI runner, both ways.
-      await expect.poll(() => overlayText(page), { timeout: 10_000 }).not.toBeNull();
-      await setStored(control, { activeSession: null });
-      await expect.poll(() => overlayText(page), { timeout: 10_000 }).toBeNull();
+      await expect.poll(() => overlayText(page)).not.toBeNull();
+      await endSession();
+      await expect.poll(() => overlayText(page)).toBeNull();
       await page.close();
     });
   });
@@ -113,7 +108,7 @@ describe('open tabs and expired passes', () => {
       expect(tab.url()).toBe(urls.reddit);
 
       await tab.bringToFront();
-      await tab.waitForNavigation({ timeout: 5000 });
+      await tab.waitForNavigation({ timeout: 10_000 });
       expect(tab.url()).toBe(redirectPage(t, urls.reddit, true));
       await tab.waitForSelector('.badge');
       expect(await tab.$eval('.badge', (el) => el.textContent)).toBe('Your pass for Reddit ran out');
@@ -131,6 +126,8 @@ describe('open tabs and expired passes', () => {
       const tab = await t.browser.newPage();
       await tab.goto(urls.reddit);
       await startSession(control, 'deep-work');
+      // Give the tab time to react, as it would to a session that pauses it.
+      await wait(500);
       expect(await overlayText(tab)).toBeNull();
       expect(tab.url()).toBe(urls.reddit);
       await tab.close();

@@ -2,7 +2,7 @@ import { starterProfiles } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch, setStored, wait, type TestBrowser } from './harness';
+import { launch, setStored, type TestBrowser } from './harness';
 
 // Writing as it ships, but with every site tamed so every drawing shows. Reddit and
 // YouTube keep their starter toggles, which the tests below rely on.
@@ -44,18 +44,20 @@ describe('recipe previews in settings', () => {
     await page.goto(`chrome-extension://${t.extensionId}/options.html`);
     await page.waitForSelector('[role=tab]');
     await setStored(page, { profiles: everySiteTamed });
-    await wait(300);
+    for (const recipe of recipes) await page.waitForSelector(`${row(recipe.name)} figure`);
   });
   afterAll(() => t?.close());
 
   it('draws every toggle that hides something, on every site', async () => {
     for (const recipe of recipes) {
-      expect(await page.$(`${row(recipe.name)} figure`), recipe.name).not.toBeNull();
       const pageCount = Math.max(1, (await page.$$(`${row(recipe.name)} .page-tabs button`)).length);
       const seen = new Set<string>();
       for (let n = 1; n <= pageCount; n++) {
-        if (pageCount > 1) await page.click(`${row(recipe.name)} .page-tabs button:nth-child(${n})`);
-        await wait(50);
+        if (pageCount > 1) {
+          const tab = `${row(recipe.name)} .page-tabs button:nth-child(${n})`;
+          await page.click(tab);
+          await page.waitForSelector(`${tab}[aria-pressed=true]`);
+        }
         Object.keys(await regions(recipe.name)).forEach((toggle) => seen.add(toggle));
       }
       const hiding = recipe.toggles.filter((toggle) => toggle.selectors?.length).map((toggle) => toggle.id);
@@ -78,11 +80,9 @@ describe('recipe previews in settings', () => {
   it('outlines what a toggle hides while pointing at it', async () => {
     const index = await toggleSwitch('Reddit', 'Hide suggested posts');
     await (await page.$$(`${row('Reddit')} [role=switch]`))[index]!.hover();
-    await wait(100);
-    expect((await regions('Reddit')).hideSuggested).toContain('highlighted');
+    await expect.poll(async () => (await regions('Reddit')).hideSuggested).toContain('highlighted');
     await page.mouse.move(0, 0);
-    await wait(100);
-    expect((await regions('Reddit')).hideSuggested).not.toContain('highlighted');
+    await expect.poll(async () => (await regions('Reddit')).hideSuggested).not.toContain('highlighted');
   });
 
   it("switches to the page a toggle changes when it isn't on this one", async () => {
@@ -93,8 +93,7 @@ describe('recipe previews in settings', () => {
 
     const index = await toggleSwitch('YouTube', 'Hide comments');
     await (await page.$$(`${row('YouTube')} [role=switch]`))[index]!.focus();
-    await wait(100);
-    expect(await shownPage()).toBe('Video');
+    await expect.poll(shownPage).toBe('Video');
     expect((await regions('YouTube')).hideComments).toContain('highlighted');
   });
 });
