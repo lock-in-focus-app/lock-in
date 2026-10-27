@@ -1,4 +1,4 @@
-import type { Snapshot, TimerSettings } from '@lock-in/core';
+import type { Settings, Snapshot, TimerSettings } from '@lock-in/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { onUnmounted, ref } from 'vue';
@@ -29,5 +29,10 @@ export const startSession = (profileId: string) => invoke<void>('start_session',
 
 export const endSession = () => invoke<void>('end_session');
 
+// Not `use…`, which would read as a Vue composable.
+export const spendEmergencyPass = () => invoke<void>('use_emergency_pass');
+
 export const setProfileTimer = (profileId: string, timer: TimerSettings) =>
   invoke<void>('set_profile_timer', { profileId, timer });
+
+export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings });

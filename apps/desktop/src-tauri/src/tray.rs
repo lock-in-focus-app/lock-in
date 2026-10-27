@@ -56,7 +56,15 @@ fn disabled(app: &AppHandle, text: &str) -> tauri::Result<tauri::menu::MenuItem<
 fn on_menu_event(app: &AppHandle, event: MenuEvent) {
     let id = event.id().as_ref();
     let result = match id {
-        "end" => crate::end_session(app),
+        "end" => {
+            // Its own statement, so the engine is unlocked again before ending the session.
+            let early = crate::engine(app).session().and_then(|s| s.lock(crate::now_ms()));
+            match early {
+                // Ending early may need a pause, typing or a pass, which happen in the window.
+                Some(_) => crate::open_window(app),
+                None => crate::end_session(app, crate::session::EndReason::Stopped),
+            }
+        }
         "open" => crate::open_window(app),
         "quit" => {
             app.exit(0);

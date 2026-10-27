@@ -1,4 +1,4 @@
-import { starterProfiles, type Session, type ToDesktop } from '@lock-in/core';
+import { starterProfiles, type FromDesktop, type Session, type Strictness, type ToDesktop } from '@lock-in/core';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fakeDesktopApp, type FakeDesktopApp } from './fakeDesktopApp';
@@ -20,7 +20,7 @@ const appSession: Session = {
   id: 'app-session',
   profileId: 'deep-work',
   startedAt,
-  timer: { minutes: 25, onEnd: 'gentle', showSinceDone: false },
+  timer: { minutes: 25, onEnd: 'gentle', showSinceDone: false, strictness: 'gentle' },
 };
 
 const states = (messages: ToDesktop[]) =>
@@ -91,7 +91,11 @@ describe('the desktop app link', () => {
     const tab = await t.browser.newPage();
     await tab.goto(urls.other);
     const popup = await openPopup(t, tab);
+    // Its timer is still running, so ending it waits out a short pause first.
     await popup.click('button.end');
+    expect(await popup.$eval('button.confirm', (button) => button.disabled)).toBe(true);
+    await popup.waitForSelector('button.confirm:not([disabled])', { timeout: 15_000 });
+    await popup.click('button.confirm');
     await wait(300);
 
     const last = states(await app.received()).at(-1)!;
@@ -102,7 +106,8 @@ describe('the desktop app link', () => {
   });
 
   it('applies sessions started in the app', async () => {
-    const session = { ...appSession, id: 'second', profileId: 'writing', startedAt: Date.now() };
+    const timer = { ...appSession.timer!, minutes: 0 };
+    const session = { ...appSession, id: 'second', profileId: 'writing', startedAt: Date.now(), timer };
     await app.send({
       type: 'state',
       profiles: { value: starterProfiles, updatedAt: 0 },
@@ -142,6 +147,72 @@ describe('the desktop app link', () => {
     expect(storage.activeSession ?? null).toBeNull();
     // Still stamped, so this change wins when the app links again.
     expect(storage.syncedAt!.activeSession).toBeGreaterThan(before);
+  });
+});
+
+describe('a strict session from the desktop app', () => {
+  let app: FakeDesktopApp;
+  let t: TestBrowser;
+  let control: Page;
+
+  const strictSession = (strictness: Strictness): FromDesktop => ({
+    type: 'state',
+    profiles: { value: starterProfiles, updatedAt: 0 },
+    activeSession: {
+      value: {
+        id: strictness,
+        profileId: 'deep-work',
+        startedAt: Date.now(),
+        timer: { minutes: 50, onEnd: 'gentle', showSinceDone: false, strictness },
+      },
+      updatedAt: Date.now(),
+    },
+  });
+
+  async function popupEnding(): Promise<Page> {
+    const tab = await t.browser.newPage();
+    await tab.goto(urls.other);
+    const popup = await openPopup(t, tab);
+    await popup.click('button.end');
+    await popup.waitForSelector('.end-early');
+    return popup;
+  }
+
+  beforeAll(async () => {
+    app = await fakeDesktopApp([{ type: 'linked' }, strictSession('medium')]);
+    t = await launch({ nativeHost: app.host });
+    control = await controlPage(t);
+    await wait(500);
+  });
+  afterAll(async () => {
+    await t?.close();
+    await app?.remove();
+  });
+
+  it('ends a Medium session early once the random text is typed out', async () => {
+    const popup = await popupEnding();
+    const target = await popup.$eval('.target', (el) => el.textContent!.trim());
+    await popup.type('.end-early input', 'not it');
+    expect(await popup.$eval('button.confirm', (button) => button.disabled)).toBe(true);
+
+    await popup.click('.end-early input', { count: 3 });
+    await popup.type('.end-early input', target);
+    await popup.click('button.confirm');
+    await wait(300);
+    expect((await stored(control)).activeSession ?? null).toBeNull();
+    expect(states(await app.received()).at(-1)?.activeSession?.value).toBeNull();
+  });
+
+  it("won't end a Hard session early", async () => {
+    await app.send(strictSession('hard'));
+    await wait(500);
+    const popup = await popupEnding();
+    expect(await text(popup)).toContain('Hard mode');
+    expect(await popup.$('button.confirm')).toBeNull();
+
+    await popup.click('button.keep');
+    await popup.waitForSelector('button.end');
+    expect((await stored(control)).activeSession?.id).toBe('hard');
   });
 });
 

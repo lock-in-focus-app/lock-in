@@ -10,6 +10,9 @@ pub enum Error {
     SessionRunning,
     NoSession,
     UnknownProfile,
+    /// A Hard session's timer is still running.
+    Locked,
+    NoPassesLeft,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -24,6 +27,8 @@ impl fmt::Display for Error {
             Error::SessionRunning => f.write_str("a session is already running"),
             Error::NoSession => f.write_str("no session is running"),
             Error::UnknownProfile => f.write_str("that profile doesn't exist"),
+            Error::Locked => f.write_str("this session is in Hard mode until its timer is done"),
+            Error::NoPassesLeft => f.write_str("no emergency passes are left this week"),
         }
     }
 }

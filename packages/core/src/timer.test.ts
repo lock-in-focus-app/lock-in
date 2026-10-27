@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, timerStatus } from './timer';
+import { endLock, formatClock, timerStatus, unlockText } from './timer';
 
 const min = 60_000;
-const timer = { minutes: 25, onEnd: 'gentle', showSinceDone: false } as const;
+const timer = { minutes: 25, onEnd: 'gentle', showSinceDone: false, strictness: 'hard' } as const;
 
 describe('timerStatus', () => {
   it('counts down, then counts how long ago it finished', () => {
@@ -32,5 +32,23 @@ describe('formatClock', () => {
   it('rounds partial seconds up', () => {
     expect(formatClock(59_001)).toBe('1:00');
     expect(formatClock(1)).toBe('0:01');
+  });
+});
+
+describe('endLock', () => {
+  it('applies only while the timer runs', () => {
+    expect(endLock({ startedAt: 0, timer }, 24 * min)).toBe('hard');
+    expect(endLock({ startedAt: 0, timer }, 25 * min)).toBeUndefined();
+    expect(endLock({ startedAt: 0, timer: { ...timer, minutes: 0 } }, 0)).toBeUndefined();
+    expect(endLock({ startedAt: 0 }, 0)).toBeUndefined();
+  });
+});
+
+describe('unlockText', () => {
+  it('makes readable random groups', () => {
+    const text = unlockText();
+    expect(text).toMatch(/^([a-zA-Z2-9]{5} ){5}[a-zA-Z2-9]{5}$/);
+    expect(text).not.toMatch(/[01lIoOsS5]/);
+    expect(unlockText()).not.toBe(text);
   });
 });
