@@ -12,6 +12,7 @@ import {
 import { recipes } from '@lock-in/recipes';
 import { computed, ref, watch } from 'vue';
 import { activity, firstDayOfWeek } from '../app';
+import WeekPicker from './WeekPicker.vue';
 
 // The weekly report: focus, distractions and satellites for one calendar week, worked out on
 // this device from what the app logged. It opens on this week; the arrows go back to earlier
@@ -24,6 +25,8 @@ const start = ref(thisWeek.value);
 const report = ref<WeeklyReport>();
 const firstLoggedAt = ref<number | null>(null);
 const error = ref('');
+// Whether the calendar for jumping to a week is open.
+const picking = ref(false);
 
 const siteName = (recipeId: string) => recipes.find((r) => r.id === recipeId)?.name ?? recipeId;
 
@@ -152,10 +155,19 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
       >
         ‹
       </button>
-      <div class="heading">
-        <h2 id="week-title">{{ title }}</h2>
-        <p v-if="title !== range" class="dim">{{ range }}</p>
-      </div>
+      <h2 id="week-title" class="heading">
+        <button
+          type="button"
+          class="pick"
+          aria-haspopup="dialog"
+          :aria-expanded="picking"
+          title="Pick a week"
+          @click="picking = !picking"
+        >
+          <span>{{ title }} <span class="caret" aria-hidden="true">▾</span></span>
+          <span v-if="title !== range" class="dim">{{ range }}</span>
+        </button>
+      </h2>
       <button
         type="button"
         class="arrow"
@@ -166,6 +178,20 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
         ›
       </button>
     </nav>
+    <WeekPicker
+      v-if="picking"
+      :selected="start"
+      :first-day="firstDay"
+      :earliest="firstWeek"
+      :latest="thisWeek"
+      @pick="
+        (week: number) => {
+          start = week;
+          picking = false;
+        }
+      "
+      @close="picking = false"
+    />
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <p v-else-if="report && empty" class="dim empty">
@@ -269,13 +295,32 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 
 .heading {
   flex: 1;
-  text-align: center;
-}
-
-h2 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+}
+
+.pick {
+  display: grid;
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: none;
+  font-weight: inherit;
+}
+
+.pick:hover,
+.pick[aria-expanded='true'] {
+  background: var(--sky-raised);
+}
+
+.pick .dim {
+  font-weight: 400;
+}
+
+.caret {
+  color: var(--dim);
+  font-size: 13px;
 }
 
 .arrow {
