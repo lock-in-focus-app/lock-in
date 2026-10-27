@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { KnownBrowser, Settings } from '@lock-in/core';
 import NumberField from './NumberField.vue';
+import ToggleSwitch from './ToggleSwitch.vue';
 
 const props = defineProps<{
   settings: Settings;
@@ -66,11 +67,20 @@ function save(patch: Partial<Settings>) {
     </ul>
     <p v-else class="none">None yet. Browsers show up here once the Lock In extension links to this app.</p>
     <p class="help">
-      During a session, if one of these runs without the extension, Lock In warns you. Medium then closes the browser a
-      minute later, and Hard also counts the session as broken.
+      During a session whose profile tames sites, if one of these runs without the extension, Lock In warns you.
       {{
         sessionRunning ? 'Browsers can be forgotten once this session ends.' : "Forget a browser you've stopped using."
       }}
+    </p>
+
+    <ToggleSwitch
+      label="Close browsers without the extension"
+      :model-value="settings.closeBrowsers"
+      @update:model-value="save({ closeBrowsers: $event })"
+    />
+    <p class="help">
+      In a Medium session, the browser closes a minute after the warning. In Hard, the session also counts as broken.
+      During a Hard session this can't be turned off.
     </p>
 
     <button class="done" type="button" @click="emit('close')">Done</button>

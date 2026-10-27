@@ -3,7 +3,10 @@
 //! the extension runs. So a browser that's running without a link during a session has had
 //! the extension turned off or removed, and its sites aren't being tamed.
 //!
-//! What happens then depends on the session's strictness:
+//! Only sessions whose profile tames sites are watched; a session spent in other apps doesn't
+//! need the browser. What happens then is a warning, unless "close browsers" is on in
+//! Settings (it's opt-in, so the app and extension can each be used alone). With it on, it
+//! depends on the session's strictness:
 //! - Gentle, or no timer running: a warning.
 //! - Medium: a warning, then the browser is closed a minute later.
 //! - Hard: the same, and the session counts as broken.
@@ -50,8 +53,12 @@ pub enum Response {
 }
 
 impl Response {
-    /// The response for a session's strictness while its timer is running (`Session::lock`).
-    pub fn to(lock: Option<Strictness>) -> Self {
+    /// The response for a session's strictness while its timer is running (`Session::lock`),
+    /// and whether closing browsers is turned on.
+    pub fn to(lock: Option<Strictness>, close_browsers: bool) -> Self {
+        if !close_browsers {
+            return Response::Warn;
+        }
         match lock {
             None | Some(Strictness::Gentle) => Response::Warn,
             Some(Strictness::Medium) => Response::Close,
@@ -75,14 +82,7 @@ pub struct BrowserWatch {
 impl BrowserWatch {
     /// Takes the known browsers that are running and the process ids of the browsers that are
     /// linked, and returns what to do now.
-    pub fn check(
-        &mut self,
-        now: i64,
-        running: &[Running],
-        linked: &HashSet<u32>,
-        lock: Option<Strictness>,
-    ) -> Vec<Action> {
-        let response = Response::to(lock);
+    pub fn check(&mut self, now: i64, running: &[Running], linked: &HashSet<u32>, response: Response) -> Vec<Action> {
         let unlinked: Vec<&Running> = running.iter().filter(|b| !linked.contains(&b.pid)).collect();
         // A browser that linked again, or quit, starts over.
         self.quiet.retain(|pid, _| unlinked.iter().any(|b| b.pid == *pid));
@@ -146,7 +146,7 @@ mod tests {
             .map(|i| i * CHECK_EVERY_MS)
             .flat_map(|now| {
                 watch
-                    .check(now, &[chrome()], linked, lock)
+                    .check(now, &[chrome()], linked, Response::to(lock, true))
                     .into_iter()
                     .map(move |a| (now, a))
             })
@@ -215,18 +215,43 @@ mod tests {
     }
 
     #[test]
+    fn only_warns_unless_closing_is_turned_on() {
+        let mut watch = BrowserWatch::default();
+        let none = linked(&[]);
+        let response = Response::to(Some(Strictness::Hard), false);
+        assert_eq!(response, Response::Warn);
+        let actions: Vec<_> = (0..=30)
+            .flat_map(|i| watch.check(i * CHECK_EVERY_MS, &[chrome()], &none, response))
+            .collect();
+        assert!(matches!(actions.as_slice(), [Action::Warn { .. }]));
+    }
+
+    #[test]
     fn linking_again_in_time_starts_over() {
         let mut watch = BrowserWatch::default();
         let none = linked(&[]);
         let lock = Some(Strictness::Medium);
-        assert_eq!(watch.check(0, &[chrome()], &none, lock), vec![]);
-        assert_eq!(watch.check(20 * SEC, &[chrome()], &none, lock).len(), 1);
+        assert_eq!(watch.check(0, &[chrome()], &none, Response::to(lock, true)), vec![]);
+        assert_eq!(
+            watch
+                .check(20 * SEC, &[chrome()], &none, Response::to(lock, true))
+                .len(),
+            1
+        );
         // The extension is turned back on before the browser closes.
-        assert_eq!(watch.check(30 * SEC, &[chrome()], &linked(&[7]), lock), vec![]);
+        assert_eq!(
+            watch.check(30 * SEC, &[chrome()], &linked(&[7]), Response::to(lock, true)),
+            vec![]
+        );
         // Turned off again later: a fresh warning, not an instant close.
-        assert_eq!(watch.check(100 * SEC, &[chrome()], &none, lock), vec![]);
+        assert_eq!(
+            watch.check(100 * SEC, &[chrome()], &none, Response::to(lock, true)),
+            vec![]
+        );
         assert!(matches!(
-            watch.check(120 * SEC, &[chrome()], &none, lock).as_slice(),
+            watch
+                .check(120 * SEC, &[chrome()], &none, Response::to(lock, true))
+                .as_slice(),
             [Action::Warn { .. }]
         ));
     }
@@ -235,12 +260,17 @@ mod tests {
     fn does_not_close_once_the_timer_is_done() {
         let mut watch = BrowserWatch::default();
         let none = linked(&[]);
-        watch.check(0, &[chrome()], &none, Some(Strictness::Hard));
+        watch.check(0, &[chrome()], &none, Response::to(Some(Strictness::Hard), true));
         assert_eq!(
-            watch.check(20 * SEC, &[chrome()], &none, Some(Strictness::Hard)).len(),
+            watch
+                .check(20 * SEC, &[chrome()], &none, Response::to(Some(Strictness::Hard), true))
+                .len(),
             1
         );
         // The timer runs out before the minute is up, so ending is free and nothing closes.
-        assert_eq!(watch.check(90 * SEC, &[chrome()], &none, None), vec![]);
+        assert_eq!(
+            watch.check(90 * SEC, &[chrome()], &none, Response::to(None, true)),
+            vec![]
+        );
     }
 }
