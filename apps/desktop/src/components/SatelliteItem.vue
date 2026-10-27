@@ -36,8 +36,6 @@ const labels: Record<SatelliteAction, { text: string; title: string }> = {
   display: grid;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
 }
 
 .text {

@@ -6,6 +6,7 @@ import AppRulesEditor from './AppRulesEditor.vue';
 import StarColorPicker from './StarColorPicker.vue';
 import { vTilt } from '../tilt';
 import TimerEditor from './TimerEditor.vue';
+import Unfold from './Unfold.vue';
 
 defineProps<{ profiles: ProfileSummary[]; canHideApps: boolean }>();
 const emit = defineEmits<{
@@ -90,25 +91,31 @@ function summary(profile: ProfileSummary): string {
             Star
           </button>
         </div>
-        <TimerEditor
-          v-if="isOpen(profile.id, 'timer')"
-          :timer="profile.timer"
-          @update:timer="emit('set-timer', profile.id, $event)"
-        />
-        <AppRulesEditor
-          v-if="isOpen(profile.id, 'apps')"
-          :apps="profile.apps"
-          :can-hide="canHideApps"
-          @update:apps="emit('set-apps', profile.id, $event)"
-        />
-        <div v-if="isOpen(profile.id, 'star')" class="panel">
-          <p>The color of this profile's stars in your sky.</p>
-          <StarColorPicker
-            :color="starColorFor(profile.id, profile.starColor)"
-            :profile-name="profile.name"
-            @update:color="emit('set-star-color', profile.id, $event)"
-          />
-        </div>
+        <Unfold>
+          <div v-if="editing?.profileId === profile.id" :key="editing.panel" class="panel-space">
+            <div class="card panel">
+              <TimerEditor
+                v-if="editing.panel === 'timer'"
+                :timer="profile.timer"
+                @update:timer="emit('set-timer', profile.id, $event)"
+              />
+              <AppRulesEditor
+                v-else-if="editing.panel === 'apps'"
+                :apps="profile.apps"
+                :can-hide="canHideApps"
+                @update:apps="emit('set-apps', profile.id, $event)"
+              />
+              <div v-else class="star-panel">
+                <p>The color of this profile's stars in your sky.</p>
+                <StarColorPicker
+                  :color="starColorFor(profile.id, profile.starColor)"
+                  :profile-name="profile.name"
+                  @update:color="emit('set-star-color', profile.id, $event)"
+                />
+              </div>
+            </div>
+          </div>
+        </Unfold>
       </li>
     </ul>
     <p class="help">Sites for each profile are set in the browser extension's settings, and apps here.</p>
@@ -137,25 +144,19 @@ ul {
 
 .row {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
 }
 
 .profile {
   flex: 1;
   display: grid;
   gap: 2px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
-  background: var(--sky-raised);
-  transition:
-    background 150ms,
-    transform 150ms;
-}
-
-.profile:hover,
-.edit:hover,
-.edit[aria-expanded='true'] {
-  background: var(--sky-hover);
+  background: none;
+  transition: transform 150ms;
 }
 
 .profile:active {
@@ -176,28 +177,41 @@ ul {
   font-size: 12px;
 }
 
-.panel {
-  margin-top: 4px;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
+.panel-space {
+  padding-top: 6px;
 }
 
-.panel p {
+.star-panel {
+  padding: 12px;
+}
+
+.star-panel p {
   margin: 0 0 8px;
   color: var(--dim);
   font-size: 12px;
 }
 
 .edit {
-  padding: 0 12px;
-  background: var(--sky-raised);
+  align-self: stretch;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: none;
   color: var(--dim);
   font-size: 12px;
+  transition:
+    background 300ms,
+    color 300ms;
+}
+
+.edit:hover,
+.edit[aria-expanded='true'] {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--starlight);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .profile {
+  .profile,
+  .edit {
     transition: none;
   }
 }

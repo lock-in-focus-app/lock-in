@@ -11,6 +11,7 @@ mod idle;
 mod launches;
 mod link;
 mod processes;
+mod samples;
 mod satellites;
 mod session;
 mod settings;
@@ -507,6 +508,8 @@ pub fn run() {
             commands::close_capture,
             commands::activity,
             commands::session_log,
+            commands::add_sample_data,
+            commands::remove_sample_data,
             commands::first_weekday,
         ])
         .build(tauri::generate_context!())

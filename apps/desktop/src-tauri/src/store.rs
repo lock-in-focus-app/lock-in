@@ -130,24 +130,7 @@ impl Store {
     /// so a crash can't log a session that still looks like it's running.
     pub fn end_session<T: Serialize>(&mut self, record: &SessionRecord, key: &str, synced: &Synced<T>) -> Result<()> {
         let tx = self.db.transaction()?;
-        tx.execute(
-            "INSERT OR REPLACE INTO sessions (id, profile_id, profile_name, started_at, ended_at, timer_minutes,
-                focused_ms, overtime_ms, idle_tail_ms, end_reason, broken)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            params![
-                record.id,
-                record.profile_id,
-                record.profile_name,
-                record.started_at,
-                record.ended_at,
-                record.timer_minutes,
-                record.focused_ms,
-                record.overtime_ms,
-                record.idle_tail_ms,
-                record.end_reason.as_str(),
-                record.broken,
-            ],
-        )?;
+        insert_session(&tx, record)?;
         save(&tx, key, synced)?;
         tx.execute(
             "UPDATE satellites SET state = ?1, state_at = ?2 WHERE state = ?3",
@@ -244,6 +227,29 @@ impl Store {
                 visit.continued,
             ],
         )?;
+        Ok(())
+    }
+
+    /// Adds made-up sessions and gate visits, for trying the app (samples.rs).
+    pub fn add_samples(&mut self, sessions: &[SessionRecord], visits: &[GateVisit]) -> Result<()> {
+        let tx = self.db.transaction()?;
+        for record in sessions {
+            insert_session(&tx, record)?;
+        }
+        tx.commit()?;
+        for visit in visits {
+            self.save_gate_visit(visit, None)?;
+        }
+        Ok(())
+    }
+
+    /// Removes everything `add_samples` added, which is everything with a sample id.
+    pub fn remove_samples(&self) -> Result<()> {
+        let pattern = format!("{}%", crate::samples::SAMPLE_PREFIX);
+        self.db
+            .execute("DELETE FROM sessions WHERE id LIKE ?1", params![pattern])?;
+        self.db
+            .execute("DELETE FROM gate_visits WHERE id LIKE ?1", params![pattern])?;
         Ok(())
     }
 
@@ -347,6 +353,28 @@ impl Store {
             |row| row.get(0),
         )?)
     }
+}
+
+fn insert_session(db: &Connection, record: &SessionRecord) -> Result<()> {
+    db.execute(
+        "INSERT OR REPLACE INTO sessions (id, profile_id, profile_name, started_at, ended_at, timer_minutes,
+            focused_ms, overtime_ms, idle_tail_ms, end_reason, broken)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![
+            record.id,
+            record.profile_id,
+            record.profile_name,
+            record.started_at,
+            record.ended_at,
+            record.timer_minutes,
+            record.focused_ms,
+            record.overtime_ms,
+            record.idle_tail_ms,
+            record.end_reason.as_str(),
+            record.broken,
+        ],
+    )?;
+    Ok(())
 }
 
 fn save<T: Serialize>(db: &Connection, key: &str, synced: &Synced<T>) -> Result<()> {

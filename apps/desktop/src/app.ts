@@ -68,6 +68,12 @@ export const activity = (from: number, to: number) => invoke<Activity>('activity
 /** Every finished session, oldest first, for the night sky. */
 export const sessionLog = () => invoke<SessionRecord[]>('session_log');
 
+/** Adds six weeks of made-up sessions, in development builds. */
+export const addSampleData = () => invoke<void>('add_sample_data');
+
+/** Removes the made-up sessions again, in development builds. */
+export const removeSampleData = () => invoke<void>('remove_sample_data');
+
 type WeekInfo = { firstDay: number };
 
 /**

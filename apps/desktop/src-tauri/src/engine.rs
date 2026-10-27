@@ -583,6 +583,24 @@ impl Engine {
         self.store.sessions()
     }
 
+    /// Adds six weeks of made-up sessions and gate visits for the current profiles, for trying
+    /// the app in development builds.
+    pub fn add_samples(&mut self, now: i64) -> Result<()> {
+        let profiles: Vec<_> = self
+            .profiles
+            .value
+            .iter()
+            .map(|p| (p.id.clone(), p.name.clone()))
+            .collect();
+        let (sessions, visits) = crate::samples::sample_log(now, &profiles);
+        self.store.add_samples(&sessions, &visits)
+    }
+
+    /// Removes all sample data, leaving real sessions and visits as they are.
+    pub fn remove_samples(&self) -> Result<()> {
+        self.store.remove_samples()
+    }
+
     /// Everything logged from `from` up to (not including) `to`, for the weekly report.
     pub fn activity(&self, from: i64, to: i64) -> Result<Activity> {
         let gate_visits = self.store.gate_visits_between(from, to)?;
@@ -694,6 +712,21 @@ mod tests {
             Err(Error::UnknownProfile)
         ));
         assert_eq!(color(&engine, "writing").as_deref(), Some("#9fe3c9"));
+    }
+
+    #[test]
+    fn adds_and_removes_samples_without_touching_real_sessions() {
+        let mut engine = engine();
+        engine.start_session("writing", 1_000).unwrap();
+        let real = engine.end_session(1_000 + 50 * MIN, EndReason::Stopped).unwrap();
+        engine.add_samples(1_800_000_000_000).unwrap();
+        let log = engine.session_log().unwrap();
+        assert!(log.len() > 20);
+        assert!(log.contains(&real));
+
+        engine.remove_samples().unwrap();
+        assert_eq!(engine.session_log().unwrap(), vec![real]);
+        assert!(engine.store.gate_visits().unwrap().is_empty());
     }
 
     fn remote_session(id: &str, profile_id: &str, timer: Option<TimerSettings>) -> Session {

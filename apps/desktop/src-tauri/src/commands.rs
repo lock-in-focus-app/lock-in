@@ -5,7 +5,7 @@ use tauri::AppHandle;
 
 use crate::apps::{AppRule, InstalledApp};
 use crate::engine::{Activity, Snapshot};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::satellites::SatelliteAction;
 use crate::session::{EndReason, SessionRecord};
 use crate::settings::Settings;
@@ -105,6 +105,29 @@ pub fn act_on_satellite(app: AppHandle, id: String, action: SatelliteAction) -> 
 #[tauri::command]
 pub fn session_log(app: AppHandle) -> Result<Vec<SessionRecord>> {
     crate::engine(&app).session_log()
+}
+
+/// Adds six weeks of made-up sessions, so the sky and the weekly report can be tried without
+/// focusing for weeks. Development builds only.
+#[tauri::command]
+pub fn add_sample_data(app: AppHandle) -> Result<()> {
+    if !cfg!(debug_assertions) {
+        return Err(Error::DevelopmentOnly);
+    }
+    crate::engine(&app).add_samples(crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
+/// Removes the sample data again. Development builds only.
+#[tauri::command]
+pub fn remove_sample_data(app: AppHandle) -> Result<()> {
+    if !cfg!(debug_assertions) {
+        return Err(Error::DevelopmentOnly);
+    }
+    crate::engine(&app).remove_samples()?;
+    crate::changed(&app);
+    Ok(())
 }
 
 /// Everything logged from `from` up to (not including) `to` (epoch ms), for the weekly report.
