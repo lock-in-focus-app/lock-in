@@ -1,6 +1,17 @@
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch, openPopup, stored, text, urls, visibility, wait, type TestBrowser, type Stored } from './harness';
+import {
+  launch,
+  openPopup,
+  stored,
+  storedWhen,
+  text,
+  urls,
+  visibility,
+  wait,
+  type TestBrowser,
+  type Stored,
+} from './harness';
 
 const switches = (popup: Page) =>
   popup.$$eval('[role=switch]', (els) =>
@@ -45,15 +56,15 @@ describe('popup toggles', () => {
 
     it('edits the profile without touching the page', async () => {
       await flip(popup, 'Hide promoted posts');
-      await wait(200);
-      expect(writing(await stored(popup)).toggles?.hidePromoted).toBe(false);
+      await expect.poll(async () => writing(await stored(popup)).toggles?.hidePromoted).toBe(false);
+      // Give the tab time to react, as it would during a session.
+      await wait(300);
       expect(await page()).toEqual({ feed: true, ad: true, grayscale: false });
     });
 
     it('switches profiles with the picker', async () => {
       await popup.select('select', 'wind-down');
-      await wait(150);
-      expect(await switches(popup)).toMatchObject({ Grayscale: false, 'Hide promoted posts': true });
+      await expect.poll(() => switches(popup)).toMatchObject({ Grayscale: false, 'Hide promoted posts': true });
       await popup.select('select', 'writing');
     });
   });
@@ -62,19 +73,17 @@ describe('popup toggles', () => {
     beforeAll(async () => {
       await popup.click('button.profile');
       await popup.waitForSelector('.elapsed');
-      await wait(300);
     });
 
     it('uses the edited profile and hides the picker', async () => {
-      expect(await page()).toEqual({ feed: false, ad: true, grayscale: true });
+      await expect.poll(page).toEqual({ feed: false, ad: true, grayscale: true });
       expect(await popup.$('select')).toBeNull();
     });
 
     it('changes open tabs live for this session only', async () => {
       await flip(popup, 'Grayscale');
-      await wait(300);
-      expect((await page()).grayscale).toBe(false);
-      expect(await text(popup)).toContain('Changed for this session');
+      await expect.poll(async () => (await page()).grayscale).toBe(false);
+      await expect.poll(() => text(popup)).toContain('Changed for this session');
       expect(await text(popup)).toContain('Save to Writing');
 
       const storage = await stored(popup);
@@ -84,20 +93,16 @@ describe('popup toggles', () => {
 
     it('forgets the change when it is flipped back', async () => {
       await flip(popup, 'Grayscale');
-      await wait(200);
-      expect((await stored(popup)).activeSession?.overrides).toBeUndefined();
+      await expect.poll(async () => (await stored(popup)).activeSession?.overrides).toBeUndefined();
     });
 
     it('saves session changes to the profile', async () => {
       await flip(popup, 'Hide trending searches');
-      await wait(150);
-      await popup.click('button.save');
-      await wait(200);
+      await (await popup.waitForSelector('button.save'))!.click();
+      await storedWhen(popup, (storage) => writing(storage).toggles?.hideTrending === false);
 
-      const storage = await stored(popup);
-      expect(writing(storage).toggles?.hideTrending).toBe(false);
-      expect(storage.activeSession?.overrides).toBeUndefined();
-      expect(await text(popup)).not.toContain('Changed for this session');
+      expect((await stored(popup)).activeSession?.overrides).toBeUndefined();
+      await expect.poll(() => text(popup)).not.toContain('Changed for this session');
     });
   });
 

@@ -13,12 +13,13 @@ describe('profile editor', () => {
       (els, wanted) => (els.find((el) => el.textContent!.trim() === wanted) as HTMLElement).click(),
       name,
     );
-  const clickButton = (label: string) =>
-    page.$$eval(
-      'button',
-      (buttons, wanted) => (buttons.find((b) => b.textContent!.trim() === wanted) as HTMLElement).click(),
-      label,
-    );
+  // Some buttons only show up once an earlier click has been saved, so this waits for them.
+  const clickButton = async (label: string) => {
+    const find = (wanted: string) =>
+      [...document.querySelectorAll('button')].find((b) => b.textContent!.trim() === wanted);
+    await page.waitForFunction(`(${find})(${JSON.stringify(label)}) !== undefined`);
+    await page.evaluate(`(${find})(${JSON.stringify(label)}).click()`);
+  };
   const buttonDisabled = (label: string) =>
     page.$$eval(
       'button',
@@ -45,7 +46,6 @@ describe('profile editor', () => {
     await page.click('input[aria-label="Profile name"]', { count: 3 });
     await page.type('input[aria-label="Profile name"]', name);
     await page.keyboard.press('Enter');
-    await wait(150);
   };
 
   beforeAll(async () => {
@@ -71,44 +71,43 @@ describe('profile editor', () => {
 
   it('changes site levels, keeping toggles for later', async () => {
     await setLevel('Reddit', 'Restricted');
-    await wait(150);
-    expect((await savedProfiles())[0]!.sites[0]).toEqual({
-      recipeId: 'reddit',
-      level: 'restricted',
-      toggles: { grayscale: true },
-    });
-    expect(await page.$('li:has([aria-label="Reddit level"]) .toggles')).toBeNull();
+    await expect
+      .poll(async () => (await savedProfiles())[0]!.sites[0])
+      .toEqual({
+        recipeId: 'reddit',
+        level: 'restricted',
+        toggles: { grayscale: true },
+      });
+    await expect.poll(() => page.$('li:has([aria-label="Reddit level"]) .toggles')).toBeNull();
 
     await setLevel('Reddit', 'Tamed');
-    await wait(150);
-    expect(await page.$$eval('li:has([aria-label="Reddit level"]) .toggles [role=switch]', (els) => els.length)).toBe(
-      5,
-    );
+    await expect
+      .poll(() => page.$$eval('li:has([aria-label="Reddit level"]) .toggles [role=switch]', (els) => els.length))
+      .toBe(5);
   });
 
   it('creates a profile and selects its name for editing', async () => {
     await clickButton('+ New profile');
-    await wait(200);
-    expect(await tabs()).toEqual(['Writing', 'Deep Work', 'Wind Down', 'New profile']);
+    await expect.poll(tabs).toEqual(['Writing', 'Deep Work', 'Wind Down', 'New profile']);
     expect(await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe('Profile name');
     expect(await levelOf('Reddit')).toBe('Allowed');
   });
 
   it('renames a profile, ignoring blank names', async () => {
     await rename('Reading');
-    expect((await savedProfiles()).at(-1)!.name).toBe('Reading');
+    await expect.poll(async () => (await savedProfiles()).at(-1)!.name).toBe('Reading');
     await rename('   ');
+    // Nothing should be saved, so all there is to wait for is a moment.
+    await wait(300);
     expect((await savedProfiles()).at(-1)!.name).toBe('Reading');
     expect(await page.$eval('input[aria-label="Profile name"]', (input) => input.value)).toBe('Reading');
   });
 
   it('duplicates and reorders profiles', async () => {
     await clickButton('Duplicate');
-    await wait(200);
-    expect(await tabs()).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading', 'Reading copy']);
+    await expect.poll(tabs).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading', 'Reading copy']);
     await clickButton('Move earlier');
-    await wait(150);
-    expect(await tabs()).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading copy', 'Reading']);
+    await expect.poll(tabs).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading copy', 'Reading']);
     expect(await buttonDisabled('Move later')).toBe(false);
   });
 
@@ -120,8 +119,7 @@ describe('profile editor', () => {
 
     await clickButton('Delete');
     await page.click('.confirm-delete');
-    await wait(150);
-    expect(await tabs()).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading']);
+    await expect.poll(tabs).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading']);
   });
 
   it("won't delete the profile that's running", async () => {
@@ -129,9 +127,10 @@ describe('profile editor', () => {
     await startSession(control, 'deep-work');
     await page.bringToFront();
     await selectTab('Deep Work');
-    await wait(150);
+    await expect
+      .poll(() => page.$eval('main', (m) => (m as HTMLElement).innerText))
+      .toContain('Deep Work is running now');
     expect(await buttonDisabled('Delete')).toBe(true);
-    expect(await page.$eval('main', (m) => (m as HTMLElement).innerText)).toContain('Deep Work is running now');
     await control.evaluate(() =>
       (globalThis as unknown as { chrome: typeof browser }).chrome.storage.local.set({ activeSession: null }),
     );
@@ -143,8 +142,7 @@ describe('profile editor', () => {
     await rename('Scribbling');
     await clickButton('Reset starter profiles');
     await page.click('.confirm-reset');
-    await wait(200);
-    expect(await tabs()).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading']);
+    await expect.poll(tabs).toEqual(['Writing', 'Deep Work', 'Wind Down', 'Reading']);
     expect((await savedProfiles())[0]!.sites[0]).toEqual({
       recipeId: 'reddit',
       level: 'tamed',
@@ -161,9 +159,8 @@ describe('profile editor', () => {
         [...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Redirected') as HTMLElement
       ).click(),
     );
-    await wait(150);
-    expect((await savedProfiles())[0]!.sites[0]!.level).toBe('redirected');
-    expect(await text(popup)).toContain('Applies whenever Writing is running');
+    await expect.poll(async () => (await savedProfiles())[0]!.sites[0]!.level).toBe('redirected');
+    await expect.poll(() => text(popup)).toContain('Applies whenever Writing is running');
     expect(await popup.$$eval('[role=switch]', (els) => els.length)).toBe(0);
   });
 });
@@ -173,12 +170,13 @@ describe('managing profiles', () => {
   let page: Page;
   let control: Page;
 
-  const clickButton = (label: string) =>
-    page.$$eval(
-      'button',
-      (buttons, wanted) => (buttons.find((b) => b.textContent!.trim() === wanted) as HTMLElement).click(),
-      label,
-    );
+  // Some buttons only show up once an earlier click has been saved, so this waits for them.
+  const clickButton = async (label: string) => {
+    const find = (wanted: string) =>
+      [...document.querySelectorAll('button')].find((b) => b.textContent!.trim() === wanted);
+    await page.waitForFunction(`(${find})(${JSON.stringify(label)}) !== undefined`);
+    await page.evaluate(`(${find})(${JSON.stringify(label)}).click()`);
+  };
   const button = (prefix: string) =>
     page.$$eval(
       'button',
@@ -202,38 +200,33 @@ describe('managing profiles', () => {
 
   it('keeps at least one profile', async () => {
     await clickButton('Manage');
-    await wait(100);
     await clickButton('Select all');
-    await wait(100);
-    expect(await button('Delete')).toEqual({ label: 'Delete 3', disabled: true });
+    await expect.poll(() => button('Delete')).toEqual({ label: 'Delete 3', disabled: true });
     expect(await page.$eval('main', (main) => main.textContent)).toContain('At least one profile has to stay');
     await clickButton('Clear');
   });
 
   it('deletes several at once, but not the running one', async () => {
     await startSession(control, 'writing');
-    await wait(200);
-    expect(
-      await page.$eval('input[aria-label="Select Writing"]', (input) => (input as HTMLInputElement).disabled),
-    ).toBe(true);
+    await expect
+      .poll(() => page.$eval('input[aria-label="Select Writing"]', (input) => (input as HTMLInputElement).disabled))
+      .toBe(true);
 
     await clickButton('Select all');
-    await wait(100);
-    expect(await button('Delete')).toEqual({ label: 'Delete 2', disabled: false });
+    await expect.poll(() => button('Delete')).toEqual({ label: 'Delete 2', disabled: false });
     await clickButton('Delete 2');
-    await wait(100);
-    expect(await page.$eval('[role=alert]', (el) => el.textContent)).toContain(
+    expect(await (await page.waitForSelector('[role=alert]'))!.evaluate((el) => el.textContent)).toContain(
       "Delete 2 profiles? This can't be undone.",
     );
     await page.click('.confirm-delete');
-    await wait(200);
-    expect(await names()).toEqual(['Writing']);
+    await expect.poll(names).toEqual(['Writing']);
   });
 
   it('goes back to editing when done', async () => {
     await clickButton('Done');
-    await wait(100);
-    expect(await page.$$eval('[role=tab]', (tabs) => tabs.map((tab) => tab.textContent!.trim()))).toEqual(['Writing']);
+    await expect
+      .poll(() => page.$$eval('[role=tab]', (tabs) => tabs.map((tab) => tab.textContent!.trim())))
+      .toEqual(['Writing']);
     expect(await page.$('input[aria-label="Profile name"]')).not.toBeNull();
   });
 });

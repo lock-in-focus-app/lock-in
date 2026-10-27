@@ -1,6 +1,6 @@
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { controlPage, launch, setProfileRedirect, startSession, stored, urls, wait, type TestBrowser } from './harness';
+import { controlPage, launch, setProfileRedirect, startSession, stored, urls, type TestBrowser } from './harness';
 
 describe('redirect destinations', () => {
   let t: TestBrowser;
@@ -8,18 +8,18 @@ describe('redirect destinations', () => {
   let tab: Page;
 
   const pageText = () => tab.$eval('main', (main) => (main as HTMLElement).innerText);
-  const clickButton = (label: string) =>
-    tab.$$eval(
-      'button',
-      (buttons, wanted) => (buttons.find((b) => b.textContent!.trim() === wanted) as HTMLElement).click(),
-      label,
-    );
+  // Some buttons only show up once an earlier click has been saved, so this waits for them.
+  const clickButton = async (label: string) => {
+    const find = (wanted: string) =>
+      [...document.querySelectorAll('button')].find((b) => b.textContent!.trim() === wanted);
+    await tab.waitForFunction(`(${find})(${JSON.stringify(label)}) !== undefined`);
+    await tab.evaluate(`(${find})(${JSON.stringify(label)}).click()`);
+  };
   const continueLabel = () => tab.$eval('button.continue', (b) => b.textContent!.trim());
 
   /** Sets Deep Work's redirect settings, then visits Reddit. */
   async function visitWith(redirect: Parameters<typeof setProfileRedirect>[2]) {
     await setProfileRedirect(control, 'deep-work', redirect);
-    await wait(200);
     await tab.goto(urls.reddit);
     await tab.waitForSelector('.badge');
   }
@@ -42,17 +42,16 @@ describe('redirect destinations', () => {
 
     it('records the one-tap "why"', async () => {
       await clickButton('Bored');
-      await wait(200);
-      const { gateVisits } = await stored(control);
-      expect(gateVisits?.at(-1)).toMatchObject({ recipeId: 'reddit', destination: 'quote', why: 'bored' });
+      await expect
+        .poll(async () => (await stored(control)).gateVisits?.at(-1))
+        .toMatchObject({ recipeId: 'reddit', destination: 'quote', why: 'bored' });
     });
 
     it('offers the unstick page when the answer is "stuck"', async () => {
       await clickButton('Stuck');
-      await wait(100);
       await clickButton('Stuck? Try a 2-minute unstick');
       expect(await pageText()).toContain('A 2-minute unstick');
-      expect((await stored(control)).gateVisits?.at(-1)?.why).toBe('stuck');
+      await expect.poll(async () => (await stored(control)).gateVisits?.at(-1)?.why).toBe('stuck');
     });
 
     it('can still go through the gate', async () => {
@@ -95,7 +94,8 @@ describe('redirect destinations', () => {
   describe('intention gate settings', () => {
     it('can require a reason', async () => {
       await visitWith({ destinations: ['gate'], gate: { requireReason: true, wait: { mode: 'fixed', seconds: 0 } } });
-      await wait(200);
+      // With no wait, only the missing reason holds Continue back.
+      await tab.waitForFunction(() => !document.querySelector('button.continue')?.textContent?.includes('Continue in'));
       expect(await tab.$eval('button.continue', (b) => b.disabled)).toBe(true);
       await tab.type('textarea', 'Reply to a message');
       expect(await tab.$eval('button.continue', (b) => b.disabled)).toBe(false);

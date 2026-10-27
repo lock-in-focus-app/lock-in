@@ -70,7 +70,8 @@ function start(profile: Profile) {
       <button v-else class="end" type="button" @click="requestEnd">End session</button>
     </section>
 
-    <section v-else-if="profileList">
+    <!-- Only once storage says there's no session, so a running one doesn't flash this first. -->
+    <section v-else-if="session === null && profileList">
       <p class="label">Start a session</p>
       <ul>
         <li v-for="profile in profileList" :key="profile.id">

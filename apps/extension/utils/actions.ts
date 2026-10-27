@@ -33,39 +33,46 @@ import {
 // extension storage; once the desktop app is connected, they'll forward to it instead,
 // and the UI won't need to change.
 
-// Profile edits read the saved profiles, change them and save them back. They run one at a
-// time, so a quick second edit can't start from profiles the first hasn't saved yet and
-// undo it.
-let profileEdits: Promise<unknown> = Promise.resolve();
-function editProfiles(edit: (list: Profile[]) => Profile[]): Promise<void> {
-  const next = profileEdits.then(async () => profiles.setValue(edit(await profiles.getValue())));
-  profileEdits = next.catch(() => {});
+// Edits read what's saved, change it and save it back. They run one at a time, so a quick
+// second edit can't start from something the first hasn't saved yet and undo it.
+let edits: Promise<unknown> = Promise.resolve();
+function inTurn<T>(edit: () => Promise<T>): Promise<T> {
+  const next = edits.then(edit);
+  edits = next.catch(() => {});
   return next;
 }
 
+function editProfiles(edit: (list: Profile[]) => Profile[]): Promise<void> {
+  return inTurn(async () => profiles.setValue(edit(await profiles.getValue())));
+}
+
 export async function startSession(profileId: string): Promise<void> {
-  await activeSession.setValue({ id: crypto.randomUUID(), profileId, startedAt: Date.now() });
+  await inTurn(() => activeSession.setValue({ id: crypto.randomUUID(), profileId, startedAt: Date.now() }));
 }
 
 /**
  * Ends the session. The popup asks for a pause or typing first if its timer is still running.
  * A Hard session can't end here before its timer is done; the desktop app would only bring it back.
  */
-export async function endSession(): Promise<void> {
-  if (endLock((await activeSession.getValue()) ?? { startedAt: 0 }, Date.now()) === 'hard') return;
-  await activeSession.setValue(null);
+export function endSession(): Promise<void> {
+  return inTurn(async () => {
+    if (endLock((await activeSession.getValue()) ?? { startedAt: 0 }, Date.now()) === 'hard') return;
+    await activeSession.setValue(null);
+  });
 }
 
 /** Changes a toggle for the running session only. */
-export async function setSessionToggle(recipe: SiteRecipe, toggleId: string, value: boolean): Promise<void> {
-  const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
-  if (!session) return;
+export function setSessionToggle(recipe: SiteRecipe, toggleId: string, value: boolean): Promise<void> {
+  return inTurn(async () => {
+    const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
+    if (!session) return;
 
-  const rule = findRule(
-    profileList.find((p) => p.id === session.profileId),
-    recipe.id,
-  );
-  await activeSession.setValue(withSessionToggle(session, recipe, rule, toggleId, value));
+    const rule = findRule(
+      profileList.find((p) => p.id === session.profileId),
+      recipe.id,
+    );
+    await activeSession.setValue(withSessionToggle(session, recipe, rule, toggleId, value));
+  });
 }
 
 /** Changes a toggle on a profile, for every future session that uses it. */
@@ -79,15 +86,17 @@ export async function setProfileToggle(
 }
 
 /** Keeps this session's changes to a site by saving them into the session's profile. */
-export async function saveSessionChanges(recipeId: string): Promise<void> {
-  const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
-  if (!session) return;
+export function saveSessionChanges(recipeId: string): Promise<void> {
+  return inTurn(async () => {
+    const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
+    if (!session) return;
 
-  const saved = withSessionOverridesSaved(profileList, session, recipeId);
-  await storage.setItems([
-    { item: profiles, value: saved.profiles },
-    { item: activeSession, value: saved.session },
-  ]);
+    const saved = withSessionOverridesSaved(profileList, session, recipeId);
+    await storage.setItems([
+      { item: profiles, value: saved.profiles },
+      { item: activeSession, value: saved.session },
+    ]);
+  });
 }
 
 /** Adds an empty profile and returns its id. */
@@ -164,7 +173,7 @@ export async function setRedirectSettings(
 /** Records a trip to a redirected site and returns its id. */
 export async function recordGateVisit(recipeId: string, destination: RedirectDestination | 'blocked'): Promise<string> {
   const visit = { id: crypto.randomUUID(), recipeId, at: Date.now(), destination };
-  await gateVisits.setValue(withGateVisit(await gateVisits.getValue(), visit));
+  await inTurn(async () => gateVisits.setValue(withGateVisit(await gateVisits.getValue(), visit)));
   return visit.id;
 }
 
@@ -173,32 +182,35 @@ export async function recordGateVisit(recipeId: string, destination: RedirectDes
  * redirecting it, so the caller can navigate straight there.
  */
 export async function continueToSite(visitId: string, recipeId: string, intention: string): Promise<void> {
-  const [session, profileList, visits] = await Promise.all([
-    activeSession.getValue(),
-    profiles.getValue(),
-    gateVisits.getValue(),
-  ]);
-  if (!session) return;
+  const continued = await inTurn(async () => {
+    const [session, profileList, visits] = await Promise.all([
+      activeSession.getValue(),
+      profiles.getValue(),
+      gateVisits.getValue(),
+    ]);
+    if (!session) return false;
 
-  const { passMinutes } = redirectSettingsFor(profileList.find((p) => p.id === session.profileId)).gate;
-  await storage.setItems([
-    { item: activeSession, value: withPass(session, recipeId, Date.now(), passMinutes) },
-    { item: gateVisits, value: withGateVisitContinued(visits, visitId, intention) },
-  ]);
-  await syncRedirectsNow();
+    const { passMinutes } = redirectSettingsFor(profileList.find((p) => p.id === session.profileId)).gate;
+    await storage.setItems([
+      { item: activeSession, value: withPass(session, recipeId, Date.now(), passMinutes) },
+      { item: gateVisits, value: withGateVisitContinued(visits, visitId, intention) },
+    ]);
+    return true;
+  });
+  if (continued) await syncRedirectsNow();
 }
 
 /** Saves the one-tap answer to "why are you here?" on a visit. */
 export async function setVisitWhy(visitId: string, why: WhyReason | undefined): Promise<void> {
-  await gateVisits.setValue(withGateVisitWhy(await gateVisits.getValue(), visitId, why));
+  await inTurn(async () => gateVisits.setValue(withGateVisitWhy(await gateVisits.getValue(), visitId, why)));
 }
 
 export async function addOwnQuote(text: string, author: string): Promise<void> {
   const quote = { id: crypto.randomUUID(), text: text.trim(), ...(author.trim() ? { author: author.trim() } : {}) };
   if (!quote.text) return;
-  await ownQuotes.setValue([...(await ownQuotes.getValue()), quote]);
+  await inTurn(async () => ownQuotes.setValue([...(await ownQuotes.getValue()), quote]));
 }
 
 export async function removeOwnQuote(id: string): Promise<void> {
-  await ownQuotes.setValue((await ownQuotes.getValue()).filter((quote) => quote.id !== id));
+  await inTurn(async () => ownQuotes.setValue((await ownQuotes.getValue()).filter((quote) => quote.id !== id)));
 }

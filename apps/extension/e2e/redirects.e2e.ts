@@ -9,6 +9,7 @@ import {
   setStored,
   startSession,
   stored,
+  storedWhen,
   text,
   urls,
   visibility,
@@ -49,8 +50,7 @@ describe('redirects and the intention gate', () => {
     const popup = await openPopup(t, tab);
     const deepWork = await popup.$$('button.profile').then((buttons) => buttons[1]!);
     await deepWork.click();
-    await popup.waitForSelector('.elapsed');
-    await wait(300);
+    await storedWhen(popup, (storage) => storage.activeSession?.profileId === 'deep-work');
 
     await tab.goto(urls.reddit);
     await tab.waitForSelector('h1');
@@ -118,6 +118,7 @@ describe('redirects and the intention gate', () => {
     const { activeSession } = await stored(popup);
     await setStored(popup, { activeSession: { ...activeSession, passes: { reddit: Date.now() + 1500 } } });
 
+    // A real wait: the background wakes up for the pass running out by itself.
     await wait(3000);
     await tab.goto(urls.reddit);
     expect(tab.url()).toBe(gate(urls.reddit));
@@ -126,7 +127,7 @@ describe('redirects and the intention gate', () => {
   it('stops redirecting when the session ends', async () => {
     const popup = await openPopup(t, tab);
     await popup.click('button.end');
-    await wait(300);
+    await storedWhen(popup, (storage) => !storage.activeSession);
 
     await tab.goto(urls.reddit);
     expect(tab.url()).toBe(urls.reddit);
