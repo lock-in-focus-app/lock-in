@@ -9,8 +9,9 @@ import TimerEditor from './TimerEditor.vue';
 import Unfold from './Unfold.vue';
 
 defineProps<{ profiles: ProfileSummary[]; canHideApps: boolean }>();
+// Only for setting profiles up. Sessions start from the Sky (SkyPage.vue), which keeps this
+// page's purpose clear.
 const emit = defineEmits<{
-  start: [profileId: string];
   'set-timer': [profileId: string, timer: TimerSettings];
   'set-apps': [profileId: string, apps: AppRule[]];
   'set-star-color': [profileId: string, color: string];
@@ -50,11 +51,12 @@ function summary(profile: ProfileSummary): string {
 
 <template>
   <section>
-    <p class="label">Start a session</p>
+    <h2>Profiles</h2>
+    <p class="label">Set up how each session works. Sessions start from the Sky.</p>
     <ul>
       <li v-for="profile in profiles" :key="profile.id">
         <div v-tilt class="row">
-          <button class="profile" type="button" @click="emit('start', profile.id)">
+          <div class="profile">
             <span class="name">
               <span class="star" :style="{ color: starColorFor(profile.id, profile.starColor) }" aria-hidden="true"
                 >✦</span
@@ -62,7 +64,7 @@ function summary(profile: ProfileSummary): string {
               {{ profile.name }}
             </span>
             <span class="summary">{{ summary(profile) }}</span>
-          </button>
+          </div>
           <button
             class="edit"
             type="button"
@@ -123,9 +125,15 @@ function summary(profile: ProfileSummary): string {
 </template>
 
 <style scoped>
+h2 {
+  margin: 0 0 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .label,
 .help {
-  margin: 0 0 8px;
+  margin: 0 0 12px;
   color: var(--dim);
   font-size: 12px;
 }
@@ -153,14 +161,8 @@ ul {
   flex: 1;
   display: grid;
   gap: 2px;
+  min-width: 0;
   padding: 8px 10px;
-  text-align: left;
-  background: none;
-  transition: transform 150ms;
-}
-
-.profile:active {
-  transform: scale(0.98);
 }
 
 .name {
@@ -210,7 +212,6 @@ ul {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .profile,
   .edit {
     transition: none;
   }

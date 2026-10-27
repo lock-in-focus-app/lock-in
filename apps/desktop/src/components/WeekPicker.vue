@@ -27,6 +27,8 @@ const addMonths = (month: number, count: number) => {
 
 const month = ref(firstOfMonth(props.selected));
 const nextMonth = computed(() => addMonths(month.value, 1));
+const slide = ref<'month-forward' | 'month-back'>('month-forward');
+watch(month, (to, from) => (slide.value = to > from ? 'month-forward' : 'month-back'));
 const title = computed(() => new Date(month.value).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
 
 /** The weeks that touch the month, each with its seven days. */
@@ -72,7 +74,7 @@ const weekLabel = (start: number) =>
 </script>
 
 <template>
-  <div class="picker" role="dialog" aria-label="Pick a week" @keydown.esc.stop="emit('close')">
+  <div class="card picker" role="dialog" aria-label="Pick a week" @keydown.esc.stop="emit('close')">
     <div class="months">
       <button
         type="button"
@@ -97,30 +99,35 @@ const weekLabel = (start: number) =>
     <div class="row weekdays" aria-hidden="true">
       <span v-for="(weekday, i) in weekdays" :key="i">{{ weekday }}</span>
     </div>
-    <button
-      v-for="week in weeks"
-      :key="week.start"
-      type="button"
-      class="row week"
-      :class="{ selected: week.start === selected }"
-      :aria-label="weekLabel(week.start)"
-      :aria-current="week.start === selected ? 'true' : undefined"
-      :disabled="!canPick(week.start)"
-      @click="emit('pick', week.start)"
-    >
-      <span
-        v-for="day in week.days"
-        :key="day.getTime()"
-        class="day"
-        :class="{
-          outside: day.getMonth() !== new Date(month).getMonth(),
-          today: dayKey(day) === today,
-          focused: focusedDays.has(dayKey(day)),
-        }"
-      >
-        {{ day.getDate() }}
-      </span>
-    </button>
+    <!-- Months slide in from the side of the arrow that was pressed. -->
+    <Transition :name="slide" mode="out-in">
+      <div :key="month" class="weeks">
+        <button
+          v-for="week in weeks"
+          :key="week.start"
+          type="button"
+          class="row week"
+          :class="{ selected: week.start === selected }"
+          :aria-label="weekLabel(week.start)"
+          :aria-current="week.start === selected ? 'true' : undefined"
+          :disabled="!canPick(week.start)"
+          @click="emit('pick', week.start)"
+        >
+          <span
+            v-for="day in week.days"
+            :key="day.getTime()"
+            class="day"
+            :class="{
+              outside: day.getMonth() !== new Date(month).getMonth(),
+              today: dayKey(day) === today,
+              focused: focusedDays.has(dayKey(day)),
+            }"
+          >
+            {{ day.getDate() }}
+          </span>
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -128,10 +135,47 @@ const weekLabel = (start: number) =>
 .picker {
   display: grid;
   gap: 2px;
-  margin-top: 12px;
   padding: 12px;
-  border-radius: 12px;
-  background: var(--sky-raised);
+}
+
+.weeks {
+  display: grid;
+  gap: 2px;
+}
+
+.month-forward-enter-active,
+.month-back-enter-active {
+  transition:
+    opacity 320ms ease,
+    transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.month-forward-leave-active,
+.month-back-leave-active {
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease-in;
+}
+
+.month-forward-enter-from,
+.month-back-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.month-forward-leave-to,
+.month-back-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .month-forward-enter-from,
+  .month-forward-leave-to,
+  .month-back-enter-from,
+  .month-back-leave-to {
+    transform: none;
+  }
 }
 
 .months {
