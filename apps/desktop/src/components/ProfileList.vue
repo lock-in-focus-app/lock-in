@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProfileSummary, TimerEnd, TimerSettings } from '@lock-in/core';
+import type { ProfileSummary, Strictness, TimerEnd, TimerSettings } from '@lock-in/core';
 import { ref } from 'vue';
 import TimerEditor from './TimerEditor.vue';
 
@@ -14,8 +14,15 @@ const endLabels: Record<TimerEnd, string> = {
   alert: 'notification and sound',
 };
 
+const strictnessLabels: Record<Strictness, string> = {
+  gentle: '',
+  medium: ' · Medium',
+  hard: ' · Hard',
+};
+
 function timerSummary(timer: TimerSettings): string {
-  return timer.minutes > 0 ? `${timer.minutes} min timer · ${endLabels[timer.onEnd]}` : 'No timer';
+  if (timer.minutes <= 0) return 'No timer';
+  return `${timer.minutes} min timer${strictnessLabels[timer.strictness]} · ${endLabels[timer.onEnd]}`;
 }
 </script>
 
