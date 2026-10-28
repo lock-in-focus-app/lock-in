@@ -25,4 +25,9 @@ canHideApps: boolean,
  * Satellites in orbit, back or on the task list, and tasks ticked off in the last day,
  * oldest first.
  */
-satellites: Array<Satellite>, };
+satellites: Array<Satellite>, 
+/**
+ * Whether a satellite has ever been launched, here or in the browser. Until one is, the
+ * launch box says what satellites are (PLAN §4).
+ */
+launchedSatellite: boolean, };

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
-import { formatDuration, starColorFor } from '@lock-in/core';
+import { formatDuration, hotkeyLabel, starColorFor } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
+import { mac } from '../app';
 import ExploreView from './ExploreView.vue';
 import LaunchDock from './LaunchDock.vue';
 import SatelliteLaunch from './SatelliteLaunch.vue';
+import SatelliteOrbits from './SatelliteOrbits.vue';
 import SatellitesBack from './SatellitesBack.vue';
 import SatellitesView from './SatellitesView.vue';
 import SessionView from './SessionView.vue';
@@ -21,6 +23,8 @@ const props = defineProps<{
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   /** The satellite box's hotkey, for the launch box's hint. */
   satelliteHotkey: string;
+  /** Whether a satellite has ever been launched. Until one is, the launch box says what they are. */
+  launchedSatellite: boolean;
   starCount: number;
   /** What the top of the page shows: the date, a quote for the day, time locked in today, and the streak running now. */
   glance: { date: string; quote?: { text: string; author?: string }; lockedInMs: number; streak: number };
@@ -80,6 +84,8 @@ const sessionColor = computed(() => {
   return starColorFor(id, props.profiles.find((profile) => profile.id === id)?.starColor);
 });
 
+const orbitingIds = computed(() => props.satellites.orbiting.map((satellite) => satellite.id));
+
 const showingTasks = ref(false);
 const taskCount = computed(() => props.satellites.orbiting.length + props.satellites.tasks.length);
 const hasTasks = computed(() => taskCount.value > 0 || props.satellites.done.length > 0);
@@ -132,6 +138,13 @@ watch(
         <!-- Thoughts for later, together: what came back after the last session, the task list
              (opened from Tasks below), and the launch box. -->
         <div class="card thoughts">
+          <!-- The thoughts in orbit circle the frame. The orbits only just reach past it, to stay
+               in the window and clear of the profiles above. -->
+          <SatelliteOrbits
+            :ids="orbitingIds"
+            :shape="{ x: [2, 9], y: [2, 6], tilt: [-2, 2], period: [36, 64] }"
+            :max="12"
+          />
           <Unfold>
             <SatellitesBack
               v-if="!session && satellites.back.length"
@@ -149,6 +162,22 @@ watch(
                 @act="(id, action) => emit('act', id, action)"
               />
             </div>
+          </Unfold>
+          <!-- Until the first satellite, a quiet line on what they are, with one circling the
+               timer. It folds away once one is launched. -->
+          <Unfold>
+            <p v-if="!launchedSatellite" class="part first">
+              <span class="emblem" aria-hidden="true"
+                ><span><span /></span
+              ></span>
+              <span>
+                <b class="mono">Satellites · thoughts for later</b><br />
+                Launch a passing thought here and it waits in orbit until your session ends.
+                <template v-if="satelliteHotkey"
+                  >{{ hotkeyLabel(satelliteHotkey, mac) }} launches one from anywhere.</template
+                >
+              </span>
+            </p>
           </Unfold>
           <SatelliteLaunch :session-running="!!session" :hotkey="satelliteHotkey" @launch="emit('launch', $event)" />
         </div>
@@ -278,10 +307,82 @@ figcaption::before {
   --t: var(--tick-bright);
 }
 
+/* Above the satellites passing behind the frame, and below those passing in front. */
+.orbits {
+  --behind: -2;
+  --in-front: 1;
+  inset: 0;
+}
+
 /* Hairlines between what came back, the task list and the launch box. */
 .part {
   padding: 4px 0 6px;
   border-bottom: 1px solid var(--line);
+}
+
+.first {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  color: var(--dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.first .mono {
+  font-weight: 400;
+}
+
+/* A tiny satellite circling a dot for the timer, on a flat orbit. */
+.emblem {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 4px;
+}
+
+.emblem::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--glint);
+  box-shadow: 0 0 6px var(--glint);
+}
+
+.emblem span {
+  position: absolute;
+  inset: 0;
+}
+
+/* Turning a circle and squashing it makes the orbit. */
+.emblem > span {
+  scale: 1 0.45;
+}
+
+.emblem span span {
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  animation: circle 9s linear infinite;
+}
+
+.emblem span span::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: calc(50% - 2px);
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: linear-gradient(#f6ead0, #bfa874);
+  box-shadow: 0 0 5px rgb(225 230 255 / 0.4);
+}
+
+@keyframes circle {
+  to {
+    rotate: 1turn;
+  }
 }
 
 .middle {
@@ -395,6 +496,10 @@ figcaption::before {
 
   .caret {
     transition: none;
+  }
+
+  .emblem span span {
+    animation: none;
   }
 }
 </style>

@@ -13,11 +13,15 @@ const props = defineProps<{
 const emit = defineEmits<{ launch: [text: string] }>();
 
 const text = ref('');
+// A launched thought lifts off out of the box, which is clear at once for the next one.
+const lifting = ref<{ key: number; text: string }[]>([]);
 function launch() {
   if (!text.value.trim()) return;
   emit('launch', text.value);
+  lifting.value = [...lifting.value, { key: Date.now(), text: text.value }];
   text.value = '';
 }
+const lifted = (key: number) => (lifting.value = lifting.value.filter((thought) => thought.key !== key));
 
 const placeholder = computed(() =>
   props.sessionRunning ? 'Park it until this session ends' : 'Park a thought for later',
@@ -32,13 +36,24 @@ const hint = computed(
 <template>
   <form class="launch" :title="hint" @submit.prevent="launch">
     <span class="prompt" aria-hidden="true">›</span>
-    <input
-      v-model="text"
-      :maxlength="maxSatelliteLength"
-      :placeholder="placeholder"
-      :aria-label="`Launch a satellite. ${hint}`"
-      autocomplete="off"
-    />
+    <span class="field">
+      <input
+        v-model="text"
+        :maxlength="maxSatelliteLength"
+        :placeholder="placeholder"
+        :aria-label="`Launch a satellite. ${hint}`"
+        :class="{ clearing: lifting.length }"
+        autocomplete="off"
+      />
+      <span
+        v-for="thought in lifting"
+        :key="thought.key"
+        class="lifting"
+        aria-hidden="true"
+        @animationend="lifted(thought.key)"
+        >{{ thought.text }}</span
+      >
+    </span>
     <button class="mono" type="submit" :disabled="!text.trim()">↵ Launch</button>
   </form>
 </template>
@@ -56,6 +71,13 @@ const hint = computed(
   font: 12px var(--mono);
 }
 
+.field {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
 input {
   flex: 1;
   min-width: 0;
@@ -71,6 +93,49 @@ input {
 
 input::placeholder {
   color: var(--faint);
+  transition: color 400ms;
+}
+
+/* The placeholder waits until the thought has gone. */
+input.clearing::placeholder {
+  color: transparent;
+}
+
+/* The thought, lifting up and out of focus as it goes. */
+.lifting {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: var(--starlight);
+  font: 12px var(--mono);
+  white-space: pre;
+  pointer-events: none;
+  animation: lift 700ms var(--ease) both;
+}
+
+@keyframes lift {
+  35% {
+    opacity: 1;
+    filter: none;
+  }
+
+  to {
+    translate: 0 -14px;
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+@keyframes fade {
+  35% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 button {
@@ -86,5 +151,11 @@ button:hover:not(:disabled) {
 
 button:disabled {
   cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lifting {
+    animation-name: fade;
+  }
 }
 </style>

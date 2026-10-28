@@ -172,6 +172,15 @@ impl Store {
         Ok(added > 0)
     }
 
+    /// Whether a satellite has ever been saved, deleted ones included.
+    pub fn any_satellites(&self) -> Result<bool> {
+        let found = self
+            .db
+            .query_row("SELECT 1 FROM satellites LIMIT 1", [], |_| Ok(()))
+            .optional()?;
+        Ok(found.is_some())
+    }
+
     /// Moves a satellite to `state`, counting snoozes and when it first became a task.
     pub fn move_satellite(&self, id: &str, state: SatelliteState, now: i64) -> Result<()> {
         let extra = match state {
