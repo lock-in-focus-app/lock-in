@@ -98,15 +98,19 @@ export function stardust(sessions: readonly SessionRecord[]): number {
   return Math.floor(minutes);
 }
 
-/**
- * How much of the Milky Way has filled in, from 0 to 1, from all the time focused (overtime
- * included, broken sessions not). It fills in quickest at first, so the first hours show, and is
- * all there by 1,500 hours: years of focus.
- */
-export function milkyWay(sessions: readonly SessionRecord[]): number {
+/** All the time ever focused, overtime included and broken sessions not. */
+export function lifetimeFocusMs(sessions: readonly SessionRecord[]): number {
   let focusedMs = 0;
   for (const session of sessions) if (!session.broken) focusedMs += session.focusedMs + session.overtimeMs;
-  return Math.min(1, Math.sqrt(focusedMs / (fullMilkyWayHours * 60 * minuteMs)));
+  return focusedMs;
+}
+
+/**
+ * How much of the Milky Way has filled in, from 0 to 1, from all the time focused. It fills in
+ * quickest at first, so the first hours show, and is all there by 1,500 hours: years of focus.
+ */
+export function milkyWay(sessions: readonly SessionRecord[]): number {
+  return Math.min(1, Math.sqrt(lifetimeFocusMs(sessions) / (fullMilkyWayHours * 60 * minuteMs)));
 }
 
 /**

@@ -145,7 +145,7 @@ input {
 }
 
 input:focus {
-  --t: rgb(220 228 255 / 0.85);
+  --t: var(--tick-bright);
 }
 
 .choices {

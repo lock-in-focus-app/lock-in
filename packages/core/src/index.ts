@@ -76,8 +76,10 @@ export {
 } from './settings';
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';
+export { glowColors, glowFor, nextGlow, unlockedGlows, type GlowColor } from './glow';
 export {
   isStarColor,
+  lifetimeFocusMs,
   milkyWay,
   newStarColor,
   seeded,

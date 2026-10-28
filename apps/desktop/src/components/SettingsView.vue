@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { KnownBrowser, Settings } from '@lock-in/core';
+import { glowFor, nextGlow, unlockedGlows } from '@lock-in/core';
+import { computed } from 'vue';
+import GlowPicker from './GlowPicker.vue';
 import NumberField from './NumberField.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
 
@@ -8,6 +11,8 @@ const props = defineProps<{
   passesLeft: number;
   browsers: KnownBrowser[];
   sessionRunning: boolean;
+  /** All the time ever focused, which unlocks glow colors. */
+  lifetimeFocusMs: number;
 }>();
 const emit = defineEmits<{
   'update:settings': [settings: Settings];
@@ -19,12 +24,25 @@ const emit = defineEmits<{
 const development = import.meta.env.DEV;
 
 // The sections are numbered in order, like the weekly report's.
-const sections = ['sessions', 'browsers', 'sky', ...(development ? ['sample'] : [])];
+const sections = ['sessions', 'browsers', 'sky', 'glow', ...(development ? ['sample'] : [])];
 const numbered = (section: string) => String(sections.indexOf(section) + 1).padStart(2, '0');
 
 function save(patch: Partial<Settings>) {
   emit('update:settings', { ...props.settings, ...patch });
 }
+
+// Glow colors come quietly with lifetime focus: only the ones unlocked are shown, with when the
+// next one comes, in hours.
+const glows = computed(() => unlockedGlows(props.lifetimeFocusMs));
+const glow = computed(() => glowFor(props.settings.glow, props.lifetimeFocusMs));
+const hoursSoFar = computed(() => Math.floor(props.lifetimeFocusMs / 3_600_000).toLocaleString());
+const glowHelp = computed(() => {
+  const next = nextGlow(props.lifetimeFocusMs);
+  const soFar = `${hoursSoFar.value} ${hoursSoFar.value === '1' ? 'hour' : 'hours'}`;
+  return next
+    ? `For the frames' corners and the tabs' dot. More colors come with lifetime focus: ${soFar} so far, and the next at ${next.hours.toLocaleString()} hours.`
+    : `For the frames' corners and the tabs' dot. Every color is unlocked, with ${soFar} of focus.`;
+});
 </script>
 
 <template>
@@ -121,6 +139,20 @@ function save(patch: Partial<Settings>) {
           The stars twinkle 30 times a second instead of 60, so they're a little less smooth. Either way, the sky pauses
           while this window isn't the one you're using, and stops when it's closed.
         </p>
+      </div>
+    </section>
+
+    <section class="read" aria-labelledby="glow">
+      <h2 id="glow" class="mono">{{ numbered('glow') }} — Glow color</h2>
+      <div class="field">
+        <div class="line">
+          <span
+            >{{ glow.name }}<span v-if="glow.hours === 0" class="faint mono"> · default</span
+            ><span v-else class="faint mono"> · {{ glow.hours.toLocaleString() }} hours</span></span
+          >
+          <GlowPicker :glows="glows" :picked="glow.id" @pick="save({ glow: $event })" />
+        </div>
+        <p class="help">{{ glowHelp }}</p>
       </div>
     </section>
 

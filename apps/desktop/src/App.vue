@@ -18,6 +18,8 @@ import {
   dayStart,
   seeded,
   formatDuration,
+  glowFor,
+  lifetimeFocusMs,
   milkyWay,
   planets,
   rareEvents,
@@ -32,7 +34,7 @@ import {
   weekMonth,
   weekStart,
 } from '@lock-in/core';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import {
   actOnSatellite,
   addSampleData,
@@ -322,6 +324,20 @@ const glance = computed(() => {
 });
 const totalStardust = computed(() => stardust(sessions.value));
 const milkyWayFill = computed(() => milkyWay(sessions.value));
+// The glow color picked in Settings, if lifetime focus has unlocked it, for the frames' corner
+// ticks and the tabs' dot. Starlight is the theme's own, so it's left to the stylesheet.
+const lifetimeFocus = computed(() => lifetimeFocusMs(sessions.value));
+const glow = computed(() => glowFor(snapshot.value?.settings.glow ?? '', lifetimeFocus.value));
+watchEffect(() => {
+  const root = document.documentElement.style;
+  if (glow.value.hours === 0) {
+    root.removeProperty('--glint');
+    root.removeProperty('--dot');
+  } else {
+    root.setProperty('--glint', glow.value.color);
+    root.setProperty('--dot', glow.value.color);
+  }
+});
 // Exploring shows it clear; otherwise it's hazy between sessions.
 const clarity = computed(() =>
   exploring.value ? 1 : skyClarity(now.value, !!snapshot.value?.session, log.value[log.value.length - 1]),
@@ -464,6 +480,7 @@ async function run(action: () => Promise<void>) {
           :passes-left="snapshot.passesLeft"
           :browsers="snapshot.browsers"
           :session-running="!!snapshot.session"
+          :lifetime-focus-ms="lifetimeFocus"
           @update:settings="(settings: Settings) => run(() => setSettings(settings))"
           @forget-browser="(path: string) => run(() => forgetBrowser(path))"
           @sample-data="sampleData"
@@ -550,8 +567,8 @@ h1 {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--starlight);
-  box-shadow: 0 0 6px var(--starlight);
+  background: var(--dot);
+  box-shadow: 0 0 6px var(--dot);
   transition: translate 500ms var(--ease);
 }
 

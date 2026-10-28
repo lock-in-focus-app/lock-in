@@ -171,7 +171,7 @@ p {
 }
 
 .naming input:focus {
-  --t: rgb(220 228 255 / 0.85);
+  --t: var(--tick-bright);
 }
 
 /* A faint crosshair in the middle, where zooming goes toward and naming points. */

@@ -23,4 +23,10 @@ closeBrowsers: boolean,
  * Whether the sky in the window animates at 30 frames a second instead of 60, to save
  * battery. It pauses whenever the window isn't focused either way.
  */
-batterySaver: boolean, };
+batterySaver: boolean, 
+/**
+ * The color of the frames' corner ticks and the tabs' dot, by its id in the core package's
+ * `glowColors`. Colors past the first come with lifetime focus hours; the app shows the
+ * default if this one isn't unlocked (or isn't known).
+ */
+glow: string, };

@@ -19,10 +19,15 @@ pub struct Settings {
     /// Whether the sky in the window animates at 30 frames a second instead of 60, to save
     /// battery. It pauses whenever the window isn't focused either way.
     pub battery_saver: bool,
+    /// The color of the frames' corner ticks and the tabs' dot, by its id in the core package's
+    /// `glowColors`. Colors past the first come with lifetime focus hours; the app shows the
+    /// default if this one isn't unlocked (or isn't known).
+    pub glow: String,
 }
 
 pub const MAX_PASSES_PER_WEEK: u32 = 14;
 pub const MAX_IDLE_MINUTES: u32 = 120;
+pub const DEFAULT_GLOW: &str = "starlight";
 
 impl Default for Settings {
     fn default() -> Self {
@@ -31,6 +36,7 @@ impl Default for Settings {
             idle_minutes: 15,
             close_browsers: false,
             battery_saver: false,
+            glow: DEFAULT_GLOW.into(),
         }
     }
 }
@@ -40,6 +46,11 @@ impl Settings {
     pub fn clamped(mut self) -> Self {
         self.passes_per_week = self.passes_per_week.min(MAX_PASSES_PER_WEEK);
         self.idle_minutes = self.idle_minutes.min(MAX_IDLE_MINUTES);
+        // A glow is only ever a short id like "aurora", so anything else goes back to the default.
+        let id_like = |c: char| c.is_ascii_lowercase() || c == '-';
+        if self.glow.is_empty() || self.glow.len() > 32 || !self.glow.chars().all(id_like) {
+            self.glow = DEFAULT_GLOW.into();
+        }
         self
     }
 }
@@ -59,7 +70,24 @@ mod tests {
                 idle_minutes: 10,
                 close_browsers: true,
                 battery_saver: false,
+                glow: DEFAULT_GLOW.into(),
             }
         );
+    }
+
+    #[test]
+    fn a_glow_that_isnt_an_id_goes_back_to_the_default() {
+        for glow in ["", "Aurora", "red; color: blue", &"a".repeat(33)] {
+            let settings = Settings {
+                glow: glow.into(),
+                ..Settings::default()
+            };
+            assert_eq!(settings.clamped().glow, DEFAULT_GLOW, "{glow:?}");
+        }
+        let aurora = Settings {
+            glow: "aurora".into(),
+            ..Settings::default()
+        };
+        assert_eq!(aurora.clamped().glow, "aurora");
     }
 }
