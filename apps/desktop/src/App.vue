@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
   AppRule,
+  Constellation,
   GateVisitRecord,
   SatelliteAction,
   SatelliteState,
@@ -15,6 +16,7 @@ import {
   constellationNames,
   constellations,
   formatDuration,
+  milkyWay,
   planets,
   rareEvents,
   sessionSoFar,
@@ -57,6 +59,7 @@ import NightSky, {
   type SkyEvent,
   type SkyPlanet,
   type SkySatellite,
+  type SkyStar,
 } from './components/NightSky.vue';
 import ProfileList from './components/ProfileList.vue';
 import SettingsView from './components/SettingsView.vue';
@@ -70,6 +73,7 @@ type View = 'sky' | 'profiles' | 'week' | 'settings';
 const view = ref<View>('sky');
 // Explore clears everything off the Sky page, so the sky is on its own.
 const exploring = ref(false);
+const nightSky = ref<InstanceType<typeof NightSky>>();
 watch(view, (to) => to !== 'sky' && (exploring.value = false));
 // The week the report is showing, so the sky can line its constellations up behind it.
 const reportWeek = ref<number>();
@@ -142,25 +146,39 @@ const loadNames = async () => {
 };
 onMounted(() => run(loadNames));
 const skyStars = computed(() => stars(sessions.value));
+// While a session goes on this is worked out again every minute, so weeks that haven't changed
+// are handed back as they were, along with their stars as drawn (until a star color changes).
+let lastWeeks: Constellation[] = [];
+const weeks = computed(() =>
+  firstDay.value === undefined ? [] : (lastWeeks = constellations(skyStars.value, firstDay.value, lastWeeks)),
+);
+let drawnStars = { colors: '', of: new WeakMap<Constellation, SkyStar[]>() };
 const skyConstellations = computed<(SkyConstellation & { named: boolean })[]>(() => {
-  if (firstDay.value === undefined) return [];
   const colors = new Map(snapshot.value?.profiles.map((p) => [p.id, p.starColor]));
-  const list = constellations(skyStars.value, firstDay.value);
-  const named = constellationNames(list, names.value);
-  return list.map((constellation, i) => ({
-    id: constellation.id,
-    name: named[i]!,
-    named: names.value.has(constellation.id),
-    weekStart: constellation.weekStart,
-    lines: constellation.lines,
-    stars: constellation.stars.map((star, j) => ({
-      id: star.id,
-      ...constellation.points[j]!,
-      color: starColorFor(star.profileId, colors.get(star.profileId)),
-      magnitude: starMagnitude(star),
-      sparkle: starSparkle(star),
-    })),
-  }));
+  const colorsKey = JSON.stringify([...colors]);
+  if (colorsKey !== drawnStars.colors) drawnStars = { colors: colorsKey, of: new WeakMap() };
+  const named = constellationNames(weeks.value, names.value);
+  return weeks.value.map((constellation, i) => {
+    let drawn = drawnStars.of.get(constellation);
+    if (!drawn) {
+      drawn = constellation.stars.map((star, j) => ({
+        id: star.id,
+        ...constellation.points[j]!,
+        color: starColorFor(star.profileId, colors.get(star.profileId)),
+        magnitude: starMagnitude(star),
+        sparkle: starSparkle(star),
+      }));
+      drawnStars.of.set(constellation, drawn);
+    }
+    return {
+      id: constellation.id,
+      name: named[i]!,
+      named: names.value.has(constellation.id),
+      weekStart: constellation.weekStart,
+      lines: constellation.lines,
+      stars: drawn,
+    };
+  });
 });
 // Comets and rare events, worked out from the log, trips that went back to focus and this
 // device's secret.
@@ -265,6 +283,7 @@ const rename = (id: string, name: string) =>
     await loadNames();
   });
 const totalStardust = computed(() => stardust(sessions.value));
+const milkyWayFill = computed(() => milkyWay(sessions.value));
 // Exploring shows it clear; otherwise it's hazy between sessions.
 const clarity = computed(() =>
   exploring.value ? 1 : skyClarity(now.value, !!snapshot.value?.session, log.value[log.value.length - 1]),
@@ -307,8 +326,10 @@ async function run(action: () => Promise<void>) {
 
 <template>
   <NightSky
+    ref="nightSky"
     :constellations="skyConstellations"
     :planets="skyPlanets"
+    :milky-way="milkyWayFill"
     :clarity="clarity"
     :drift="exploring"
     :names="view === 'sky' && exploring"
@@ -354,6 +375,7 @@ async function run(action: () => Promise<void>) {
           @pass="run(spendEmergencyPass)"
           @launch="launch"
           @act="act"
+          @zoom="(factor: number) => nightSky?.zoom(factor)"
         />
         <ProfileList
           v-else-if="view === 'profiles'"

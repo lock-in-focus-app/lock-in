@@ -84,6 +84,22 @@ describe('constellations', () => {
     expect(reached.size).toBe(12);
     expect(constellations([star(0)])[0]!.lines).toEqual([]);
   });
+
+  it('hands back the same constellations for weeks that haven’t changed', () => {
+    const sky = [star(0), star(1), star(7), star(8)];
+    const before = constellations(sky);
+    // A session going on this week: its star grows.
+    const growing = { ...sky[3]!, endedAt: sky[3]!.endedAt + MIN, focusedMs: sky[3]!.focusedMs + MIN };
+    const after = constellations(
+      [...sky.slice(0, 3), growing].map((s) => ({ ...s })),
+      1,
+      before,
+    );
+    expect(after[0]).toBe(before[0]);
+    expect(after[1]).not.toBe(before[1]);
+    expect(after[1]!.stars[1]!.focusedMs).toBe(growing.focusedMs);
+    expect(after).toEqual(constellations([...sky.slice(0, 3), growing]));
+  });
 });
 
 describe('skyPlaces', () => {

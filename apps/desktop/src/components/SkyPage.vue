@@ -26,6 +26,8 @@ const emit = defineEmits<{
   pass: [];
   launch: [text: string];
   act: [id: string, action: SatelliteAction];
+  /** Zoom the sky in (above 1) or out, while exploring. */
+  zoom: [factor: number];
 }>();
 
 const showingTasks = ref(false);
@@ -104,6 +106,10 @@ watch(
         <span class="stats">
           {{ starCount }} {{ starCount === 1 ? 'star' : 'stars' }} · {{ stardust.toLocaleString() }} stardust
         </span>
+        <span class="zoom">
+          <button class="text-button" type="button" aria-label="Zoom in" @click="emit('zoom', 1.6)">+</button>
+          <button class="text-button" type="button" aria-label="Zoom out" @click="emit('zoom', 1 / 1.6)">−</button>
+        </span>
         <button class="text-button" type="button" @click="exploring = false">Done exploring</button>
       </div>
     </Transition>
@@ -168,6 +174,25 @@ watch(
 
 .tasks :deep(section:first-child) {
   margin-top: 0;
+}
+
+.zoom {
+  position: absolute;
+  right: 0;
+  bottom: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zoom .text-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.04);
+  font-size: 16px;
+  line-height: 1;
 }
 
 .explore {

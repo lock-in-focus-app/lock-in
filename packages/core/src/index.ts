@@ -78,6 +78,7 @@ export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';
 export {
   isStarColor,
+  milkyWay,
   newStarColor,
   seeded,
   sessionSoFar,

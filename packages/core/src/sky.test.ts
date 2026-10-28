@@ -3,6 +3,7 @@ import type { ActiveSession } from './generated/ActiveSession';
 import type { SessionRecord } from './generated/SessionRecord';
 import { withNewProfile, withStarColor } from './edits';
 import {
+  milkyWay,
   newStarColor,
   sessionSoFar,
   skyClarity,
@@ -98,6 +99,20 @@ describe('stardust', () => {
     ];
     expect(stardust(sessions)).toBe(50 + 20 + 15 + 2);
     expect(stardust([])).toBe(0);
+  });
+});
+
+describe('milkyWay', () => {
+  it('fills in with all the time focused, quickest at first, and nothing for broken sessions', () => {
+    expect(milkyWay([])).toBe(0);
+    const hours = (n: number, extra: Partial<SessionRecord> = {}) =>
+      session(0, n * 60, { focusedMs: n * 60 * MIN, ...extra });
+    expect(milkyWay([hours(20)])).toBeCloseTo(0.1);
+    expect(milkyWay([hours(20), hours(400, { broken: true })])).toBeCloseTo(0.1);
+    expect(milkyWay([hours(400, { focusedMs: 300 * 60 * MIN, overtimeMs: 100 * 60 * MIN })])).toBeCloseTo(
+      Math.sqrt(0.2),
+    );
+    expect(milkyWay([hours(1500), hours(1500)])).toBe(1);
   });
 });
 
