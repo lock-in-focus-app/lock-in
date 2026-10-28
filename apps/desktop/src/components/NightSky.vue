@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { skyPlaces, type Comet, type Planet, type RareEvent, type RareEventKind } from '@lock-in/core';
+import { seeded, skyPlaces, type Comet, type Planet, type RareEvent, type RareEventKind } from '@lock-in/core';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { forgetPlanets, stampPlanet } from '../planet';
+import { drawSatellite, leaveMs } from '../satellite';
 import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
@@ -25,6 +26,11 @@ import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 //
 // Comets and rare events (skyEvents.ts) play once, the first time they're in `play`. Comets and
 // the nebulae supernovae leave stay beside their week's constellation, behind its stars.
+//
+// Satellites (satellite.ts) slowly circle the constellations on the Sky and while exploring, each
+// on its own orbit, nearest of all. They fade in when launched and out when deleted, and one
+// ticked off drifts away the first time it's in `play`. What one says shows beneath it on hover
+// only with `satelliteText` (exploring between sessions). Under reduced motion they sit still.
 
 export interface SkyStar {
   id: string;
@@ -57,6 +63,12 @@ export type SkyPlanet = Planet & { label: string; tint: string };
 export type SkyComet = Comet & { constellationId: string };
 /** A rare event, with its week's constellation if it has one, where a supernova's nebula stays. */
 export type SkyEvent = RareEvent & { constellationId?: string };
+/** A satellite: a thought in orbit, waiting to be sorted or on the task list, or ticked off (`done`). */
+export interface SkySatellite {
+  id: string;
+  text: string;
+  done: boolean;
+}
 
 const props = defineProps<{
   /** Oldest first. */
@@ -73,7 +85,13 @@ const props = defineProps<{
   week?: number;
   comets?: SkyComet[];
   events?: SkyEvent[];
-  /** Comets (`comet:` and their id) and events (`event:` and their id) to play, the first time they're here. */
+  satellites?: SkySatellite[];
+  /** Whether hovering a satellite shows what it says beneath it. */
+  satelliteText?: boolean;
+  /**
+   * Comets (`comet:` and their id), events (`event:` and their id) and ticked-off satellites
+   * (`satellite:` and their id) to play, the first time they're here.
+   */
   play?: string[];
 }>();
 
@@ -102,6 +120,13 @@ const planetLapMs = 8 * 60_000;
 const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 /** How long after one comet or event starts playing the next one does. */
 const playGapMs = 1400;
+/** How long satellites take to go round, at the quickest, and how much longer some take. */
+const satelliteLapMs = 4 * 60_000;
+const satelliteLapSpreadMs = 3 * 60_000;
+/** How long a satellite takes to fade in when launched, or out when deleted. */
+const satelliteFadeMs = 1500;
+/** The widest a satellite's text is shown, in pixels before the screen's scale. */
+const satelliteTextWidth = 260;
 
 let context: CanvasRenderingContext2D | null = null;
 let frame = 0;
@@ -117,9 +142,11 @@ const sprites = new Map<string, HTMLCanvasElement>();
 /** How far planets have gone round while exploring, in radians. Planets spin and moons go round with it. */
 let orbit = 0;
 /** What's playing for the first time, by its key in `play`, and when it starts (on the animation clock). */
-const plays = new Map<string, { start: number; kind: RareEventKind | 'comet' }>();
+type PlayKind = RareEventKind | 'comet' | 'satellite';
+const plays = new Map<string, { start: number; kind: PlayKind }>();
 /** What has played (or started to), so nothing plays twice. */
 const started = new Set<string>();
+const playLength = (kind: PlayKind) => (kind === 'satellite' ? leaveMs : playMs[kind]);
 
 /**
  * How far something has played, from 0 to 1, while it plays: negative while it waits its turn, and
@@ -127,7 +154,65 @@ const started = new Set<string>();
  */
 function played(key: string, time: number): number | undefined {
   const playing = plays.get(key);
-  return playing && Math.min(1, (time - playing.start) / playMs[playing.kind]);
+  return playing && Math.min(1, (time - playing.start) / playLength(playing.kind));
+}
+
+/**
+ * Where satellites circle: around a middle (as shares of the sky's width and height), reaching
+ * as far across and down as the constellations do (as shares too), and how visible they are.
+ */
+interface Ring {
+  x: number;
+  y: number;
+  across: number;
+  down: number;
+  alpha: number;
+}
+/** Where the ring has got to on its way to where the layout puts it. */
+let ring: Ring | undefined;
+/** A satellite's own orbit, from its id: a tilted ellipse, gone round at its own pace. */
+interface SatelliteOrbit {
+  /** How far across and down it reaches, as shares of the ring's. */
+  across: number;
+  down: number;
+  tilt: number;
+  /** Where it starts (radians), which way it goes round, and how long it takes. */
+  phase: number;
+  direction: 1 | -1;
+  lapMs: number;
+  /** Which way its panels point, and when its light blinks. */
+  angle: number;
+  blink: number;
+}
+function satelliteOrbit(id: string): SatelliteOrbit {
+  const random = seeded(`satellite:${id}`);
+  return {
+    across: 0.55 + random() * 0.4,
+    down: 0.35 + random() * 0.45,
+    tilt: (random() - 0.5) * 0.4,
+    phase: random() * Math.PI * 2,
+    direction: random() < 0.75 ? 1 : -1,
+    lapMs: satelliteLapMs + random() * satelliteLapSpreadMs,
+    angle: (random() - 0.5) * 0.7,
+    blink: random(),
+  };
+}
+/**
+ * The satellites being drawn, by id, with how visible each is (fading in when launched and out
+ * once gone) and how brightly it shines from being hovered, from 0 to 1.
+ */
+const orbiters = new Map<
+  string,
+  { satellite: SkySatellite; orbit: SatelliteOrbit; alpha: number; glow: number; gone: boolean }
+>();
+function syncSatellites(list: readonly SkySatellite[]) {
+  const ids = new Set(list.map((satellite) => satellite.id));
+  for (const satellite of list) {
+    const orbiter = orbiters.get(satellite.id);
+    if (orbiter) Object.assign(orbiter, { satellite, gone: false });
+    else orbiters.set(satellite.id, { satellite, orbit: satelliteOrbit(satellite.id), alpha: 0, glow: 0, gone: false });
+  }
+  for (const [id, orbiter] of orbiters) if (!ids.has(id)) orbiter.gone = true;
 }
 
 /**
@@ -156,6 +241,8 @@ let hovered: string | undefined;
 let drawnBoxes: { id: string; left: number; right: number; top: number; bottom: number }[] = [];
 /** Where each planet was last drawn, in canvas pixels. */
 let drawnPlanets: { key: string; x: number; y: number; radius: number }[] = [];
+/** Where each satellite going round was last drawn, in canvas pixels. */
+let drawnSatellites: { key: string; x: number; y: number }[] = [];
 const planetKey = (planet: SkyPlanet) => `planet:${planet.id}`;
 /** The month a time falls in, counted from year 0, so months can be subtracted. */
 function monthNumber(at: number): number {
@@ -182,8 +269,8 @@ function sprite(color: string): HTMLCanvasElement {
   return glow;
 }
 
-/** Where the layout puts each constellation, for a sky `width` by `height`. */
-function targets(width: number, height: number): Map<string, Place> {
+/** Where the layout puts each constellation and planet, and the satellites' ring, for a sky `width` by `height`. */
+function targets(width: number, height: number): { places: Map<string, Place>; ring: Ring } {
   const places = new Map<string, Place>();
   const list = props.constellations;
   if (props.week !== undefined) {
@@ -215,7 +302,8 @@ function targets(width: number, height: number): Map<string, Place> {
         lift: months === 0 ? 1 : 0,
       });
     }
-    return places;
+    // Satellites stay out of the report.
+    return { places, ring: { ...(ring ?? { x: 0.5, y: 0.35, across: 0.44, down: 0.22 }), alpha: 0 } };
   }
   // Packed close, so the Sky reads as one starry collection, fitted between the header and the
   // cards at the bottom. Exploring clears the cards away, and they spread out into separate
@@ -280,14 +368,30 @@ function targets(width: number, height: number): Map<string, Place> {
       lift: 0,
     });
   });
-  return places;
+  const satelliteRing = {
+    x: middle.x / width,
+    y: middle.y / height,
+    across: (area.right - area.left) / 2 / width,
+    down: (area.bottom - area.top) / 2 / height,
+    alpha: 1,
+  };
+  return { places, ring: satelliteRing };
 }
 
 /** Moves each constellation a step toward where the layout puts it. Returns whether any are still on their way. */
 function glide(elapsed: number, width: number, height: number): boolean {
   const follow = still.matches ? 1 : 1 - Math.exp(-elapsed / (glideMs / 3));
   let moving = false;
-  const goals = targets(width, height);
+  const { places: goals, ring: ringGoal } = targets(width, height);
+  if (!ring) ring = { ...ringGoal };
+  for (const key of ['x', 'y', 'across', 'down', 'alpha'] as const) {
+    const gap = ringGoal[key] - ring[key];
+    if (Math.abs(gap) < 0.0005) ring[key] = ringGoal[key];
+    else {
+      ring[key] += gap * follow;
+      moving = true;
+    }
+  }
   for (const [id, target] of goals) {
     const place = shown.get(id);
     if (!place) {
@@ -319,6 +423,19 @@ function glide(elapsed: number, width: number, height: number): boolean {
       shine.set(id, level + (target - level) * brighten);
       moving = true;
     }
+  }
+  const fade = still.matches ? 1 : 1 - Math.exp(-elapsed / (satelliteFadeMs / 3));
+  for (const [id, orbiter] of orbiters) {
+    const visible = orbiter.gone ? 0 : 1;
+    const glow = `satellite:${id}` === hovered ? 1 : 0;
+    if (orbiter.gone && orbiter.alpha < 0.01) orbiters.delete(id);
+    if (Math.abs(visible - orbiter.alpha) + Math.abs(glow - orbiter.glow) < 0.005) {
+      [orbiter.alpha, orbiter.glow] = [visible, glow];
+      continue;
+    }
+    orbiter.alpha += (visible - orbiter.alpha) * fade;
+    orbiter.glow += (glow - orbiter.glow) * brighten;
+    moving = true;
   }
   return moving;
 }
@@ -484,6 +601,7 @@ function draw(time: number) {
     }
   }
   drawnPlanets = planetSpots;
+  drawnSatellites = drawSatellites(c, time, width, height, haze);
 
   // Shooting stars, meteor showers and auroras, across the whole sky, and a supernova's flare
   // where its week has no constellation for it to stay in.
@@ -513,6 +631,65 @@ function draw(time: number) {
     c.fillRect(0, 0, width, height);
   }
   lastDrawn = time;
+}
+
+/** Draws the satellites going round, nearest of all, and returns where each was drawn. */
+function drawSatellites(c: CanvasRenderingContext2D, time: number, width: number, height: number, haze: number) {
+  const spots: typeof drawnSatellites = [];
+  if (!ring || ring.alpha <= 0.01) return spots;
+  const scale = window.devicePixelRatio || 1;
+  for (const [id, { satellite, orbit, alpha: shownAlpha, glow }] of orbiters) {
+    const key = `satellite:${id}`;
+    const progress = played(key, time);
+    // A ticked-off one goes round as before until it leaves, and is gone after.
+    if (satellite.done && progress === undefined && started.has(key)) continue;
+    const leaving = progress !== undefined && progress >= 0 ? progress : undefined;
+    const away = leaving ?? 0;
+    const turn = still.matches ? 0 : (time / orbit.lapMs) * Math.PI * 2;
+    // Leaving, it speeds up and spirals out.
+    const theta = orbit.phase + orbit.direction * (turn + 1.6 * away * away);
+    const out = 1 + 1.6 * away * away;
+    const across = Math.cos(theta) * ring.across * width * orbit.across * out;
+    const down = Math.sin(theta) * ring.down * height * orbit.down * out;
+    const x = ring.x * width + across * Math.cos(orbit.tilt) - down * Math.sin(orbit.tilt);
+    const y = ring.y * height + across * Math.sin(orbit.tilt) + down * Math.cos(orbit.tilt);
+    // The lower half of its orbit is the near side, so it's a little bigger and brighter there.
+    const near = Math.sin(theta);
+    const at = drifted(x / width, y / height, 1.8);
+    if (!Number.isFinite(at.x + at.y)) continue;
+    const alpha =
+      shownAlpha * ring.alpha * (1 - 0.5 * haze) * (0.7 + 0.3 * near) * (1 - away) ** 1.5 * (0.9 + 0.1 * glow);
+    const spot = { key, x: at.x * width, y: at.y * height };
+    drawSatellite(c, {
+      ...spot,
+      size: 2.2 * scale * (0.85 + 0.15 * near) * (1 + (at.zoom - 1) / 2) * (1 + 0.15 * glow),
+      angle: orbit.tilt + orbit.angle,
+      alpha,
+      blink: orbit.blink,
+      time,
+      still: still.matches,
+      leaving,
+    });
+    if (leaving === undefined) spots.push(spot);
+    if (props.satelliteText && glow > 0.01) {
+      // What it says, beneath it while it's hovered, cut short if it's long.
+      c.globalAlpha = glow * 0.95 * (1 - 0.4 * haze) * ring.alpha;
+      c.fillStyle = '#f3f0e6';
+      const text = fitText(c, satellite.text, satelliteTextWidth * scale);
+      const half = c.measureText(text).width / 2 + 6 * scale;
+      c.fillText(text, Math.min(width - half, Math.max(half, spot.x)), spot.y + 12 * scale);
+    }
+  }
+  c.globalAlpha = 1;
+  return spots;
+}
+
+/** `text`, cut short with an ellipsis to fit in `width` pixels. */
+function fitText(c: CanvasRenderingContext2D, text: string, width: number): string {
+  if (c.measureText(text).width <= width) return text;
+  let length = text.length;
+  while (length > 1 && c.measureText(`${text.slice(0, length).trimEnd()}…`).width > width) length--;
+  return `${text.slice(0, length).trimEnd()}…`;
 }
 
 /**
@@ -545,7 +722,9 @@ function startPlaying(keys: readonly string[]) {
     const found =
       kind === 'comet'
         ? props.comets?.find((c) => c.id === id) && 'comet'
-        : props.events?.find((e) => e.id === id)?.kind;
+        : kind === 'satellite'
+          ? props.satellites?.find((s) => s.id === id && s.done) && 'satellite'
+          : props.events?.find((e) => e.id === id)?.kind;
     if (!found) continue;
     const passing = found === 'shootingStar' || found === 'meteorShower' || found === 'aurora';
     if (still.matches && !passing) continue;
@@ -576,7 +755,7 @@ function tick(time: number) {
     lens.y += (aim.y - lens.y) * follow;
     lens.zoom += (aim.zoom - lens.zoom) * follow;
   }
-  for (const [key, playing] of plays) if (time - playing.start > playMs[playing.kind]) plays.delete(key);
+  for (const [key, playing] of plays) if (time - playing.start > playLength(playing.kind)) plays.delete(key);
   const sky = canvas.value;
   // Places are shares of the sky's size, so they're only worked out while it has one.
   const sized = !!sky && sky.width > 0 && sky.height > 0;
@@ -611,8 +790,12 @@ function hover(event: PointerEvent) {
     const scale = window.devicePixelRatio || 1;
     const x = event.clientX * scale;
     const y = event.clientY * scale;
-    // Planets first, since they're drawn over the stars.
+    // Satellites first, then planets, since they're drawn over the stars.
+    const satellite = props.satelliteText
+      ? drawnSatellites.find((s) => Math.hypot(x - s.x, y - s.y) <= 12 * scale)?.key
+      : undefined;
     found =
+      satellite ??
       [...drawnPlanets].reverse().find((p) => Math.hypot(x - p.x, y - p.y) <= p.radius * 1.3)?.key ??
       drawnBoxes.find((box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)?.id;
   }
@@ -638,8 +821,14 @@ watch(
     props.drift,
     props.comets,
     props.events,
+    props.satellites,
   ],
   wake,
+);
+watch(
+  () => props.satellites,
+  (satellites) => syncSatellites(satellites ?? []),
+  { immediate: true },
 );
 watch(
   () => props.play,
