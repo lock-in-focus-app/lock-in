@@ -8,6 +8,7 @@ import {
   ownSiteRecipe,
   resolveToggles,
   siteFor,
+  siteLevels,
   type Profile,
   type SiteLevel,
   type SiteRecipe,
@@ -83,12 +84,16 @@ const point = (recipeId: string, toggleId?: string) => {
 <template>
   <h2>Sites</h2>
   <p class="help">
-    What happens to each site while {{ profile.name }} is running. Allowed leaves it alone. Tamed keeps it working but
-    hides the distracting parts, which you pick below. Redirected sends you to a Lock In page first, with a way through
-    for a few minutes. Restricted has no way through until the session ends. Page rules give part of a site its own
-    level, like redirecting YouTube Shorts while the rest of YouTube is tamed. Any other site can be added by its
-    address, to be redirected or restricted.
+    What happens to each site while {{ profile.name }} is running. Page rules give part of a site its own level, like
+    redirecting YouTube Shorts while the rest of YouTube is tamed. Any other site can be added by its address at the
+    bottom.
   </p>
+  <dl class="legend">
+    <div v-for="level in siteLevels" :key="level.id">
+      <dt>{{ level.label }}</dt>
+      <dd>{{ level.id === 'tamed' ? `${level.detail} You pick what's hidden under each site.` : level.detail }}</dd>
+    </div>
+  </dl>
   <p v-if="locked" class="help small">While this Hard session runs, sites can only get stricter.</p>
   <ul class="list sites">
     <li v-for="(recipe, i) in listed" :key="recipe.id">
@@ -156,8 +161,37 @@ const point = (recipeId: string, toggleId?: string) => {
 </template>
 
 <style scoped>
+/* What each level does, above the list. */
+.legend {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--sky-hover);
+  border-radius: 10px;
+}
+
+.legend div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+}
+
+.legend dt {
+  font-weight: 600;
+}
+
+.legend dd {
+  margin: 0;
+  color: var(--dim);
+}
+
+.sites {
+  gap: 8px;
+}
+
 .sites li {
-  padding: 10px 12px;
+  padding: 14px 16px;
   border-radius: 10px;
   background: var(--sky-raised);
 }

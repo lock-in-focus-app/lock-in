@@ -106,6 +106,18 @@ export function hasRoomForOwnSite(profile: Profile | undefined): boolean {
   return (profile?.sites.filter((site) => ownSiteDomain(site.recipeId)).length ?? 0) < maxOwnSites;
 }
 
+/** What each level does, in the words the app and the extension both show, least strict first. */
+export const siteLevels: readonly { id: SiteLevel; label: string; detail: string }[] = [
+  { id: 'allowed', label: 'Allowed', detail: 'Left alone.' },
+  { id: 'tamed', label: 'Tamed', detail: 'Stays open, with the distracting parts hidden, like feeds and Shorts.' },
+  {
+    id: 'redirected',
+    label: 'Redirected',
+    detail: 'Sends you to a Lock In page first, with a way through for a few minutes.',
+  },
+  { id: 'restricted', label: 'Restricted', detail: 'Shut, with no way through until the session ends.' },
+];
+
 const strictness: Record<SiteLevel, number> = { allowed: 0, tamed: 1, redirected: 2, restricted: 3 };
 
 /** Whether `level` keeps less away than `than`. */

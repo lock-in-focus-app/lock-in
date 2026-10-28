@@ -6,6 +6,7 @@ import {
   ownSiteDomain,
   ownSiteRecipe,
   siteFor,
+  siteLevels,
   withSiteLevel,
   withSiteRemoved,
 } from '@lock-in/core';
@@ -28,21 +29,15 @@ const own = computed(() =>
 const listed = computed(() => [...recipes, ...own.value]);
 const ruleFor = (id: string) => props.sites.find((site) => site.recipeId === id);
 
-const levelOptions = (recipe: SiteRecipe) => [
-  { id: 'allowed' as const, label: 'Allowed', title: 'Left alone' },
-  {
-    id: 'tamed' as const,
-    label: 'Tamed',
-    title: 'The distracting parts are hidden',
-    disabled: recipe.toggles.length === 0 && ruleFor(recipe.id)?.level !== 'tamed',
-  },
-  {
-    id: 'redirected' as const,
-    label: 'Redirected',
-    title: 'Sent to a Lock In page you can get through for a few minutes',
-  },
-  { id: 'restricted' as const, label: 'Restricted', title: 'Blocked, with no way through until the session ends' },
-];
+// What each level does is spelled out above the list, so nothing depends on hovering.
+const levels = siteLevels;
+// Added sites have nothing to hide, so Tamed is off for them.
+const levelOptions = (recipe: SiteRecipe) =>
+  levels.map((level) => ({
+    id: level.id,
+    label: level.label,
+    disabled: level.id === 'tamed' && recipe.toggles.length === 0 && ruleFor(recipe.id)?.level !== 'tamed',
+  }));
 
 // The edits are the extension's own (packages/core), on this profile's sites alone.
 const edit = (change: (list: Profile[]) => Profile[]) =>
@@ -76,10 +71,16 @@ function add() {
 
 <template>
   <div class="editor">
+    <dl class="legend">
+      <div v-for="level in levels" :key="level.id">
+        <dt class="mono">{{ level.label }}</dt>
+        <dd>{{ level.detail }}</dd>
+      </div>
+    </dl>
     <ul class="sites">
       <li v-for="recipe in listed" :key="recipe.id">
         <span class="name">
-          {{ recipe.name }}
+          <b>{{ recipe.name }}</b>
           <span v-if="pageCount(recipe.id)" class="pages mono">
             + {{ pageCount(recipe.id) }} page {{ pageCount(recipe.id) === 1 ? 'rule' : 'rules' }}
           </span>
@@ -118,7 +119,7 @@ function add() {
     <p v-if="problem" class="problem">{{ problem }}</p>
 
     <p class="help">
-      How each site is treated while this profile runs, in the browser with Lock In's extension. Added sites start out
+      These apply in the browser, through Lock In's extension, while this profile runs. Added sites start out
       redirected, and the browser asks once to let Lock In reach each one. What Tamed hides, and page rules, are set in
       the extension's settings.
     </p>
@@ -127,7 +128,39 @@ function add() {
 
 <style scoped>
 .editor {
-  padding: 6px 0 10px;
+  padding: 10px 0 12px;
+}
+
+/* What each level does: the name in mono, then a line on it. */
+.legend {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgb(11 15 30 / 0.5);
+}
+
+.legend div {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.legend dt {
+  color: var(--dim);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.legend dd {
+  margin: 0;
+  color: var(--faint);
+  font-size: 11.5px;
+  line-height: 1.45;
 }
 
 ul {
@@ -136,40 +169,63 @@ ul {
   list-style: none;
 }
 
+/* Each site: its name (and × for an added one) over a full-width switch, with room to breathe. */
 .sites li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 272px 22px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 8px 10px;
+  padding: 12px 0 14px;
   border-bottom: 1px solid var(--line);
-  font-size: 12.5px;
+  font-size: 13px;
+}
+
+.sites li:last-child {
+  border-bottom: 0;
 }
 
 .name {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.name b {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
 .pages {
-  display: block;
+  flex: none;
   font-size: 9.5px;
 }
 
+.levels {
+  grid-column: 1 / -1;
+}
+
 .levels :deep(button) {
-  padding: 5px 2px;
-  font-size: 9px;
+  padding: 8px 4px;
+}
+
+.key,
+.spacer {
+  grid-row: 1;
+  grid-column: 2;
 }
 
 .key {
-  padding: 2px 0;
+  padding: 2px 8px;
 }
 
 .add {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 input {
@@ -213,16 +269,5 @@ input:focus {
   margin: 10px 0 0;
   color: var(--faint);
   font-size: 11.5px;
-}
-
-@media (max-width: 440px) {
-  .sites li {
-    grid-template-columns: minmax(0, 1fr) 22px;
-  }
-
-  .levels {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
 }
 </style>

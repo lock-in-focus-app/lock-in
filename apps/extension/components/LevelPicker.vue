@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { SiteLevel } from '@lock-in/core';
+import { siteLevels, type SiteLevel } from '@lock-in/core';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -10,20 +10,11 @@ const props = defineProps<{
 }>();
 const level = defineModel<SiteLevel>({ required: true });
 
-const levels = computed(() => [
-  { id: 'allowed' as const, label: 'Allowed', detail: 'Left alone.' },
-  {
-    id: 'tamed' as const,
-    label: 'Tamed',
-    detail: props.canTame ? 'The distracting parts are hidden.' : `Nothing to hide on ${props.siteName} yet.`,
-  },
-  {
-    id: 'redirected' as const,
-    label: 'Redirected',
-    detail: 'Sent to a Lock In page you can get through for a few minutes.',
-  },
-  { id: 'restricted' as const, label: 'Restricted', detail: 'Blocked, with no way through until the session ends.' },
-]);
+const levels = computed(() =>
+  siteLevels.map((level) =>
+    level.id === 'tamed' && !props.canTame ? { ...level, detail: `Nothing to hide on ${props.siteName} yet.` } : level,
+  ),
+);
 const index = computed(() => levels.value.findIndex((l) => l.id === level.value));
 </script>
 

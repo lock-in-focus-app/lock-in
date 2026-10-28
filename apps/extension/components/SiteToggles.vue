@@ -5,6 +5,7 @@ import {
   isLooser,
   ownSiteDomain,
   resolveToggles,
+  siteLevels,
   type Profile,
   type Session,
   type SiteLevel,
@@ -66,6 +67,13 @@ function setLevel(level: SiteLevel) {
 }
 
 // During a session, a site that's open can be kept away for the rest of it, and later ones.
+// What the picked level does, spelled out under the picker.
+const levelDetail = computed(() => {
+  const level = rule.value?.level ?? 'allowed';
+  if (level === 'tamed' && !props.recipe.toggles.length) return `Nothing to hide on ${props.recipe.name} yet.`;
+  return siteLevels.find((l) => l.id === level)?.detail;
+});
+
 const isOpen = computed(() => !isLooser('tamed', rule.value?.level ?? 'allowed'));
 const canKeepAway = computed(() => !!props.session && !!profile.value && !pageRule.value && isOpen.value);
 async function keepAway(level: 'redirected' | 'restricted') {
@@ -106,6 +114,7 @@ function set(toggleId: string, value: boolean) {
       :model-value="rule?.level ?? 'allowed'"
       @update:model-value="setLevel"
     />
+    <p v-if="!session && profile" class="note detail">{{ levelDetail }}</p>
 
     <p v-if="pageRule" class="note">
       This page follows the {{ pageRule.path === '/' ? 'home page' : pageRule.path }} rule: {{ pageRule.level }}.
@@ -188,13 +197,18 @@ select {
   padding: 2px 6px;
 }
 
+.detail {
+  margin-bottom: 8px;
+}
+
 .levels {
-  margin: 6px 0 4px;
+  margin: 8px 0 6px;
   background: var(--sky-raised);
 }
 
 .note {
   margin: 0;
+  line-height: 1.45;
   color: var(--dim);
   font-size: 12px;
 }
