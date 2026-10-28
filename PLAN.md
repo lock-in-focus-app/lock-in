@@ -247,7 +247,7 @@ The desktop window opens on the Sky. Its pages are **Sky · Your week · Profile
 - **The stardust total** sits in the top corner. Later it opens the observing spot's drawer for decorating and companions, so rewards don't need a page of their own.
 
 ### Profiles page
-Only for setting up profiles. Each one is a frame with a port in its star color, its summary and how many stars it has; it opens in place (one at a time) onto Timer, Apps, Sites and Star panels, with instrument-style controls: steppers for numbers, segmented switches for choices, small toggles. Sites points to the extension's settings, where they're set. Panels unfold rather than pop open. It doesn't start sessions, which keeps its purpose clear.
+Only for setting up profiles. Each one is a frame with a port in its star color, its summary and how many stars it has; it opens in place (one at a time) onto Timer, Apps, Sites and Star panels, with instrument-style controls: steppers for numbers, segmented switches for choices (each option saying what it does, with a line above that changes with the pick, so nothing depends on hovering), small toggles. A timer's length (up to 6 hours) is also a ruler under a fixed marker, dragged or clicked like a tuning dial, always showing two hours' worth. Sites points to the extension's settings, where they're set. Panels unfold rather than pop open. It doesn't start sessions, which keeps its purpose clear.
 
 ### Stardust
 - Focus earns stardust: 1 per focused minute, with overtime minutes worth 1.5× (unannounced). The idle tail isn't counted (§2).

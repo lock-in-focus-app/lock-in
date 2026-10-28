@@ -597,8 +597,8 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 }
 
 .edit {
-  opacity: 0;
-  transition: opacity 300ms;
+  color: var(--faint);
+  transition: color 300ms;
 }
 
 .name:hover,
@@ -608,7 +608,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 
 .name:hover .edit,
 .name:focus-visible .edit {
-  opacity: 1;
+  color: var(--dim);
 }
 
 .rename input {
