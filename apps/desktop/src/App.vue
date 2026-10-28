@@ -16,6 +16,7 @@ import {
   constellationNames,
   constellations,
   dayStart,
+  seeded,
   formatDuration,
   milkyWay,
   planets,
@@ -55,6 +56,7 @@ import {
   useNow,
   useSnapshot,
 } from './app';
+import { quotes } from '@lock-in/quotes';
 import NightSky, {
   type SkyComet,
   type SkyConstellation,
@@ -305,17 +307,18 @@ const rename = (id: string, name: string) =>
     await nameConstellation(id, name);
     await loadNames();
   });
-// At a glance on the Sky: the date, the time locked in today (counting the session going on, and
-// time past the timer) and the streak running now. A session counts on the day it started, as in
-// the weekly report.
-const dateFormat = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+// At the top of the Sky: the date, a quote for the day (the same one all day), the time locked in
+// today (counting the session going on, and time past the timer) and the streak running now. A
+// session counts on the day it started, as in the weekly report.
+const dateFormat = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 const glance = computed(() => {
   const at = minute.value * 60_000;
   const today = dayStart(at);
   const lockedInMs = sessions.value
     .filter((session) => session.startedAt >= today)
     .reduce((sum, session) => sum + session.focusedMs + session.overtimeMs, 0);
-  return { date: dateFormat.format(at), lockedInMs, streak: streaks(skyStars.value, at).current };
+  const quote = quotes[Math.floor(seeded(`quote:${today}`)() * quotes.length)];
+  return { date: dateFormat.format(at), quote, lockedInMs, streak: streaks(skyStars.value, at).current };
 });
 const totalStardust = computed(() => stardust(sessions.value));
 const milkyWayFill = computed(() => milkyWay(sessions.value));
@@ -378,7 +381,8 @@ async function run(action: () => Promise<void>) {
     :play="playNow"
     @view="(seen: { zoom: number; aimed?: string }) => (skyView = seen)"
   />
-  <main>
+  <!-- The Sky fits the window, so its task list scrolls inside rather than pushing the page. -->
+  <main :class="{ fitted: view === 'sky' }">
     <!-- Explore clears the header away too, so the sky is on its own. -->
     <header :class="{ away: exploring }" :inert="exploring">
       <div class="row">
@@ -551,8 +555,13 @@ h1 {
   transition: translate 500ms var(--ease);
 }
 
+main.fitted {
+  height: 100vh;
+}
+
 .page {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }

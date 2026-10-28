@@ -7,7 +7,7 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
 </script>
 
 <template>
-  <section class="card back" aria-labelledby="came-back">
+  <section class="back" aria-labelledby="came-back">
     <p id="came-back" class="mono head" title="Thoughts you parked during your last session">
       <span class="dot" aria-hidden="true" />Came back · <b>{{ String(satellites.length).padStart(2, '0') }}</b>
     </p>
@@ -24,10 +24,6 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
 </template>
 
 <style scoped>
-.back {
-  padding: 9px 11px 4px;
-}
-
 .head {
   display: flex;
   align-items: center;

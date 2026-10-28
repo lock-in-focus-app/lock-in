@@ -20,8 +20,8 @@ const props = defineProps<{
   passesLeft: number;
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   starCount: number;
-  /** What the readout at the top shows: the date, time locked in today, and the streak running now. */
-  glance: { date: string; lockedInMs: number; streak: number };
+  /** What the top of the page shows: the date, a quote for the day, time locked in today, and the streak running now. */
+  glance: { date: string; quote?: { text: string; author?: string }; lockedInMs: number; streak: number };
   stardust: number;
   /** For Explore's readouts: how many weeks and planets there are, how far in it's zoomed, and the
    * constellation in the crosshair. */
@@ -92,22 +92,27 @@ watch(
   <div class="sky-page">
     <Transition name="puff">
       <div v-show="!exploring" class="layer">
-        <p class="glance mono">
-          <span>{{ glance.date }}</span>
-          <span>
+        <!-- A landing page: the day at the top, then the sky, then starting a session, then the
+             thoughts and tasks that wait for after it. -->
+        <header class="today">
+          <h2 class="date">{{ glance.date }}</h2>
+          <!-- A quote for the day, between sessions. It folds away while the task list is open, to
+               make room for it. -->
+          <Unfold>
+            <figure v-if="!session && !showingTasks && glance.quote" class="quote">
+              <blockquote>{{ glance.quote.text }}</blockquote>
+              <figcaption v-if="glance.quote.author" class="mono">{{ glance.quote.author }}</figcaption>
+            </figure>
+          </Unfold>
+          <p class="glance mono">
             <span title="Time locked in today, including any past the timer"
               >Today <b>{{ formatDuration(glance.lockedInMs) }}</b></span
             >
             <span v-if="glance.streak >= 2" title="Days in a row with a star">
               · Streak <b>{{ glance.streak }} days</b></span
             >
-          </span>
-        </p>
-        <SatellitesBack
-          v-if="!session && satellites.back.length"
-          :satellites="satellites.back"
-          @act="(id, action) => emit('act', id, action)"
-        />
+          </p>
+        </header>
 
         <div class="middle">
           <SessionView
@@ -120,20 +125,29 @@ watch(
           />
         </div>
 
-        <!-- The task list opens above the profiles, from the Tasks button below. -->
-        <Unfold>
-          <div v-if="showingTasks" id="tasks" class="tasks">
-            <SatellitesView
-              :orbiting="satellites.orbiting"
-              :tasks="satellites.tasks"
-              :done="satellites.done"
-              @act="(id, action) => emit('act', id, action)"
-            />
-          </div>
-        </Unfold>
-        <!-- Sessions come first, so the profiles sit above the satellites. -->
         <LaunchDock v-if="!session" :profiles="profiles" :first-star="starCount === 0" @start="emit('start', $event)" />
-        <SatelliteLaunch :session-running="!!session" @launch="emit('launch', $event)" />
+
+        <!-- Thoughts for later, together: what came back after the last session, the task list
+             (opened from Tasks below), and the launch box. -->
+        <div class="card thoughts">
+          <SatellitesBack
+            v-if="!session && satellites.back.length"
+            class="part"
+            :satellites="satellites.back"
+            @act="(id, action) => emit('act', id, action)"
+          />
+          <Unfold>
+            <div v-if="showingTasks" id="tasks" class="part tasks">
+              <SatellitesView
+                :orbiting="satellites.orbiting"
+                :tasks="satellites.tasks"
+                :done="satellites.done"
+                @act="(id, action) => emit('act', id, action)"
+              />
+            </div>
+          </Unfold>
+          <SatelliteLaunch :session-running="!!session" @launch="emit('launch', $event)" />
+        </div>
 
         <div class="foot">
           <button class="mono" type="button" title="Clear the screen and look around the sky" @click="exploring = true">
@@ -195,6 +209,7 @@ watch(
   position: relative;
   flex: 1;
   display: flex;
+  min-height: 0;
 }
 
 .layer {
@@ -202,22 +217,72 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
   transform-origin: 50% 60%;
 }
 
-.glance {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
+/* The day, big, with a quote for it and today's readouts beneath. */
+.today {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.date {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 200;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.quote {
   margin: 0;
 }
 
-.glance > span:first-child {
+blockquote {
+  margin: 0;
   color: var(--dim);
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+figcaption {
+  margin-top: 2px;
+}
+
+figcaption::before {
+  content: '— ';
+}
+
+.glance {
+  margin: 0;
+}
+
+/* It gives up room to the window first, its task list scrolling. */
+.thoughts {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 5px 11px;
+}
+
+.thoughts:focus-within {
+  --t: rgb(220 228 255 / 0.85);
+}
+
+/* Hairlines between what came back, the task list and the launch box. */
+.part {
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--line);
 }
 
 .middle {
   flex: 1;
+  min-height: 0;
   display: grid;
   place-items: center;
 }
@@ -281,9 +346,13 @@ watch(
   pointer-events: none;
 }
 
-/* Long lists scroll inside the drawer, so the profiles stay in the window. */
+/* Long lists scroll inside the drawer, so the rest stays in the window. */
 .tasks {
-  max-height: 46vh;
+  min-height: 0;
+  max-height: 34vh;
+  /* Fading out at the bottom, so it's clear there's more to scroll to. */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 14px), transparent);
   overflow-y: auto;
   scrollbar-width: none;
 }

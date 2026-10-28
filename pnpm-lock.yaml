@@ -38,6 +38,9 @@ importers:
       '@lock-in/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@lock-in/quotes':
+        specifier: workspace:*
+        version: link:../../packages/quotes
       '@lock-in/recipes':
         specifier: workspace:*
         version: link:../../packages/recipes
