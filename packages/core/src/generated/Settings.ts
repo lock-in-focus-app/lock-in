@@ -18,4 +18,9 @@ idleMinutes: number,
  * (and Hard counts the session as broken). Off, it only warns. Opt-in, so the app and
  * the extension can each be used on their own.
  */
-closeBrowsers: boolean, };
+closeBrowsers: boolean, 
+/**
+ * Whether the sky in the window animates at 30 frames a second instead of 60, to save
+ * battery. It pauses whenever the window isn't focused either way.
+ */
+batterySaver: boolean, };

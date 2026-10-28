@@ -356,6 +356,7 @@ async function run(action: () => Promise<void>) {
     :events="skyEvents"
     :satellites="skySatellites"
     :satellite-text="view === 'sky' && exploring && !snapshot?.session"
+    :battery-saver="snapshot?.settings.batterySaver"
     :play="playNow"
   />
   <main>

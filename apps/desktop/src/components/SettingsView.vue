@@ -97,6 +97,19 @@ function save(patch: Partial<Settings>) {
       </p>
     </div>
 
+    <div class="card group">
+      <h2>Sky</h2>
+      <ToggleSwitch
+        label="Battery saver"
+        :model-value="settings.batterySaver"
+        @update:model-value="save({ batterySaver: $event })"
+      />
+      <p class="help">
+        The stars twinkle 30 times a second instead of 60, so they're a little less smooth. Either way, the sky pauses
+        while this window isn't the one you're using, and stops when it's closed.
+      </p>
+    </div>
+
     <div v-if="development" class="card group">
       <h2>Sample data</h2>
       <div class="row">

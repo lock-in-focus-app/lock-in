@@ -16,6 +16,9 @@ pub struct Settings {
     /// (and Hard counts the session as broken). Off, it only warns. Opt-in, so the app and
     /// the extension can each be used on their own.
     pub close_browsers: bool,
+    /// Whether the sky in the window animates at 30 frames a second instead of 60, to save
+    /// battery. It pauses whenever the window isn't focused either way.
+    pub battery_saver: bool,
 }
 
 pub const MAX_PASSES_PER_WEEK: u32 = 14;
@@ -27,6 +30,7 @@ impl Default for Settings {
             passes_per_week: 2,
             idle_minutes: 15,
             close_browsers: false,
+            battery_saver: false,
         }
     }
 }
@@ -37,5 +41,25 @@ impl Settings {
         self.passes_per_week = self.passes_per_week.min(MAX_PASSES_PER_WEEK);
         self.idle_minutes = self.idle_minutes.min(MAX_IDLE_MINUTES);
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_saved_before_battery_saver_load_with_it_off() {
+        let saved: Settings =
+            serde_json::from_str(r#"{"passesPerWeek":3,"idleMinutes":10,"closeBrowsers":true}"#).unwrap();
+        assert_eq!(
+            saved,
+            Settings {
+                passes_per_week: 3,
+                idle_minutes: 10,
+                close_browsers: true,
+                battery_saver: false,
+            }
+        );
     }
 }
