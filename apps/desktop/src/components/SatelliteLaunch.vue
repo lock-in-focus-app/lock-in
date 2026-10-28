@@ -2,7 +2,8 @@
 import { computed, ref } from 'vue';
 import { maxSatelliteLength } from '../app';
 
-const props = defineProps<{ sessionRunning: boolean; inOrbit: number }>();
+// The launch box: one line for parking a thought until after the session.
+const props = defineProps<{ sessionRunning: boolean }>();
 const emit = defineEmits<{ launch: [text: string] }>();
 
 const text = ref('');
@@ -13,85 +14,76 @@ function launch() {
 }
 
 const hotkey = navigator.userAgent.includes('Mac') ? '⌥P' : 'Alt+P';
-const placeholder = computed(
-  () => `Distracting thought? Launch it — it'll come back after your ${props.sessionRunning ? '' : 'next '}session.`,
+const placeholder = computed(() =>
+  props.sessionRunning ? 'Park it until this session ends' : 'Park a thought for later',
+);
+const hint = computed(
+  () =>
+    `Satellites: thoughts parked until after your ${props.sessionRunning ? '' : 'next '}session. ${hotkey} launches one from anywhere.`,
 );
 </script>
 
 <template>
-  <form class="card launch" @submit.prevent="launch">
-    <label class="label" for="satellite">Satellites · thoughts for later</label>
-    <div class="row">
-      <input
-        id="satellite"
-        v-model="text"
-        :maxlength="maxSatelliteLength"
-        :placeholder="placeholder"
-        :title="placeholder"
-        autocomplete="off"
-      />
-      <button type="submit" :disabled="!text.trim()">Launch</button>
-    </div>
-    <p class="help">
-      <template v-if="inOrbit">{{ inOrbit }} in orbit · </template>
-      <kbd>{{ hotkey }}</kbd> launches one from anywhere
-    </p>
+  <form class="card launch" :title="hint" @submit.prevent="launch">
+    <span class="prompt" aria-hidden="true">›</span>
+    <input
+      v-model="text"
+      :maxlength="maxSatelliteLength"
+      :placeholder="placeholder"
+      :aria-label="`Launch a satellite. ${hint}`"
+      autocomplete="off"
+    />
+    <button class="mono" type="submit" :disabled="!text.trim()">↵ Launch</button>
   </form>
 </template>
 
 <style scoped>
 .launch {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  text-align: left;
-}
-
-.label,
-.help {
-  margin: 0;
-  color: var(--dim);
-  font-size: 12px;
-}
-
-kbd {
-  font: inherit;
-  color: var(--starlight);
-}
-
-.row {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+}
+
+.prompt {
+  color: var(--dim);
+  font: 12px var(--mono);
 }
 
 input {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
-  background: var(--sky);
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
   color: var(--starlight);
-  font: inherit;
+  font: 12px var(--mono);
   text-overflow: ellipsis;
+  caret-color: #9fe3c9;
 }
 
-input:focus {
-  border-color: var(--glow);
-  outline: none;
+input::placeholder {
+  color: var(--faint);
+}
+
+/* The frame lights up while you type in it. */
+.launch:focus-within {
+  --t: rgb(220 228 255 / 0.85);
 }
 
 button {
-  padding: 0 14px;
-  background: var(--sky-raised);
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  transition: color 300ms;
 }
 
 button:hover:not(:disabled) {
-  background: var(--sky-hover);
+  color: var(--starlight);
 }
 
 button:disabled {
-  opacity: 0.5;
   cursor: default;
 }
 </style>

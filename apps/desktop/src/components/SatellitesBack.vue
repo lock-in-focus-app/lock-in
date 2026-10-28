@@ -7,9 +7,9 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
 </script>
 
 <template>
-  <section class="back" aria-labelledby="came-back">
-    <p id="came-back" class="label">
-      {{ satellites.length === 1 ? '1 satellite came back' : `${satellites.length} satellites came back` }}
+  <section class="card back" aria-labelledby="came-back">
+    <p id="came-back" class="mono head" title="Thoughts you parked during your last session">
+      <span class="dot" aria-hidden="true" />Came back · <b>{{ String(satellites.length).padStart(2, '0') }}</b>
     </p>
     <ul>
       <SatelliteItem
@@ -25,19 +25,22 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
 
 <style scoped>
 .back {
-  margin-bottom: 24px;
+  padding: 9px 11px 4px;
 }
 
-.label {
-  margin: 0 0 8px;
-  color: var(--glow);
-  font-size: 12px;
+.head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+}
+
+.dot {
+  --c: var(--glow);
 }
 
 ul {
-  display: grid;
-  gap: 8px;
-  margin: 0;
+  margin: 4px 0 0;
   padding: 0;
   list-style: none;
 }

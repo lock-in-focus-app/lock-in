@@ -79,30 +79,26 @@ watch(view, (to) => to !== 'sky' && (exploring.value = false));
 // The week the report is showing, so the sky can line its constellations up behind it.
 const reportWeek = ref<number>();
 watch(view, (to) => to !== 'week' && (reportWeek.value = undefined));
-const tabs = computed(() => {
-  const all: { view: View; label: string }[] = [
-    { view: 'sky', label: 'Sky' },
-    { view: 'profiles', label: 'Profiles' },
-    { view: 'week', label: 'Your week' },
-    { view: 'settings', label: 'Settings' },
-  ];
-  // The report waits between sessions.
-  return all.filter((tab) => tab.view !== 'week' || !snapshot.value?.session);
-});
+const tabs: { view: View; label: string }[] = [
+  { view: 'sky', label: 'Sky' },
+  { view: 'week', label: 'Your week' },
+  { view: 'profiles', label: 'Profiles' },
+  { view: 'settings', label: 'Settings' },
+];
 // Pages slide in from the side their tab is on.
-const order: View[] = ['sky', 'profiles', 'week', 'settings'];
 const slide = ref<'slide-forward' | 'slide-back'>('slide-forward');
-watch(view, (to, from) => (slide.value = order.indexOf(to) >= order.indexOf(from) ? 'slide-forward' : 'slide-back'));
+const tabIndex = (of: View) => tabs.findIndex((tab) => tab.view === of);
+watch(view, (to, from) => (slide.value = tabIndex(to) >= tabIndex(from) ? 'slide-forward' : 'slide-back'));
 
-// A glowing pill that glides to the selected tab.
+// A glowing dot that glides to the selected tab.
 const tabBar = ref<HTMLElement>();
-const pill = ref({ left: 0, width: 0 });
-function placePill() {
+const dotLeft = ref(0);
+function placeDot() {
   const selected = tabBar.value?.querySelector<HTMLElement>('[aria-current="page"]');
-  if (selected) pill.value = { left: selected.offsetLeft, width: selected.offsetWidth };
+  if (selected) dotLeft.value = selected.offsetLeft;
 }
-watch([view, tabs], () => void nextTick(placePill));
-const tabBarResized = new ResizeObserver(placePill);
+watch(view, () => void nextTick(placeDot));
+const tabBarResized = new ResizeObserver(placeDot);
 onMounted(() => tabBar.value && tabBarResized.observe(tabBar.value));
 onUnmounted(() => tabBarResized.disconnect());
 // The report waits between sessions, so starting one goes back to the Sky.
@@ -361,16 +357,23 @@ async function run(action: () => Promise<void>) {
   />
   <main>
     <header>
-      <span class="star" aria-hidden="true">✦</span>
-      <h1>Lock In</h1>
+      <div class="row">
+        <h1 class="mono"><span aria-hidden="true">✦ </span>Lock In</h1>
+        <span class="mono" title="Each session adds a star, and every focused minute earns stardust">
+          Stars <b>{{ String(starCount).padStart(3, '0') }}</b> · Stardust <b>{{ totalStardust.toLocaleString() }}</b>
+        </span>
+      </div>
       <nav ref="tabBar" class="tabs" aria-label="Pages">
-        <span class="pill" :style="{ translate: `${pill.left}px 0`, width: `${pill.width}px` }" aria-hidden="true" />
+        <span class="here" :style="{ translate: `${dotLeft}px 0` }" aria-hidden="true" />
+        <!-- The report waits between sessions. -->
         <button
           v-for="tab in tabs"
           :key="tab.view"
-          class="tab"
+          class="tab mono"
           type="button"
           :aria-current="view === tab.view ? 'page' : undefined"
+          :disabled="tab.view === 'week' && !!snapshot?.session"
+          :title="tab.view === 'week' && snapshot?.session ? 'Your week opens again when this session ends' : undefined"
           @click="view = tab.view"
         >
           {{ tab.label }}
@@ -379,7 +382,7 @@ async function run(action: () => Promise<void>) {
     </header>
 
     <Transition :name="slide" mode="out-in">
-      <div v-if="snapshot && firstDay !== undefined" :key="view">
+      <div v-if="snapshot && firstDay !== undefined" :key="view" class="page">
         <SkyPage
           v-if="view === 'sky'"
           v-model:exploring="exploring"
@@ -388,7 +391,6 @@ async function run(action: () => Promise<void>) {
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
           :star-count="starCount"
-          :stardust="totalStardust"
           :months="skyMonths"
           :month="skyMonth"
           @month="(month: number | undefined) => (steppedMonth = month)"
@@ -437,67 +439,82 @@ async function run(action: () => Promise<void>) {
 
 <style scoped>
 main {
-  /* See-through, so the sky shows through the cards. */
+  /* See-through, so the sky shows through the controls. */
   --sky-raised: rgb(21 27 49 / 0.72);
   --sky-hover: rgb(30 38 67 / 0.82);
   position: relative;
   z-index: 1;
   max-width: 480px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   margin: 0 auto;
-  padding: 20px;
+  padding: 12px 16px 14px;
 }
 
 header {
+  margin-bottom: 10px;
+}
+
+.row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  align-items: baseline;
 }
 
 h1 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.star {
-  color: var(--glow);
+  color: var(--starlight);
+  font-weight: 400;
+  letter-spacing: 0.22em;
 }
 
 .tabs {
   position: relative;
   display: flex;
-  margin-left: auto;
-}
-
-.pill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  border: 1px solid rgb(205 215 255 / 0.12);
-  border-radius: 8px;
-  background: rgb(40 50 88 / 0.6);
-  box-shadow: 0 0 14px -4px rgb(160 180 255 / 0.25);
-  transition:
-    translate 500ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  gap: 14px;
+  margin-top: 9px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
 }
 
 .tab {
-  position: relative;
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 0 0 0 10px;
+  border-radius: 0;
   background: none;
-  color: var(--dim);
-  font-size: 12px;
-  transition: color 300ms;
+  transition:
+    color 400ms,
+    opacity 400ms;
 }
 
 .tab:hover,
 .tab[aria-current='page'] {
   color: var(--starlight);
+}
+
+.tab:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* The current page's glowing dot, which glides to each tab picked. */
+.here {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--starlight);
+  box-shadow: 0 0 6px var(--starlight);
+  transition: translate 500ms var(--ease);
+}
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .slide-forward-enter-active,
@@ -539,7 +556,7 @@ h1 {
     filter: none;
   }
 
-  .pill {
+  .here {
     transition: none;
   }
 }
