@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
+import { starColorFor } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
 import LaunchDock from './LaunchDock.vue';
 import SatelliteLaunch from './SatelliteLaunch.vue';
@@ -57,6 +58,12 @@ function step(by: number) {
 /** A count as a readout shows it, e.g. 03. */
 const counted = (count: number) => String(count).padStart(2, '0');
 
+// The running session glows in its profile's star color.
+const sessionColor = computed(() => {
+  const id = props.session?.profileId ?? '';
+  return starColorFor(id, props.profiles.find((profile) => profile.id === id)?.starColor);
+});
+
 const showingTasks = ref(false);
 const taskCount = computed(() => props.satellites.orbiting.length + props.satellites.tasks.length);
 const hasTasks = computed(() => taskCount.value > 0 || props.satellites.done.length > 0);
@@ -82,6 +89,7 @@ watch(
             v-if="session"
             :session="session"
             :passes-left="passesLeft"
+            :color="sessionColor"
             @end="emit('end')"
             @pass="emit('pass')"
           />
@@ -112,6 +120,13 @@ watch(
             <button type="button" aria-label="Later month" :disabled="shownIndex >= months.length - 1" @click="step(1)">
               ›
             </button>
+          </span>
+          <span
+            v-if="session?.timer?.strictness === 'hard' && session.timer.minutes > 0"
+            class="mono"
+            title="Emergency passes end a Hard session early. Each one comes back 7 days after it's used."
+          >
+            Passes left <b>{{ counted(passesLeft) }}</b>
           </span>
           <!-- During a session, only how many are in orbit, not what they say. -->
           <span v-if="session" class="end mono" title="Thoughts you parked. They come back after this session.">
