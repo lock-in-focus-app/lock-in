@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
+import { starColorFor } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
+import ExploreView from './ExploreView.vue';
 import LaunchDock from './LaunchDock.vue';
 import SatelliteLaunch from './SatelliteLaunch.vue';
 import SatellitesBack from './SatellitesBack.vue';
@@ -9,7 +11,8 @@ import SessionView from './SessionView.vue';
 import Unfold from './Unfold.vue';
 
 // The home page (PLAN §5): the sky, with the profiles along the bottom to lock in with, the
-// running session floating over it, and satellites. Explore clears everything away so the sky
+// running session floating over it, and satellites, in the Observatory HUD's hairline frames and
+// small readouts (PLAN Phase 5). Explore clears everything away so the sky
 // is on its own; it all drifts toward you as it fades, and comes back the same way.
 const props = defineProps<{
   profiles: ProfileSummary[];
@@ -18,6 +21,13 @@ const props = defineProps<{
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   starCount: number;
   stardust: number;
+  /** For Explore's readouts: how many weeks and planets there are, how far in it's zoomed, and the
+   * constellation in the crosshair. */
+  weekCount: number;
+  planetCount: number;
+  zoom: number;
+  aimed?: { id: string; name: string; named: boolean; weekStart: number };
+  thisWeek: number;
   /** The months with constellations, oldest first, and the one the Sky shows if stepped back (else the latest). */
   months: number[];
   month?: number;
@@ -31,6 +41,9 @@ const emit = defineEmits<{
   act: [id: string, action: SatelliteAction];
   /** Zoom the sky in (above 1) or out, while exploring. */
   zoom: [factor: number];
+  /** Glide back to where exploring starts, around the latest weeks. */
+  recenter: [];
+  rename: [id: string, name: string];
   /** Show an earlier month's constellations on the Sky, or the latest (undefined). */
   month: [month: number | undefined];
 }>();
@@ -39,8 +52,8 @@ const emit = defineEmits<{
 const shownIndex = computed(() =>
   props.month === undefined ? props.months.length - 1 : props.months.indexOf(props.month),
 );
-const monthName = new Intl.DateTimeFormat(undefined, { month: 'long' });
-const monthAndYear = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+const monthName = new Intl.DateTimeFormat(undefined, { month: 'short' });
+const monthAndYear = new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' });
 const monthLabel = computed(() => {
   const month = props.months[shownIndex.value];
   if (month === undefined) return '';
@@ -53,6 +66,15 @@ function step(by: number) {
   if (index < 0 || index >= props.months.length) return;
   emit('month', index === props.months.length - 1 ? undefined : props.months[index]);
 }
+
+/** A count as a readout shows it, e.g. 03. */
+const counted = (count: number) => String(count).padStart(2, '0');
+
+// The running session glows in its profile's star color.
+const sessionColor = computed(() => {
+  const id = props.session?.profileId ?? '';
+  return starColorFor(id, props.profiles.find((profile) => profile.id === id)?.starColor);
+});
 
 const showingTasks = ref(false);
 const taskCount = computed(() => props.satellites.orbiting.length + props.satellites.tasks.length);
@@ -79,84 +101,78 @@ watch(
             v-if="session"
             :session="session"
             :passes-left="passesLeft"
+            :color="sessionColor"
             @end="emit('end')"
             @pass="emit('pass')"
           />
         </div>
 
-        <div class="bottom">
-          <div v-if="!session && months.length > 1" class="months">
-            <button
-              class="text-button"
-              type="button"
-              aria-label="Earlier month"
-              :disabled="shownIndex <= 0"
-              @click="step(-1)"
-            >
-              ‹
-            </button>
-            <span aria-live="polite">{{ monthLabel }}</span>
-            <button
-              class="text-button"
-              type="button"
-              aria-label="Later month"
-              :disabled="shownIndex >= months.length - 1"
-              @click="step(1)"
-            >
+        <!-- The task list opens above the profiles, from the Tasks button below. -->
+        <Unfold>
+          <div v-if="showingTasks" id="tasks" class="tasks">
+            <SatellitesView
+              :orbiting="satellites.orbiting"
+              :tasks="satellites.tasks"
+              :done="satellites.done"
+              @act="(id, action) => emit('act', id, action)"
+            />
+          </div>
+        </Unfold>
+        <!-- Sessions come first, so the profiles sit above the satellites. -->
+        <LaunchDock v-if="!session" :profiles="profiles" :first-star="starCount === 0" @start="emit('start', $event)" />
+        <SatelliteLaunch :session-running="!!session" @launch="emit('launch', $event)" />
+
+        <div class="foot">
+          <button class="mono" type="button" title="Clear the screen and look around the sky" @click="exploring = true">
+            ⌖ Explore the sky
+          </button>
+          <span v-if="!session && months.length > 1" class="months mono">
+            <button type="button" aria-label="Earlier month" :disabled="shownIndex <= 0" @click="step(-1)">‹</button>
+            <b aria-live="polite" title="The month whose constellations the sky shows">{{ monthLabel }}</b>
+            <button type="button" aria-label="Later month" :disabled="shownIndex >= months.length - 1" @click="step(1)">
               ›
             </button>
-          </div>
-          <div class="bar">
-            <span class="stats">
-              <template v-if="starCount">
-                {{ starCount }} {{ starCount === 1 ? 'star' : 'stars' }} · {{ stardust.toLocaleString() }} stardust
-              </template>
-              <template v-else>Your first star forms after five minutes of focus.</template>
-            </span>
-            <button
-              v-if="!session && hasTasks"
-              class="text-button"
-              type="button"
-              :aria-expanded="showingTasks"
-              @click="showingTasks = !showingTasks"
-            >
-              Tasks<template v-if="taskCount"> · {{ taskCount }}</template>
-            </button>
-            <button class="text-button" type="button" @click="exploring = true">Explore</button>
-          </div>
-          <Unfold>
-            <div v-if="showingTasks" class="tasks">
-              <SatellitesView
-                :orbiting="satellites.orbiting"
-                :tasks="satellites.tasks"
-                :done="satellites.done"
-                @act="(id, action) => emit('act', id, action)"
-              />
-            </div>
-          </Unfold>
-          <!-- Sessions come first, so the profiles sit above the satellites. -->
-          <LaunchDock v-if="!session" :profiles="profiles" @start="emit('start', $event)" />
+          </span>
+          <span
+            v-if="session?.timer?.strictness === 'hard' && session.timer.minutes > 0"
+            class="mono"
+            title="Emergency passes end a Hard session early. Each one comes back 7 days after it's used."
+          >
+            Passes left <b>{{ counted(passesLeft) }}</b>
+          </span>
           <!-- During a session, only how many are in orbit, not what they say. -->
-          <SatelliteLaunch
-            :session-running="!!session"
-            :in-orbit="session ? satellites.orbiting.length : 0"
-            @launch="emit('launch', $event)"
-          />
+          <span v-if="session" class="end mono" title="Thoughts you parked. They come back after this session.">
+            In orbit <b>{{ counted(satellites.orbiting.length) }}</b>
+          </span>
+          <button
+            v-else-if="hasTasks"
+            class="end mono"
+            type="button"
+            aria-controls="tasks"
+            :aria-expanded="showingTasks"
+            @click="showingTasks = !showingTasks"
+          >
+            Tasks <b>{{ counted(taskCount) }}</b> <span class="caret" aria-hidden="true">▾</span>
+          </button>
         </div>
       </div>
     </Transition>
 
     <Transition name="fade">
-      <div v-if="exploring" class="explore">
-        <span class="stats">
-          {{ starCount }} {{ starCount === 1 ? 'star' : 'stars' }} · {{ stardust.toLocaleString() }} stardust
-        </span>
-        <span class="zoom">
-          <button class="text-button" type="button" aria-label="Zoom in" @click="emit('zoom', 1.6)">+</button>
-          <button class="text-button" type="button" aria-label="Zoom out" @click="emit('zoom', 1 / 1.6)">−</button>
-        </span>
-        <button class="text-button" type="button" @click="exploring = false">Done exploring</button>
-      </div>
+      <ExploreView
+        v-if="exploring"
+        :star-count="starCount"
+        :stardust="stardust"
+        :week-count="weekCount"
+        :planet-count="planetCount"
+        :zoom="zoom"
+        :aimed="aimed"
+        :this-week="thisWeek"
+        @zoom="emit('zoom', $event)"
+        @recenter="emit('recenter')"
+        @rename="(id, name) => emit('rename', id, name)"
+        @done="exploring = false"
+      />
     </Transition>
   </div>
 </template>
@@ -164,8 +180,7 @@ watch(
 <style scoped>
 .sky-page {
   position: relative;
-  /* The window below the header, so the dock sits at the bottom of the sky. */
-  min-height: calc(100vh - 92px);
+  flex: 1;
   display: flex;
 }
 
@@ -173,7 +188,7 @@ watch(
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   transform-origin: 50% 60%;
 }
 
@@ -183,96 +198,70 @@ watch(
   place-items: center;
 }
 
-.bottom {
+/* Explore on the left, the month in the middle and the tasks on the right. */
+.foot {
   display: grid;
-  gap: 10px;
-}
-
-.bar {
-  display: flex;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 4px;
 }
 
-.stats {
-  margin-right: auto;
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.text-button {
-  padding: 4px 8px;
-  border-radius: 8px;
+.foot button {
+  padding: 0;
+  border-radius: 0;
   background: none;
-  color: var(--dim);
-  font-size: 12px;
-  transition:
-    background 300ms,
-    color 300ms;
+  transition: color 300ms;
 }
 
-.text-button:hover,
-.text-button[aria-expanded='true'] {
-  background: rgb(255 255 255 / 0.07);
+.foot > button:first-child {
+  justify-self: start;
+}
+
+.foot button:hover,
+.foot button[aria-expanded='true'] {
   color: var(--starlight);
 }
 
-.tasks :deep(section:first-child) {
-  margin-top: 0;
+.end {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.caret {
+  display: inline-block;
+  transition: rotate 400ms var(--ease);
+}
+
+[aria-expanded='true'] .caret {
+  rotate: 180deg;
 }
 
 .months {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--dim);
-  font-size: 12px;
+  gap: 4px;
 }
 
-.months span {
-  min-width: 96px;
+.months b {
+  min-width: 64px;
   text-align: center;
 }
 
-.months .text-button {
-  font-size: 16px;
+.months button {
+  width: 18px;
+  font-size: 13px;
   line-height: 1;
 }
 
-.months .text-button:disabled {
+.months button:disabled {
   opacity: 0.3;
   pointer-events: none;
 }
 
-.zoom {
-  position: absolute;
-  right: 0;
-  bottom: 44px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.zoom .text-button {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid rgb(255 255 255 / 0.08);
-  background: rgb(255 255 255 / 0.04);
-  font-size: 16px;
-  line-height: 1;
-}
-
-.explore {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
+/* Long lists scroll inside the drawer, so the profiles stay in the window. */
+.tasks {
+  max-height: 46vh;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 
 .puff-enter-active,
@@ -305,6 +294,10 @@ watch(
   .puff-leave-to {
     transform: none;
     filter: none;
+  }
+
+  .caret {
+    transition: none;
   }
 }
 </style>

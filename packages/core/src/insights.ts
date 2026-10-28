@@ -69,16 +69,17 @@ export interface WeeklyReport {
 
 export interface FocusSummary {
   focusedMs: number;
-  /** Focused time the week before, for the trend. */
+  /** Focused time the week before, for the trend, and each of its days. */
   lastWeekMs: number;
+  lastWeekDays: number[];
   /** Time spent after the timer was done. */
   overtimeMs: number;
   sessions: number;
   longestMs: number;
   /** Focused time each day, the week's first day first. A session counts on the day it started. */
   days: number[];
-  /** The most focused first. */
-  profiles: { name: string; focusedMs: number; sessions: number }[];
+  /** The most focused first, by id under their latest name. */
+  profiles: { id: string; name: string; focusedMs: number; sessions: number }[];
   /** Sessions ended early with an emergency pass. */
   emergencyPasses: number;
   /** Sessions ended for being idle. */
@@ -141,7 +142,12 @@ export function weeklyReport(
   const satellites = activity.satellites.filter((s) => inWeek(s.launchedAt));
 
   const focus = focusSummary(sessions, start);
-  focus.lastWeekMs = sum(activity.sessions.filter((s) => lastWeek(s.startedAt)).map((s) => s.focusedMs));
+  const before = focusSummary(
+    activity.sessions.filter((s) => lastWeek(s.startedAt)),
+    addWeeks(start, -1),
+  );
+  focus.lastWeekMs = before.focusedMs;
+  focus.lastWeekDays = before.days;
 
   const distractions = distractionSummary(visits);
   distractions.lastWeekVisits = activity.gateVisits.filter((v) => lastWeek(v.at)).length;
@@ -177,12 +183,12 @@ export function weeklyReport(
 
 function focusSummary(sessions: SessionRecord[], start: number): FocusSummary {
   const days = Array<number>(7).fill(0);
-  const profiles = new Map<string, { name: string; focusedMs: number; sessions: number }>();
+  const profiles = new Map<string, FocusSummary['profiles'][number]>();
   for (const session of sessions) {
     const day = dayOfWeek(start, session.startedAt);
     if (day >= 0 && day < 7) days[day]! += session.focusedMs;
     // By id, under the latest name, so a renamed profile isn't split in two.
-    const profile = profiles.get(session.profileId) ?? { name: '', focusedMs: 0, sessions: 0 };
+    const profile = profiles.get(session.profileId) ?? { id: session.profileId, name: '', focusedMs: 0, sessions: 0 };
     profile.name = session.profileName;
     profile.focusedMs += session.focusedMs;
     profile.sessions += 1;
@@ -191,6 +197,7 @@ function focusSummary(sessions: SessionRecord[], start: number): FocusSummary {
   return {
     focusedMs: sum(sessions.map((s) => s.focusedMs)),
     lastWeekMs: 0,
+    lastWeekDays: Array<number>(7).fill(0),
     overtimeMs: sum(sessions.map((s) => s.overtimeMs)),
     sessions: sessions.length,
     longestMs: Math.max(0, ...sessions.map((s) => s.focusedMs + s.overtimeMs)),

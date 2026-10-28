@@ -1,45 +1,89 @@
 <script lang="ts" setup>
-const props = defineProps<{ label: string; min: number; max: number; unit: string }>();
+// A stepper, like an instrument's: ‹ and › step the value, and it can be typed in too.
+const props = defineProps<{ label: string; min: number; max: number; unit: string; step?: number }>();
 const value = defineModel<number>({ required: true });
+
+const within = (next: number) => Math.min(props.max, Math.max(props.min, next));
 
 // Commits on change rather than every keystroke, and snaps the field back into range.
 function commit(event: Event) {
   const input = event.target as HTMLInputElement;
   const parsed = Math.round(Number(input.value));
-  const next = Number.isFinite(parsed) ? Math.min(props.max, Math.max(props.min, parsed)) : value.value;
+  const next = Number.isFinite(parsed) ? within(parsed) : value.value;
   input.value = String(next);
   value.value = next;
+}
+
+/** Steps up or down to the next multiple of the step, e.g. 47 goes to 50 or 45 in steps of 5. */
+function stepBy(direction: 1 | -1) {
+  const step = props.step ?? 1;
+  const next =
+    direction > 0 ? Math.floor(value.value / step) * step + step : Math.ceil(value.value / step) * step - step;
+  value.value = within(next);
 }
 </script>
 
 <template>
-  <label class="number">
+  <span class="card stepper">
+    <button type="button" :aria-label="`${label}, less`" :disabled="value <= min" @click="stepBy(-1)">‹</button>
     <input type="number" :aria-label="label" :min="min" :max="max" :value="value" @change="commit" />
-    <span>{{ unit }}</span>
-  </label>
+    <span class="unit mono">{{ unit }}</span>
+    <button type="button" :aria-label="`${label}, more`" :disabled="value >= max" @click="stepBy(1)">›</button>
+  </span>
 </template>
 
 <style scoped>
-.number {
+.stepper {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  flex: none;
+}
+
+button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
   color: var(--dim);
+  font: 12px var(--mono);
+  transition: color 300ms;
+}
+
+button:hover:not(:disabled) {
+  color: var(--starlight);
+}
+
+button:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 input {
-  width: 4.5em;
-  padding: 6px 8px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
-  background: var(--sky-raised);
+  width: 3.2em;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
   color: var(--starlight);
-  font: inherit;
-  text-align: right;
+  font: 500 12px var(--mono);
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
 }
 
-input:focus {
-  border-color: var(--glow);
-  outline: none;
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.stepper:focus-within {
+  --t: rgb(220 228 255 / 0.85);
+}
+
+.unit {
+  padding-right: 4px;
+  white-space: nowrap;
 }
 </style>

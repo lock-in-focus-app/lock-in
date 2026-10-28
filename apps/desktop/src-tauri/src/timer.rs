@@ -46,7 +46,8 @@ pub struct TimerSettings {
     pub strictness: Strictness,
 }
 
-pub const MAX_MINUTES: u32 = 480;
+/// The longest timer, 6 hours.
+pub const MAX_MINUTES: u32 = 360;
 
 impl Default for TimerSettings {
     fn default() -> Self {

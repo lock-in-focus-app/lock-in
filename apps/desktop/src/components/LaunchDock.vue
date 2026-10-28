@@ -1,83 +1,104 @@
 <script setup lang="ts">
-import type { ProfileSummary } from '@lock-in/core';
+import type { ProfileSummary, Strictness } from '@lock-in/core';
 import { starColorFor } from '@lock-in/core';
-import { vTilt } from '../tilt';
 
-// The row of profiles along the bottom of the sky. Tapping one locks in; this is the only place
-// the window starts sessions (PLAN §5, the Sky page).
-defineProps<{ profiles: ProfileSummary[] }>();
+// The row of profiles along the bottom of the sky. Each one spells out how its session works and
+// starts it; this is the only place the window starts sessions (PLAN §5, the Sky page).
+defineProps<{ profiles: ProfileSummary[]; firstStar: boolean }>();
 const emit = defineEmits<{ start: [profileId: string] }>();
+
+const strictness: Record<Strictness, string> = { gentle: 'Gentle', medium: 'Medium', hard: 'Hard' };
 </script>
 
 <template>
-  <section class="dock" aria-label="Start a session">
-    <button
-      v-for="profile in profiles"
-      :key="profile.id"
-      v-tilt
-      class="launch"
-      type="button"
-      :title="`Lock in with ${profile.name}`"
-      :style="{ '--star': starColorFor(profile.id, profile.starColor) }"
-      @click="emit('start', profile.id)"
-    >
-      <span class="star" aria-hidden="true">✦</span>
-      <span class="name">{{ profile.name }}</span>
-      <span class="length">{{ profile.timer.minutes > 0 ? `${profile.timer.minutes} min` : 'No timer' }}</span>
-    </button>
+  <section class="dock" aria-labelledby="start-a-session">
+    <div class="label">
+      <span id="start-a-session" class="mono">▶ Start a session</span>
+      <span class="mono">{{ firstStar ? 'First star after 5 min of focus' : 'Pick a profile' }}</span>
+    </div>
+    <div class="profiles" :style="{ '--columns': Math.min(3, profiles.length) }">
+      <button
+        v-for="profile in profiles"
+        :key="profile.id"
+        class="card profile"
+        type="button"
+        :title="`Start a ${profile.name} session`"
+        :style="{ '--c': starColorFor(profile.id, profile.starColor) }"
+        @click="emit('start', profile.id)"
+      >
+        <span class="name"><span class="dot" aria-hidden="true" />{{ profile.name }}</span>
+        <span class="mono">
+          <template v-if="profile.timer.minutes > 0">
+            {{ profile.timer.minutes }} min<br />{{ strictness[profile.timer.strictness] }}
+          </template>
+          <template v-else>No timer</template>
+        </span>
+        <span class="start mono" aria-hidden="true">▶ Start</span>
+      </button>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .dock {
+  display: grid;
+  gap: 10px;
+}
+
+.label {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  justify-content: space-between;
+}
+
+.label :first-child {
+  color: var(--dim);
+}
+
+.profiles {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), 1fr);
   gap: 8px;
 }
 
-.launch {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  gap: 0 6px;
-  padding: 9px 12px;
-  border-radius: 14px;
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 12px 10px 9px;
   background: none;
   text-align: left;
 }
 
-/* A soft glow in the profile's star color under the pointer's sheen, brighter on hover. */
-.launch::after {
-  background:
-    radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 0%), rgb(255 255 255 / 0.08), transparent 65%),
-    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--star) 28%, transparent), transparent 70%);
-  opacity: 0.7;
-}
-
-.launch:hover::after {
-  opacity: 1;
-}
-
-.launch:active {
-  scale: 0.97;
-}
-
-.star {
-  grid-row: span 2;
-  color: var(--star);
-  align-self: center;
-  font-size: 15px;
-  text-shadow: 0 0 8px currentColor;
-}
-
 .name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
-.length {
-  grid-column: 2;
+.start {
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
   color: var(--dim);
-  font-size: 12px;
+  transition:
+    color 300ms,
+    text-shadow 300ms;
+}
+
+.name + .mono {
+  margin-bottom: 7px;
+}
+
+.profile:hover .start,
+.profile:focus-visible .start {
+  color: var(--c);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent);
+}
+
+.profile:active {
+  scale: 0.98;
 }
 </style>

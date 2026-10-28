@@ -6,87 +6,100 @@ import SatelliteItem from './SatelliteItem.vue';
 // in the last day, which can be unticked in case it was by accident.
 defineProps<{ orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] }>();
 const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
+
+const counted = (count: number) => String(count).padStart(2, '0');
 </script>
 
 <template>
-  <section v-if="orbiting.length" aria-labelledby="in-orbit">
-    <p id="in-orbit" class="label">In orbit · back after your next session</p>
-    <ul>
-      <SatelliteItem
-        v-for="satellite in orbiting"
-        :key="satellite.id"
-        :satellite="satellite"
-        :actions="['done', 'task', 'delete']"
-        @act="emit('act', satellite.id, $event)"
-      />
-    </ul>
-  </section>
+  <div class="card list">
+    <section v-if="orbiting.length" aria-labelledby="in-orbit">
+      <p id="in-orbit" class="mono head">
+        <span class="dot" aria-hidden="true" />In orbit · <b>{{ counted(orbiting.length) }}</b> · back after your next
+        session
+      </p>
+      <ul>
+        <SatelliteItem
+          v-for="satellite in orbiting"
+          :key="satellite.id"
+          :satellite="satellite"
+          :actions="['done', 'task', 'delete']"
+          @act="emit('act', satellite.id, $event)"
+        />
+      </ul>
+    </section>
 
-  <section v-if="tasks.length || done.length" aria-labelledby="tasks">
-    <p id="tasks" class="label">Tasks</p>
-    <ul v-if="tasks.length" class="card tasks">
-      <li v-for="task in tasks" :key="task.id">
-        <label>
-          <input type="checkbox" @change="emit('act', task.id, 'done')" />
-          <span>{{ task.text }}</span>
-        </label>
-        <button
-          type="button"
-          class="delete"
-          :aria-label="`Delete ${task.text}`"
-          @click="emit('act', task.id, 'delete')"
-        >
-          Delete
-        </button>
-      </li>
-    </ul>
-    <template v-if="done.length">
-      <p class="label done-label">Done · last 24 hours</p>
-      <ul class="card tasks">
-        <li v-for="task in done" :key="task.id" class="done">
-          <label title="Untick to put it back on the list">
-            <input type="checkbox" checked @change="emit('act', task.id, 'task')" />
+    <section v-if="tasks.length || done.length" aria-labelledby="task-list">
+      <p id="task-list" class="mono head">
+        <span class="dot task" aria-hidden="true" />Tasks · <b>{{ counted(tasks.length) }}</b>
+      </p>
+      <ul v-if="tasks.length">
+        <li v-for="task in tasks" :key="task.id">
+          <label>
+            <input type="checkbox" @change="emit('act', task.id, 'done')" />
             <span>{{ task.text }}</span>
           </label>
+          <button
+            type="button"
+            class="key"
+            title="Delete it for good"
+            :aria-label="`Delete ${task.text}`"
+            @click="emit('act', task.id, 'delete')"
+          >
+            ×
+          </button>
         </li>
       </ul>
-    </template>
-  </section>
+      <template v-if="done.length">
+        <p class="mono head">Done · last 24 hours</p>
+        <ul>
+          <li v-for="task in done" :key="task.id" class="done">
+            <label title="Untick to put it back on the list">
+              <input type="checkbox" checked @change="emit('act', task.id, 'task')" />
+              <span>{{ task.text }}</span>
+            </label>
+          </li>
+        </ul>
+      </template>
+    </section>
+  </div>
 </template>
 
 <style scoped>
-section {
-  margin-top: 16px;
+.list {
+  padding: 9px 11px 4px;
 }
 
-.label {
-  margin: 0 0 8px;
-  color: var(--dim);
-  font-size: 12px;
+section + section {
+  margin-top: 8px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 0;
+}
+
+.dot.task {
+  --c: #8fd3f0;
 }
 
 ul {
-  display: grid;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.tasks {
-  gap: 0;
-  padding: 4px;
-}
-
-.tasks li {
+li {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
-  border-radius: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
 }
 
-.tasks label {
+label {
   flex: 1;
   display: flex;
   align-items: baseline;
@@ -96,28 +109,11 @@ ul {
 }
 
 input {
-  accent-color: var(--glow);
-}
-
-.done-label {
-  margin-top: 12px;
+  accent-color: #8fd3f0;
 }
 
 .done span {
   color: var(--dim);
   text-decoration: line-through;
-}
-
-.delete {
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: none;
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.delete:hover {
-  background: var(--sky-hover);
-  color: var(--starlight);
 }
 </style>

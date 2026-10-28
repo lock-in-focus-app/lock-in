@@ -2,13 +2,14 @@
 import type { AppAction, AppRule, InstalledApp } from '@lock-in/core';
 import { computed, ref } from 'vue';
 import { installedApps } from '../app';
+import SegmentedControl from './SegmentedControl.vue';
 
 const props = defineProps<{ apps: AppRule[]; canHide: boolean }>();
 const emit = defineEmits<{ 'update:apps': [apps: AppRule[]] }>();
 
-const actionOptions: { id: AppAction; label: string }[] = [
-  { id: 'close', label: 'Close' },
-  { id: 'hide', label: 'Hide' },
+const actionOptions: { id: AppAction; label: string; title: string }[] = [
+  { id: 'close', label: 'Close', title: 'Quit the app' },
+  { id: 'hide', label: 'Hide', title: 'Keep it running with its windows out of sight' },
 ];
 
 // The installed apps are read once, when the list is first opened.
@@ -50,45 +51,52 @@ const setAction = (path: string, action: AppAction) =>
 <template>
   <div class="editor">
     <ul v-if="apps.length" class="rules">
-      <li v-for="rule in apps" :key="rule.path" class="row">
+      <li v-for="rule in apps" :key="rule.path">
         <span class="name" :title="rule.path">{{ rule.name }}</span>
-        <select
+        <SegmentedControl
           v-if="canHide"
-          :aria-label="`What happens to ${rule.name}`"
-          :value="rule.action"
-          @change="setAction(rule.path, ($event.target as HTMLSelectElement).value as AppAction)"
+          class="action"
+          :label="`What happens to ${rule.name}`"
+          :options="actionOptions"
+          :model-value="rule.action"
+          @update:model-value="setAction(rule.path, $event)"
+        />
+        <button
+          class="key"
+          type="button"
+          :title="`Remove ${rule.name}`"
+          :aria-label="`Remove ${rule.name}`"
+          @click="remove(rule.path)"
         >
-          <option v-for="option in actionOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
-        </select>
-        <button class="small" type="button" :aria-label="`Remove ${rule.name}`" @click="remove(rule.path)">
-          Remove
+          ×
         </button>
       </li>
     </ul>
-    <p v-else class="row-help">No apps yet.</p>
+    <p v-else class="help">No apps yet.</p>
 
     <template v-if="picking">
-      <input v-model="search" type="search" placeholder="Search apps" aria-label="Search apps" />
-      <p v-if="!installed" class="row-help">Looking for apps…</p>
+      <input v-model="search" class="card" type="search" placeholder="Search apps" aria-label="Search apps" />
+      <p v-if="!installed" class="help">Looking for apps…</p>
       <ul v-else class="choices">
         <li v-for="app in choices" :key="app.path">
           <button type="button" class="choice" :title="app.path" @click="add(app)">{{ app.name }}</button>
         </li>
-        <li v-if="!choices.length" class="row-help">No apps match.</li>
+        <li v-if="!choices.length" class="help">No apps match.</li>
       </ul>
-      <button class="small cancel" type="button" @click="picking = false">Cancel</button>
+      <button class="card add mono" type="button" @click="picking = false">Cancel</button>
     </template>
-    <button v-else class="small add" type="button" @click="startPicking">Add an app</button>
+    <button v-else class="card add mono" type="button" @click="startPicking">+ Add an app</button>
 
-    <p class="row-help">They close when a session with this profile starts, and again if they're opened during it.</p>
-    <p v-if="canHide" class="row-help">Hide keeps an app running with its windows out of sight.</p>
+    <p class="help">
+      They close when a session with this profile starts, and again if they're opened during it.
+      <template v-if="canHide">Hide keeps an app running with its windows out of sight.</template>
+    </p>
   </div>
 </template>
 
 <style scoped>
-/* Shown inside a glass card (ProfileList.vue). */
 .editor {
-  padding: 8px 12px;
+  padding: 6px 0 10px;
 }
 
 ul {
@@ -97,11 +105,13 @@ ul {
   list-style: none;
 }
 
-.row {
+.rules li {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
 }
 
 .name {
@@ -111,63 +121,62 @@ ul {
   white-space: nowrap;
 }
 
-.row-help {
-  margin: 4px 0 8px;
-  color: var(--dim);
-  font-size: 12px;
+.action {
+  width: 110px;
 }
 
-select,
-input {
-  padding: 6px 8px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
-  background: var(--sky);
-  color: var(--starlight);
-  font: inherit;
-}
-
-select:focus,
-input:focus {
-  border-color: var(--glow);
-  outline: none;
+.help {
+  margin: 8px 0 0;
+  color: var(--faint);
+  font-size: 11.5px;
 }
 
 input {
+  display: block;
   width: 100%;
-  margin: 8px 0 4px;
   box-sizing: border-box;
+  margin-top: 10px;
+  padding: 7px 9px;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--starlight);
+  font: 12px var(--mono);
+}
+
+input:focus {
+  --t: rgb(220 228 255 / 0.85);
 }
 
 .choices {
   max-height: 200px;
+  margin-top: 4px;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .choice {
   width: 100%;
-  padding: 8px;
-  text-align: left;
+  padding: 7px 8px;
+  border-radius: 3px;
   background: none;
+  font-size: 12.5px;
+  text-align: left;
 }
 
 .choice:hover {
-  background: var(--sky-hover);
+  background: rgb(220 228 255 / 0.06);
 }
 
-.small {
+.add {
+  margin-top: 10px;
   padding: 6px 10px;
-  background: var(--sky);
+  background: none;
   color: var(--dim);
-  font-size: 12px;
+  transition: color 300ms;
 }
 
-.small:hover {
-  background: var(--sky-hover);
-}
-
-.add,
-.cancel {
-  margin: 8px 0 0;
+.add:hover {
+  color: var(--starlight);
 }
 </style>

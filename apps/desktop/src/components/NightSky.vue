@@ -112,6 +112,10 @@ const props = defineProps<{
    */
   play?: string[];
 }>();
+const emit = defineEmits<{
+  /** While exploring, how far in it's zoomed and the constellation in the middle of the view, if any. */
+  view: [view: { zoom: number; aimed?: string }];
+}>();
 
 const canvas = ref<HTMLCanvasElement>();
 const still = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -849,6 +853,7 @@ function draw(time: number) {
     }
   }
   drawnBoxes = boxes;
+  aimAt(width, height);
 
   // Planets, nearer than the stars, so drawn over them.
   const planetSpots: typeof drawnPlanets = [];
@@ -1126,6 +1131,34 @@ function kept(to: View): View {
   return { x: between(to.x, world.left, world.right), y: between(to.y, world.top, world.bottom), zoom };
 }
 
+/** What was last told about the view, so it's only told again when that changes. */
+let told = { zoom: 1, aimed: undefined as string | undefined };
+/**
+ * Tells the page how far in exploring is zoomed and which constellation is in the middle of the
+ * view: the one there, or else the nearest within a little way of it.
+ */
+function aimAt(width: number, height: number) {
+  let aimed: string | undefined;
+  let zoom = 1;
+  if (exploringSky()) {
+    zoom = Math.round(seen.zoom * 100) / 100;
+    const near = Math.min(width, height) * 0.2;
+    let nearest = Infinity;
+    for (const box of drawnBoxes) {
+      const inside =
+        box.left <= width / 2 && box.right >= width / 2 && box.top <= height / 2 && box.bottom >= height / 2;
+      const away = Math.hypot((box.left + box.right - width) / 2, (box.top + box.bottom - height) / 2);
+      if ((inside || away < near) && away < nearest) {
+        nearest = away;
+        aimed = box.id;
+      }
+    }
+  }
+  if (zoom === told.zoom && aimed === told.aimed) return;
+  told = { zoom, aimed };
+  emit('view', told);
+}
+
 /** Zooms by `factor` (above 1 is in) toward a spot on the sky (as shares of it), which stays put. */
 function zoomAt(x: number, y: number, factor: number) {
   if (!exploringSky()) return;
@@ -1203,10 +1236,7 @@ function press(event: KeyboardEvent) {
     '+': () => zoomAt(0.5, 0.5, 1.4),
     '=': () => zoomAt(0.5, 0.5, 1.4),
     '-': () => zoomAt(0.5, 0.5, 1 / 1.4),
-    '0': () => {
-      view = kept(home);
-      wake();
-    },
+    '0': recenter,
     ArrowLeft: () => pan(-step, 0),
     ArrowRight: () => pan(step, 0),
     ArrowUp: () => pan(0, -step),
@@ -1218,9 +1248,17 @@ function press(event: KeyboardEvent) {
   action();
 }
 
+/** Glides back to where exploring started, around the latest weeks. */
+function recenter() {
+  if (!exploringSky()) return;
+  view = kept(home);
+  wake();
+}
+
 defineExpose({
   /** Zooms in (`factor` above 1) or out toward the middle, while exploring. */
   zoom: (factor: number) => zoomAt(0.5, 0.5, factor),
+  recenter,
 });
 
 function point(event: PointerEvent) {

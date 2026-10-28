@@ -5,9 +5,11 @@ import {
   formatHour,
   formatHourRange,
   maxConstellationNameLength,
+  starColorFor,
   weeklyReport,
   weekStart,
   type Comet,
+  type ProfileSummary,
   type RareEvent,
   type SiteDistractions,
   type Streaks,
@@ -16,12 +18,12 @@ import {
 import { recipes } from '@lock-in/recipes';
 import { computed, nextTick, ref, watch } from 'vue';
 import { activity } from '../app';
-import DotChart from './DotChart.vue';
 import Unfold from './Unfold.vue';
 import WeekPicker from './WeekPicker.vue';
 
 // The weekly report: focus, distractions and satellites for one calendar week, worked out on
-// this device from what the app logged. It opens on this week; the arrows go back to earlier
+// this device from what the app logged, as one long numbered readout (the Observatory HUD, PLAN
+// Phase 5). It opens on this week; the arrows go back to earlier
 // ones, as far as the log goes. Weeks start on the first day of the week set on the computer.
 // The week's constellation shows softly behind the header (drawn by the sky), named beneath it.
 // Anything rare that happened in the sky that week is noted quietly at the end. Streaks are only
@@ -37,6 +39,8 @@ const props = defineProps<{
   comets: Comet[];
   /** Days in a row with a star by the end of the week being shown, `current` only for this week. */
   streaks: Streaks;
+  /** For each profile's star color. Deleted profiles get theirs from their id. */
+  profiles: ProfileSummary[];
 }>();
 const emit = defineEmits<{
   /** The start of the week being shown, whenever it changes. */
@@ -115,7 +119,8 @@ const days = computed(() =>
     const day = new Date(start.value);
     day.setDate(day.getDate() + i);
     return {
-      short: day.toLocaleDateString(undefined, { weekday: 'narrow' }),
+      at: day.getTime(),
+      short: day.toLocaleDateString(undefined, { weekday: 'short' }),
       long: day.toLocaleDateString(undefined, { weekday: 'long' }),
     };
   }),
@@ -124,12 +129,52 @@ const days = computed(() =>
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 const focus = computed(() => report.value?.focus);
-// The busiest day, named above its dots, when the week had any focus.
-const peakDay = computed(() => {
-  const week = focus.value?.days ?? [];
-  const most = Math.max(0, ...week);
-  return most > 0 ? `Peak: ${days.value[week.indexOf(most)]!.long}` : undefined;
+
+// The focus trace: this week as a line, as far as today, over the week before as a dashed line,
+// with the busiest day marked.
+const trace = { width: 368, height: 124 };
+const focusTrace = computed(() => {
+  const week = focus.value;
+  if (!week) return undefined;
+  const sofar = days.value.filter((day) => day.at <= Date.now()).length;
+  const before = hasLastWeek.value ? week.lastWeekDays : undefined;
+  const most = Math.max(1, ...week.days, ...(before ?? []));
+  const at = (ms: number, i: number) => ({
+    x: 12 + (i * (trace.width - 24)) / 6,
+    y: trace.height - 20 - (ms / most) * (trace.height - 46),
+  });
+  const line = (list: number[]) =>
+    list
+      .map((ms, i) => at(ms, i))
+      .map(({ x, y }) => `${x},${y}`)
+      .join(' ');
+  const shown = week.days.slice(0, Math.max(1, sofar));
+  const peakMs = Math.max(0, ...week.days);
+  const peakIndex = week.days.indexOf(peakMs);
+  return {
+    points: shown.map((ms, i) => ({ ...at(ms, i), title: `${days.value[i]!.long}: ${formatDuration(ms)}` })),
+    line: line(shown),
+    before: before && line(before),
+    axis: days.value.map((day, i) => ({ x: at(0, i).x, label: day.short })),
+    peak:
+      peakMs > 0
+        ? {
+            ...at(peakMs, peakIndex),
+            index: peakIndex,
+            label: `Peak · ${days.value[peakIndex]!.short} · ${formatDuration(peakMs)}`,
+          }
+        : undefined,
+  };
 });
+const traceLabel = computed(
+  () =>
+    `Focus by day: ${
+      focus.value?.days.map((ms, i) => `${days.value[i]!.long} ${formatDuration(ms)}`).join(', ') ?? ''
+    }`,
+);
+
+// Each profile's share of the week's focus, in its star color.
+const colorOf = (id: string) => starColorFor(id, props.profiles.find((profile) => profile.id === id)?.starColor);
 const focusTrend = computed(() => {
   if (!focus.value || !hasLastWeek.value) return '';
   const change = focus.value.focusedMs - focus.value.lastWeekMs;
@@ -221,6 +266,22 @@ function eventLine(event: RareEvent) {
 const skyLines = computed(() => props.events.filter((event) => inWeek(event.at)).map(eventLine));
 const weekComets = computed(() => props.comets.filter((comet) => inWeek(comet.at)).length);
 
+const mostTrips = computed(() => Math.max(1, ...(distractions.value?.hours ?? [])));
+
+// The readout's sections are numbered in order, counting only those shown.
+const sections = computed(() => {
+  if (!report.value) return [];
+  return [
+    'focus',
+    focus.value?.profiles.length && 'profiles',
+    'distractions',
+    'satellites',
+    (skyLines.value.length || weekComets.value) && 'sky',
+    report.value.suggestions.length && 'notes',
+  ].filter((section) => typeof section === 'string');
+});
+const numbered = (section: string) => String(sections.value.indexOf(section) + 1).padStart(2, '0');
+
 const empty = computed(() => !focus.value?.sessions && !distractions.value?.visits && !satellites.value?.launched);
 </script>
 
@@ -229,7 +290,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
     <nav class="weeks" aria-label="Weeks">
       <button
         type="button"
-        class="arrow"
+        class="card arrow"
         aria-label="Week before"
         :disabled="start <= firstWeek"
         @click="start = addWeeks(start, -1)"
@@ -239,19 +300,19 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
       <h2 id="week-title" class="heading">
         <button
           type="button"
-          class="pick"
+          class="pick mono"
           aria-haspopup="dialog"
           :aria-expanded="picking"
           title="Pick a week"
           @click="picking = !picking"
         >
-          <span>{{ title }} <span class="caret" aria-hidden="true">▾</span></span>
-          <span v-if="title !== range" class="dim">{{ range }}</span>
+          <span>{{ title !== range ? title : 'Week of' }} <span class="caret" aria-hidden="true">▾</span></span>
+          <b>{{ range }}</b>
         </button>
       </h2>
       <button
         type="button"
-        class="arrow"
+        class="card arrow"
         aria-label="Week after"
         :disabled="start >= thisWeek"
         @click="start = addWeeks(start, 1)"
@@ -265,6 +326,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
           <input
             ref="nameInput"
             v-model="draft"
+            class="card mono"
             :maxlength="maxConstellationNameLength"
             :placeholder="constellation.named ? 'A made-up name' : constellation.name"
             aria-label="This week's constellation"
@@ -272,9 +334,14 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
             @blur="saveName"
           />
         </form>
-        <button v-else type="button" class="name" title="Name this week's constellation" @click="startRenaming">
-          <span class="star" aria-hidden="true">✦</span> {{ constellation.name }}
-          <span class="edit">Rename</span>
+        <button
+          v-else
+          type="button"
+          class="card name mono"
+          title="Name this week's constellation"
+          @click="startRenaming"
+        >
+          ✦ {{ constellation.name }} <span class="edit">· Rename</span>
         </button>
       </div>
     </Transition>
@@ -300,107 +367,154 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
     <Transition :name="slide" mode="out-in">
       <div :key="report?.start ?? 'loading'">
         <p v-if="error" class="error" role="alert">{{ error }}</p>
-        <p v-else-if="report && empty" class="dim empty">
+        <p v-else-if="report && empty" class="mono empty">
           Nothing logged
-          {{ start === thisWeek ? 'yet this week. Start a session and it will show up here.' : 'that week.' }}
+          {{ start === thisWeek ? 'yet this week. Start a session and it shows up here.' : 'that week.' }}
         </p>
 
         <template v-else-if="report && focus && distractions && satellites">
-          <section class="card" aria-labelledby="focus">
-            <h3 id="focus">Focus</h3>
-            <p class="big">
-              {{ formatDuration(focus.focusedMs) }} <span class="dim">focused</span>
-              <span v-if="focusTrend" class="trend">{{ focusTrend }}</span>
+          <section class="read" aria-labelledby="focus">
+            <h3 id="focus" class="mono">{{ numbered('focus') }} — Focus</h3>
+            <p class="figure">
+              <b>{{ formatDuration(focus.focusedMs) }}</b>
+              <span v-if="focusTrend" class="mono">{{ focusTrend }}</span>
             </p>
-            <DotChart
-              label="Focus by day"
-              :values="focus.days"
-              :titles="focus.days.map((ms, i) => `${days[i]!.long}: ${formatDuration(ms)}`)"
-              :labels="days.map((day) => day.short)"
-              :peak="peakDay"
-              :rows="6"
-              :across="3"
-              color="var(--glow)"
-            />
-            <p v-if="streakLine" class="dim">{{ streakLine }}</p>
+            <svg
+              v-if="focusTrace"
+              class="trace"
+              :viewBox="`0 0 ${trace.width} ${trace.height}`"
+              role="img"
+              :aria-label="traceLabel"
+            >
+              <polyline v-if="focusTrace.before" class="before" :points="focusTrace.before" />
+              <template v-if="focusTrace.peak">
+                <line
+                  class="peak-line"
+                  :x1="focusTrace.peak.x"
+                  :x2="focusTrace.peak.x"
+                  :y1="focusTrace.peak.y - 6"
+                  y2="12"
+                />
+                <text
+                  class="peak"
+                  :x="focusTrace.peak.index > 3 ? focusTrace.peak.x - 6 : focusTrace.peak.x + 6"
+                  y="14"
+                  :text-anchor="focusTrace.peak.index > 3 ? 'end' : 'start'"
+                >
+                  {{ focusTrace.peak.label.toUpperCase() }}
+                </text>
+              </template>
+              <polyline class="this" :points="focusTrace.line" />
+              <circle
+                v-for="(point, i) in focusTrace.points"
+                :key="i"
+                :class="{ top: i === focusTrace.peak?.index }"
+                :cx="point.x"
+                :cy="point.y"
+                :r="i === focusTrace.peak?.index ? 3.5 : 2"
+              >
+                <title>{{ point.title }}</title>
+              </circle>
+              <text v-for="day in focusTrace.axis" :key="day.x" class="axis" :x="day.x" :y="trace.height - 2">
+                {{ day.label.toUpperCase() }}
+              </text>
+            </svg>
+            <p v-if="focusTrace?.before" class="mono legend">— This week &nbsp; ┄ Week before</p>
+            <p v-if="streakLine" class="note">{{ streakLine }}</p>
             <template v-if="focus.sessions">
-              <p class="dim">{{ sessionsLine }}</p>
-              <ul class="rows">
-                <li v-for="profile in focus.profiles" :key="profile.name">
-                  <span>{{ profile.name }}</span>
-                  <span class="dim"
-                    >{{ formatDuration(profile.focusedMs) }} · {{ plural(profile.sessions, 'session') }}</span
-                  >
-                </li>
-              </ul>
-              <p v-if="endings" class="dim">{{ endings }}</p>
+              <p class="note">{{ sessionsLine }}</p>
+              <p v-if="endings" class="note">{{ endings }}</p>
             </template>
           </section>
 
-          <section class="card" aria-labelledby="distractions">
-            <h3 id="distractions">Distractions</h3>
-            <p class="big">
-              {{ distractions.visits }}
-              <span class="dim">{{ distractions.visits === 1 ? 'trip' : 'trips' }} to redirected sites</span>
-              <span v-if="visitsTrend" class="trend">{{ visitsTrend }}</span>
-            </p>
-            <template v-if="distractions.visits">
-              <p class="dim">
-                You went back to focus {{ distractions.turnedBack }} of {{ distractions.visits }} times.
-              </p>
-              <DotChart
-                label="Trips by time of day"
-                :values="distractions.hours"
-                :titles="distractions.hours.map((count, hour) => `${formatHour(hour)}: ${plural(count, 'trip')}`)"
-                :rows="4"
-                color="#f2a7c3"
+          <section v-if="focus.profiles.length" class="read" aria-labelledby="profiles">
+            <h3 id="profiles" class="mono">{{ numbered('profiles') }} — Profiles</h3>
+            <div class="stack" aria-hidden="true">
+              <i
+                v-for="profile in focus.profiles"
+                :key="profile.id"
+                :style="{ '--c': colorOf(profile.id), flex: profile.focusedMs || 1 }"
               />
-              <p class="hour-axis dim" aria-hidden="true">
-                <span>12am</span><span>6am</span><span>12pm</span><span>6pm</span>
+            </div>
+            <ul class="rows">
+              <li v-for="profile in focus.profiles" :key="profile.id">
+                <span class="dot" :style="{ '--c': colorOf(profile.id) }" aria-hidden="true" />{{ profile.name }}
+                <span class="value mono">
+                  <b>{{ formatDuration(profile.focusedMs) }}</b> · {{ plural(profile.sessions, 'session') }}
+                </span>
+              </li>
+            </ul>
+          </section>
+
+          <section class="read" aria-labelledby="distractions">
+            <h3 id="distractions" class="mono">{{ numbered('distractions') }} — Distractions</h3>
+            <p class="figure">
+              <b>{{ distractions.visits }}</b>
+              <span class="mono">{{ distractions.visits === 1 ? 'trip' : 'trips' }} to redirected sites</span>
+            </p>
+            <p v-if="visitsTrend" class="mono">{{ visitsTrend }}</p>
+            <template v-if="distractions.visits">
+              <ol class="scope" aria-label="Trips by time of day">
+                <li
+                  v-for="(count, hour) in distractions.hours"
+                  :key="hour"
+                  :class="{ zero: !count }"
+                  :style="{ height: `${(count / mostTrips) * 100}%` }"
+                  :title="`${formatHour(hour)}: ${plural(count, 'trip')}`"
+                >
+                  <span class="hidden">{{ formatHour(hour) }}: {{ plural(count, 'trip') }}</span>
+                </li>
+              </ol>
+              <p class="hours mono" aria-hidden="true">
+                <span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span>
+              </p>
+              <p class="note">
+                You went back to focus {{ distractions.turnedBack }} of {{ distractions.visits }} times.
               </p>
               <ul class="rows">
                 <li v-for="site in distractions.sites" :key="site.recipeId">
-                  <span>{{ siteName(site.recipeId) }}</span>
-                  <span class="dim">{{ siteLine(site) }}</span>
+                  {{ siteName(site.recipeId) }}
+                  <span class="value mono">{{ siteLine(site) }}</span>
                 </li>
               </ul>
-              <p v-if="distractions.whys.length" class="dim">
+              <p v-if="distractions.whys.length" class="note">
                 Why: {{ distractions.whys.map((w) => `${w.why} ${w.visits}`).join(' · ') }}
               </p>
               <template v-if="distractions.intentions.length">
-                <p class="dim">What you came for</p>
+                <p class="mono sub">What you came for</p>
                 <ul class="rows">
                   <li v-for="intention in distractions.intentions" :key="intention.text">
                     <span class="intention">{{ intention.text }}</span>
-                    <span v-if="intention.count > 1" class="dim">×{{ intention.count }}</span>
+                    <span v-if="intention.count > 1" class="value mono">×{{ intention.count }}</span>
                   </li>
                 </ul>
               </template>
             </template>
           </section>
 
-          <section class="card" aria-labelledby="satellites">
-            <h3 id="satellites">Satellites</h3>
-            <p class="big">{{ satellites.launched }} <span class="dim">launched</span></p>
-            <p v-if="outcomes" class="dim">{{ outcomes }}</p>
+          <section class="read" aria-labelledby="satellites">
+            <h3 id="satellites" class="mono">{{ numbered('satellites') }} — Satellites</h3>
+            <p class="figure">
+              <b>{{ satellites.launched }}</b
+              ><span class="mono">launched</span>
+            </p>
+            <p v-if="outcomes" class="note">{{ outcomes }}</p>
           </section>
 
-          <section v-if="skyLines.length || weekComets" class="card" aria-labelledby="in-the-sky">
-            <h3 id="in-the-sky">In the sky</h3>
+          <section v-if="skyLines.length || weekComets" class="read" aria-labelledby="in-the-sky">
+            <h3 id="in-the-sky" class="mono">{{ numbered('sky') }} — In the sky</h3>
             <ul class="rows">
               <li v-for="line in skyLines" :key="line.id">
-                <span>{{ line.what }}</span>
-                <span class="dim">{{ line.day }}</span>
+                <span class="dot sky" aria-hidden="true" />{{ line.what }}
+                <span class="value mono">{{ line.day }}</span>
               </li>
             </ul>
-            <p v-if="weekComets" class="dim">{{ plural(weekComets, 'comet') }} for going back to focus</p>
+            <p v-if="weekComets" class="note">{{ plural(weekComets, 'comet') }} for going back to focus</p>
           </section>
 
-          <section v-if="report.suggestions.length" class="card" aria-labelledby="suggestions">
-            <h3 id="suggestions">Suggestions</h3>
-            <ul class="tips">
-              <li v-for="tip in report.suggestions" :key="tip">{{ tip }}</li>
-            </ul>
+          <section v-if="report.suggestions.length" class="read" aria-labelledby="suggestions">
+            <h3 id="suggestions" class="mono">{{ numbered('notes') }} — Notes</h3>
+            <p v-for="tip in report.suggestions" :key="tip" class="tip">{{ tip }}</p>
           </section>
         </template>
       </div>
@@ -409,63 +523,303 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 </template>
 
 <style scoped>
+.weeks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arrow {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: none;
+  color: var(--dim);
+  font: 13px var(--mono);
+}
+
+.arrow:hover:not(:disabled) {
+  color: var(--starlight);
+}
+
+.arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.heading {
+  flex: 1;
+  margin: 0;
+  font: inherit;
+}
+
+.pick {
+  display: grid;
+  width: 100%;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: none;
+  transition: color 300ms;
+}
+
+.pick b {
+  color: var(--starlight);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.pick:hover,
+.pick[aria-expanded='true'] {
+  color: var(--dim);
+}
+
+.caret {
+  display: inline-block;
+  transition: rotate 400ms var(--ease);
+}
+
+[aria-expanded='true'] .caret {
+  rotate: 180deg;
+}
+
+/* The week's constellation shows behind the header, named here beneath it. */
 .constellation {
   display: flex;
   justify-content: center;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .name {
-  padding: 3px 10px;
-  border-radius: 999px;
+  padding: 4px 9px;
   background: none;
-  color: var(--starlight);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  text-shadow: 0 0 10px rgb(6 9 20 / 0.9);
-  transition: background 300ms;
-}
-
-.name .star {
-  color: var(--glow);
+  color: var(--dim);
+  transition: color 300ms;
 }
 
 .edit {
-  margin-left: 4px;
-  color: var(--dim);
-  opacity: 0;
-  transition: opacity 300ms;
+  color: var(--faint);
+  transition: color 300ms;
 }
 
 .name:hover,
 .name:focus-visible {
-  background: rgb(255 255 255 / 0.07);
+  color: var(--starlight);
 }
 
 .name:hover .edit,
 .name:focus-visible .edit {
-  opacity: 1;
+  color: var(--dim);
 }
 
 .rename input {
   width: 220px;
-  padding: 3px 10px;
-  border: 1px solid rgb(205 215 255 / 0.2);
-  border-radius: 999px;
-  background: var(--sky-raised);
-  color: var(--starlight);
-  font: inherit;
-  font-size: 12px;
-  text-align: center;
+  padding: 4px 9px;
+  border: 0;
   outline: none;
-  transition:
-    border-color 300ms,
-    box-shadow 300ms;
+  background: none;
+  color: var(--starlight);
+  text-align: center;
+  text-transform: none;
 }
 
 .rename input:focus {
-  border-color: rgb(205 215 255 / 0.4);
-  box-shadow: 0 0 12px -2px rgb(160 180 255 / 0.35);
+  --t: rgb(220 228 255 / 0.85);
+}
+
+.picker-space {
+  padding-top: 12px;
+}
+
+/* One long readout, with hairlines between its numbered sections. */
+.read {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.read:last-child {
+  border-bottom: 0;
+}
+
+h3 {
+  margin: 0 0 6px;
+  font-weight: 400;
+}
+
+p {
+  margin: 0;
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.figure b {
+  font-size: 40px;
+  font-weight: 200;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.note {
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.sub {
+  margin-top: 12px;
+}
+
+.trace {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  overflow: visible;
+}
+
+.trace polyline {
+  fill: none;
+}
+
+.trace .this {
+  stroke: var(--glow);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 4px rgb(245 200 107 / 0.6));
+}
+
+.trace .before {
+  stroke: rgb(220 228 255 / 0.3);
+  stroke-dasharray: 3 4;
+}
+
+.trace circle {
+  fill: #0b1020;
+  stroke: var(--glow);
+}
+
+.trace circle.top {
+  fill: var(--glow);
+}
+
+.trace .peak-line {
+  stroke: rgb(245 200 107 / 0.5);
+}
+
+.trace text {
+  font: 9px var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.trace .peak {
+  fill: var(--glow);
+}
+
+.trace .axis {
+  fill: var(--faint);
+  text-anchor: middle;
+}
+
+.legend {
+  margin-top: 6px;
+}
+
+.stack {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  margin: 8px 0 10px;
+}
+
+.stack i {
+  border-radius: 2px;
+  background: var(--c);
+  box-shadow: 0 0 8px -1px var(--c);
+}
+
+.rows {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rows li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.value {
+  margin-left: auto;
+  text-align: right;
+}
+
+.dot.sky {
+  --c: #b9a7f5;
+}
+
+.intention {
+  overflow-wrap: anywhere;
+}
+
+/* Trips in each hour of the day, as thin bars. */
+.scope {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  align-items: end;
+  gap: 3px;
+  height: 44px;
+  margin: 10px 0 4px;
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+  list-style: none;
+}
+
+.scope li {
+  min-height: 1px;
+  border-radius: 1px 1px 0 0;
+  background: #f2a7c3;
+  box-shadow: 0 0 6px -1px #f2a7c3;
+}
+
+.scope li.zero {
+  background: rgb(220 228 255 / 0.15);
+  box-shadow: none;
+}
+
+.hours {
+  display: flex;
+  justify-content: space-between;
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tip {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+
+.empty {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.error {
+  color: #f0a3a3;
+  font-size: 12px;
 }
 
 .fade-enter-active,
@@ -476,10 +830,6 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.picker-space {
-  padding-top: 12px;
 }
 
 .week-forward-enter-active,
@@ -520,153 +870,9 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
     transform: none;
     filter: none;
   }
-}
 
-.weeks {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.heading {
-  flex: 1;
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.pick {
-  display: grid;
-  width: 100%;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: none;
-  font-weight: inherit;
-}
-
-.pick:hover,
-.pick[aria-expanded='true'] {
-  background: var(--sky-raised);
-}
-
-.pick .dim {
-  font-weight: 400;
-}
-
-.caret {
-  color: var(--dim);
-  font-size: 13px;
-}
-
-.arrow {
-  width: 32px;
-  height: 32px;
-  background: var(--sky-raised);
-  font-size: 18px;
-}
-
-.arrow:hover:not(:disabled) {
-  background: var(--sky-hover);
-}
-
-.arrow:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-section section {
-  margin-top: 12px;
-  padding: 14px 16px;
-}
-
-h3 {
-  margin: 0 0 6px;
-  color: var(--dim);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-p {
-  margin: 6px 0 0;
-}
-
-.dim {
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.big {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.big .dim {
-  font-weight: 400;
-}
-
-.trend {
-  display: block;
-  color: var(--dim);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.empty {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.hour-axis {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  margin-top: 2px;
-  font-size: 10px;
-}
-
-.rows {
-  display: grid;
-  gap: 2px;
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rows li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: var(--sky-raised);
-}
-
-.rows .dim {
-  text-align: right;
-}
-
-.intention {
-  overflow-wrap: anywhere;
-}
-
-.tips {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tips li {
-  padding: 10px 12px;
-  border-left: 2px solid var(--glow);
-  border-radius: 0 8px 8px 0;
-  background: var(--sky-raised);
-}
-
-.error {
-  color: #f0a3a3;
-  font-size: 12px;
+  .caret {
+    transition: none;
+  }
 }
 </style>

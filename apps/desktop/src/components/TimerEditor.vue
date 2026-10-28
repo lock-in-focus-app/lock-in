@@ -1,22 +1,55 @@
 <script setup lang="ts">
 import type { Strictness, TimerEnd, TimerSettings } from '@lock-in/core';
+import { ref } from 'vue';
+import LengthDial from './LengthDial.vue';
 import NumberField from './NumberField.vue';
+import SegmentedControl from './SegmentedControl.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
 
 const props = defineProps<{ timer: TimerSettings }>();
 const emit = defineEmits<{ 'update:timer': [timer: TimerSettings] }>();
 
-const endOptions: { id: TimerEnd; label: string }[] = [
-  { id: 'silent', label: 'Nothing happens' },
-  { id: 'gentle', label: 'Quiet notification' },
-  { id: 'alert', label: 'Notification and sound' },
+/** The longest timer, 6 hours, as in the app's core (timer.rs). */
+const maxMinutes = 360;
+/** The length while the dial is being dragged, so the stepper follows along. */
+const dragging = ref<number>();
+
+// Each choice spells out what it does, on its button and in the line above, so nothing depends
+// on hovering (which a touch screen can't do).
+const endOptions: { id: TimerEnd; label: string; detail: string; help: string }[] = [
+  { id: 'silent', label: 'Nothing', detail: 'silent', help: 'Nothing happens when the timer is done.' },
+  { id: 'gentle', label: 'Quiet', detail: 'notification', help: 'A quiet notification when the timer is done.' },
+  {
+    id: 'alert',
+    label: 'Sound',
+    detail: 'with sound',
+    help: 'A notification and a sound when the timer is done.',
+  },
 ];
 
-const strictnessOptions: { id: Strictness; label: string }[] = [
-  { id: 'gentle', label: 'After a short pause' },
-  { id: 'medium', label: 'After typing random text' },
-  { id: 'hard', label: 'Only with an emergency pass' },
+const strictnessOptions: { id: Strictness; label: string; detail: string; help: string }[] = [
+  {
+    id: 'gentle',
+    label: 'Gentle',
+    detail: 'a short pause',
+    help: 'Gentle: ending before the timer is done just asks you to wait a moment.',
+  },
+  {
+    id: 'medium',
+    label: 'Medium',
+    detail: 'type some text',
+    help: 'Medium: ending before the timer is done means typing out some random text first.',
+  },
+  {
+    id: 'hard',
+    label: 'Hard',
+    detail: 'a pass only',
+    help: "Hard: the session can't end before the timer is done without an emergency pass (Settings).",
+  },
 ];
+
+const helpFor = <T extends string>(options: { id: T; help: string }[], id: T) =>
+  options.find((option) => option.id === id)?.help;
 
 function save(patch: Partial<TimerSettings>) {
   emit('update:timer', { ...props.timer, ...patch });
@@ -25,84 +58,102 @@ function save(patch: Partial<TimerSettings>) {
 
 <template>
   <div class="editor">
-    <div class="row">
-      <span>Length</span>
-      <NumberField
-        label="Timer length in minutes"
-        unit="min"
-        :min="0"
-        :max="480"
+    <div class="field">
+      <div class="line">
+        Length
+        <NumberField
+          label="Timer length in minutes"
+          unit="min"
+          :min="0"
+          :max="maxMinutes"
+          :step="5"
+          :model-value="dragging ?? timer.minutes"
+          @update:model-value="save({ minutes: $event })"
+        />
+      </div>
+      <LengthDial
+        label="Timer length"
+        :max="maxMinutes"
         :model-value="timer.minutes"
         @update:model-value="save({ minutes: $event })"
+        @preview="dragging = $event"
       />
+      <p class="help">
+        Drag the ruler or click a spot on it. 0 for no timer. Either way, the session runs until you end it.
+      </p>
     </div>
-    <p class="row-help">0 for no timer. Either way, the session runs until you end it.</p>
 
     <template v-if="timer.minutes > 0">
-      <div class="row">
-        <span>When it's done</span>
-        <select
-          aria-label="When the timer is done"
-          :value="timer.onEnd"
-          @change="save({ onEnd: ($event.target as HTMLSelectElement).value as TimerEnd })"
-        >
-          <option v-for="option in endOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
-        </select>
+      <div class="field">
+        <div class="line">When it's done</div>
+        <p class="info" aria-live="polite"><span aria-hidden="true">ⓘ</span> {{ helpFor(endOptions, timer.onEnd) }}</p>
+        <SegmentedControl
+          label="When the timer is done"
+          :options="endOptions"
+          :model-value="timer.onEnd"
+          @update:model-value="save({ onEnd: $event })"
+        />
       </div>
 
-      <div class="row">
-        <span>Ending early</span>
-        <select
-          aria-label="Ending the session before the timer is done"
-          :value="timer.strictness"
-          @change="save({ strictness: ($event.target as HTMLSelectElement).value as Strictness })"
-        >
-          <option v-for="option in strictnessOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
-        </select>
+      <div class="field">
+        <div class="line">Ending early</div>
+        <p class="info" aria-live="polite">
+          <span aria-hidden="true">ⓘ</span> {{ helpFor(strictnessOptions, timer.strictness) }}
+        </p>
+        <SegmentedControl
+          label="Ending the session before the timer is done"
+          :options="strictnessOptions"
+          :model-value="timer.strictness"
+          @update:model-value="save({ strictness: $event })"
+        />
+        <p class="help">Once the timer is done, any session ends with one click.</p>
       </div>
-      <p class="row-help">Once the timer is done, the session ends with one click.</p>
 
-      <ToggleSwitch
-        label="Show time since done"
-        :model-value="timer.showSinceDone"
-        @update:model-value="save({ showSinceDone: $event })"
-      />
-      <p class="row-help">Shows "Done · 37 min ago" instead of just "Done", so you can see the extra you did.</p>
+      <div class="field">
+        <ToggleSwitch
+          label="Show time since done"
+          :model-value="timer.showSinceDone"
+          @update:model-value="save({ showSinceDone: $event })"
+        />
+        <p class="help">Shows "Done · 37 min ago" instead of just "Done", so you can see the extra you did.</p>
+      </div>
     </template>
   </div>
 </template>
 
 <style scoped>
-/* Shown inside a glass card (ProfileList.vue). */
-.editor {
-  padding: 4px 12px;
+.field {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
 }
 
-.row {
+.field + .field {
+  border-top: 1px dashed var(--line);
+}
+
+.line {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 40px;
+  gap: 10px;
+  font-size: 12.5px;
 }
 
-.row-help {
-  margin: -4px 0 8px;
+.help {
+  margin: 0;
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+/* What the picked choice does, changing with it. */
+.info {
+  margin: 0;
   color: var(--dim);
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
-select {
-  padding: 6px 8px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
-  background: var(--sky);
-  color: var(--starlight);
-  font: inherit;
-}
-
-select:focus {
-  border-color: var(--glow);
-  outline: none;
+.info span {
+  color: var(--c, var(--glow));
 }
 </style>
