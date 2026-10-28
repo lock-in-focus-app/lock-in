@@ -114,7 +114,16 @@ export function linkDesktopApp(): void {
 
   void desktopLinked.setValue(false);
   port = browser.runtime.connectNative(desktopHostName);
-  port.onMessage.addListener((message: FromDesktop) => void onMessage(message));
+  // The app's messages are handled one at a time, in the order they came. Otherwise its state
+  // could be applied while "linked" is still reading this side's state to send, and this side
+  // would send the app's own session back as if it were its own.
+  let handling = Promise.resolve();
+  port.onMessage.addListener(
+    (message: FromDesktop) =>
+      (handling = handling
+        .then(() => onMessage(message))
+        .catch((error) => console.error('Lock In: could not handle a message from the app', error))),
+  );
   // Fires straight away when the app isn't installed. The extension carries on by itself.
   port.onDisconnect.addListener(() => {
     port = undefined;
