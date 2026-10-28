@@ -10,6 +10,7 @@ import type {
   TimerSettings,
 } from '@lock-in/core';
 import {
+  addWeeks,
   comets,
   constellationNames,
   constellations,
@@ -23,6 +24,7 @@ import {
   starMagnitude,
   stars,
   starSparkle,
+  streaks,
   weekStart,
 } from '@lock-in/core';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -54,6 +56,7 @@ import NightSky, {
   type SkyConstellation,
   type SkyEvent,
   type SkyPlanet,
+  type SkySatellite,
 } from './components/NightSky.vue';
 import ProfileList from './components/ProfileList.vue';
 import SettingsView from './components/SettingsView.vue';
@@ -196,18 +199,34 @@ const skyComets = computed<SkyComet[]>(() => {
   const all = [...byWeek.values()].flatMap((list) => list.slice(-cometsPerWeek));
   return exploring.value || reportWeek.value !== undefined ? all : all.filter((comet) => comet.at >= thisWeek.value);
 });
+// Satellites circle the sky: in orbit, back and waiting to be sorted, or on the task list, the
+// latest launched. One ticked off stays until it has drifted away, the next time the Sky shows.
+const mostSatellites = 20;
+const playNow = ref<string[]>([]);
+const skySatellites = computed<SkySatellite[]>(() => {
+  const seenAt = sky.value?.seenAt;
+  const leaving = (id: string, stateAt: number) =>
+    seenAt !== undefined && (stateAt > seenAt || playNow.value.includes(`satellite:${id}`));
+  return (snapshot.value?.satellites ?? [])
+    .filter((s) => ['orbiting', 'back', 'task'].includes(s.state) || (s.state === 'done' && leaving(s.id, s.stateAt)))
+    .sort((a, b) => a.launchedAt - b.launchedAt)
+    .slice(-mostSatellites)
+    .map((s) => ({ id: s.id, text: s.text, done: s.state === 'done' }));
+});
 // Each plays once, the next time the Sky is shown between sessions, then counts as seen.
 const visible = ref(document.visibilityState === 'visible');
 const onVisibility = () => (visible.value = document.visibilityState === 'visible');
 onMounted(() => document.addEventListener('visibilitychange', onVisibility));
 onUnmounted(() => document.removeEventListener('visibilitychange', onVisibility));
-const playNow = ref<string[]>([]);
 const unseen = computed(() => {
   const seenAt = sky.value?.seenAt;
   if (seenAt === undefined || view.value !== 'sky' || !visible.value || snapshot.value?.session) return [];
   return [
     ...skyEvents.value.map((event) => ({ key: `event:${event.id}`, at: event.at })),
     ...skyComets.value.map((comet) => ({ key: `comet:${comet.id}`, at: comet.at })),
+    ...(snapshot.value?.satellites ?? [])
+      .filter((s) => s.state === 'done' && skySatellites.value.some((shown) => shown.id === s.id))
+      .map((s) => ({ key: `satellite:${s.id}`, at: s.stateAt })),
   ]
     .filter((item) => item.at > seenAt)
     .sort((a, b) => a.at - b.at);
@@ -215,8 +234,8 @@ const unseen = computed(() => {
 watch(unseen, (items) => {
   const latest = items[items.length - 1]?.at;
   if (latest === undefined || !sky.value) return;
-  // A few at most, the latest.
-  playNow.value = items.slice(-4).map((item) => item.key);
+  // A few at most, the latest. What played before stays, so a satellite drifting away isn't cut short.
+  playNow.value = [...playNow.value, ...items.slice(-4).map((item) => item.key)];
   sky.value = { ...sky.value, seenAt: latest };
   void run(() => skySeen(latest));
 });
@@ -232,6 +251,14 @@ const skyPlanets = computed<SkyPlanet[]>(() => {
 });
 const starCount = computed(() => skyConstellations.value.reduce((count, c) => count + c.stars.length, 0));
 const reportConstellation = computed(() => skyConstellations.value.find((c) => c.weekStart === reportWeek.value));
+// Streaks by the end of the week the report shows. Only this week's has one running.
+const reportStreaks = computed(() => {
+  if (reportWeek.value === undefined) return { current: 0, longest: 0 };
+  const end = addWeeks(reportWeek.value, 1);
+  const at = Math.min(minute.value * 60_000, end - 1);
+  const counted = streaks(skyStars.value, at);
+  return at < end - 1 ? counted : { ...counted, current: 0 };
+});
 const rename = (id: string, name: string) =>
   run(async () => {
     await nameConstellation(id, name);
@@ -288,6 +315,8 @@ async function run(action: () => Promise<void>) {
     :week="reportWeek"
     :comets="skyComets"
     :events="skyEvents"
+    :satellites="skySatellites"
+    :satellite-text="view === 'sky' && exploring && !snapshot?.session"
     :play="playNow"
   />
   <main>
@@ -340,6 +369,7 @@ async function run(action: () => Promise<void>) {
           :constellation="reportConstellation"
           :events="rare"
           :comets="allComets"
+          :streaks="reportStreaks"
           @week="(week: number) => (reportWeek = week)"
           @rename="rename"
         />

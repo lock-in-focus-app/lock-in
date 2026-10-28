@@ -1,7 +1,8 @@
 import type { GateVisitRecord } from './generated/GateVisitRecord';
 import type { SessionRecord } from './generated/SessionRecord';
-import { dayStart, monthStart, nextDay } from './planets';
+import { monthStart } from './planets';
 import { seeded, stars } from './sky';
+import { dayStart, starDays } from './streaks';
 
 // Comets and rare events (PLAN §5). Like the rest of the sky, they're worked out from the log every
 // time, but with this device's secret mixed into every roll: the same log and secret always give
@@ -124,7 +125,7 @@ export function rareEvents(sessions: readonly SessionRecord[], secret: string): 
   const sorted = sessions.filter((session) => !session.broken).sort((a, b) => a.startedAt - b.startedAt);
   // A streak counts days with a star, as moons do, and a month's planet is its first star's.
   const sky = stars(sorted);
-  const starStarts = new Set(sky.map((star) => star.id));
+  const streakOn = new Map(starDays(sky).map((day) => [day.id, day.streakDays]));
   const planetIds = new Map<number, string>();
   for (const star of sky) {
     const month = monthStart(star.startedAt);
@@ -139,7 +140,6 @@ export function rareEvents(sessions: readonly SessionRecord[], secret: string): 
   let dayMs = 0;
   let month = 0;
   let monthMs = 0;
-  let starDay = 0;
   let streak = 0;
   let longestStreak = 0;
   let recordBefore = 0;
@@ -151,10 +151,11 @@ export function rareEvents(sessions: readonly SessionRecord[], secret: string): 
     if (thisMonth !== month) [month, monthMs] = [thisMonth, 0];
 
     let streakBest = false;
-    if (starStarts.has(session.id) && today !== starDay) {
-      if (starDay && today === nextDay(starDay)) streak++;
-      else [streak, recordBefore] = [1, longestStreak];
-      starDay = today;
+    // On the first session of each day with a star.
+    const streakDays = streakOn.get(session.id);
+    if (streakDays !== undefined) {
+      if (streakDays === 1) recordBefore = longestStreak;
+      streak = streakDays;
       longestStreak = Math.max(longestStreak, streak);
       // Only on the day it passes the record, not every day after.
       streakBest = streak === Math.max(recordBefore + 1, bestStreakDays);

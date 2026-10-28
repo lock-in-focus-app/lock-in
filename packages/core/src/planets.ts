@@ -1,5 +1,6 @@
 import type { PlanetEventKind, RareEvent } from './events';
 import { seeded, type Star } from './sky';
+import { starDays } from './streaks';
 
 // Planets and moons (PLAN §5): one planet for every month with any focus, and moons around it
 // from focus streaks. Like the stars, they're worked out from the session log every time, so the
@@ -427,18 +428,7 @@ function topProfile(stars: readonly Star[]): string {
  */
 function streakMoons(sorted: readonly Star[]): Map<number, Moon[]> {
   const moons = new Map<number, Moon[]>();
-  let streakId = '';
-  let streakDays = 0;
-  let lastDay = 0;
-  for (const star of sorted) {
-    const day = dayStart(star.startedAt);
-    if (day === lastDay) continue;
-    if (lastDay && day === nextDay(lastDay)) streakDays++;
-    else {
-      streakId = star.id;
-      streakDays = 1;
-    }
-    lastDay = day;
+  for (const { day, streakDays, streakId } of starDays(sorted)) {
     const earns = moonDays.includes(streakDays) || (streakDays > lastMoonDays && streakDays % moonDaysAfter === 0);
     if (!earns) continue;
     const id = `${streakId}:${streakDays}`;
@@ -465,15 +455,4 @@ function streakMoons(sorted: readonly Star[]): Map<number, Moon[]> {
 export function monthStart(at: number): number {
   const date = new Date(at);
   return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
-}
-
-export function dayStart(at: number): number {
-  const date = new Date(at);
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-}
-
-/** The start of the day after the one starting at `day`, even across a daylight saving change. */
-export function nextDay(day: number): number {
-  const date = new Date(day);
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
 }

@@ -10,6 +10,7 @@ import {
   type Comet,
   type RareEvent,
   type SiteDistractions,
+  type Streaks,
   type WeeklyReport,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
@@ -23,7 +24,8 @@ import WeekPicker from './WeekPicker.vue';
 // this device from what the app logged. It opens on this week; the arrows go back to earlier
 // ones, as far as the log goes. Weeks start on the first day of the week set on the computer.
 // The week's constellation shows softly behind the header (drawn by the sky), named beneath it.
-// Anything rare that happened in the sky that week is noted quietly at the end.
+// Anything rare that happened in the sky that week is noted quietly at the end. Streaks are only
+// ever counted up: the one running now, while it is, and the longest by the week's end.
 
 const props = defineProps<{
   /** The first day of the week, 0 being Sunday. */
@@ -33,6 +35,8 @@ const props = defineProps<{
   /** Every rare event and comet, oldest first. */
   events: RareEvent[];
   comets: Comet[];
+  /** Days in a row with a star by the end of the week being shown, `current` only for this week. */
+  streaks: Streaks;
 }>();
 const emit = defineEmits<{
   /** The start of the week being shown, whenever it changes. */
@@ -137,6 +141,16 @@ const sessionsLine = computed(() => {
   const parts = [plural(focus.value.sessions, 'session'), `longest ${formatDuration(focus.value.longestMs)}`];
   if (focus.value.overtimeMs) parts.push(`${formatDuration(focus.value.overtimeMs)} past the timer`);
   return parts.join(' · ');
+});
+// Only from two days in a row, since one day isn't a streak yet.
+const streakLine = computed(() => {
+  const { current, longest } = props.streaks;
+  if (current >= 2) {
+    return current === longest
+      ? `On a ${current}-day streak, your longest yet`
+      : `On a ${current}-day streak · longest ${longest} days`;
+  }
+  return longest >= 2 ? `Longest streak: ${longest} days` : '';
 });
 const endings = computed(() => {
   if (!focus.value) return '';
@@ -308,6 +322,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
               :across="3"
               color="var(--glow)"
             />
+            <p v-if="streakLine" class="dim">{{ streakLine }}</p>
             <template v-if="focus.sessions">
               <p class="dim">{{ sessionsLine }}</p>
               <ul class="rows">

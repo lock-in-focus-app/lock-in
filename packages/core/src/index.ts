@@ -79,6 +79,7 @@ export { starterProfiles } from './profiles';
 export {
   isStarColor,
   newStarColor,
+  seeded,
   sessionSoFar,
   skyClarity,
   smallestStarMinutes,
@@ -124,6 +125,7 @@ export {
   type RareEventKind,
   type SkyEventKind,
 } from './events';
+export { starDays, streaks, type StarDay, type Streaks } from './streaks';
 export { endLock, formatClock, timerStatus, unlockText, type TimerStatus } from './timer';
 export {
   cleanedSatelliteText,
