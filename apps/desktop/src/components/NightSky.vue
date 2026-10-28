@@ -415,8 +415,9 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
   const area = {
     left: 0.06 * width,
     right: 0.94 * width,
-    top: 0.13 * height,
-    bottom: (props.drift ? 0.9 : 0.58) * height,
+    // On the Sky, between the day at the top of the page and the profiles.
+    top: (props.drift ? 0.13 : 0.28) * height,
+    bottom: (props.drift ? 0.9 : 0.56) * height,
   };
   const fitX = (area.right - area.left) / (box.right - box.left);
   const fitY = (area.bottom - area.top) / (box.bottom - box.top);

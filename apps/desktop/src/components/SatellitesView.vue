@@ -11,7 +11,7 @@ const counted = (count: number) => String(count).padStart(2, '0');
 </script>
 
 <template>
-  <div class="card list">
+  <div class="list">
     <section v-if="orbiting.length" aria-labelledby="in-orbit">
       <p id="in-orbit" class="mono head">
         <span class="dot" aria-hidden="true" />In orbit · <b>{{ counted(orbiting.length) }}</b> · back after your next
@@ -65,10 +65,6 @@ const counted = (count: number) => String(count).padStart(2, '0');
 </template>
 
 <style scoped>
-.list {
-  padding: 9px 11px 4px;
-}
-
 section + section {
   margin-top: 8px;
 }

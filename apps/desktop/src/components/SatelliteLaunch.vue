@@ -2,7 +2,8 @@
 import { computed, ref } from 'vue';
 import { maxSatelliteLength } from '../app';
 
-// The launch box: one line for parking a thought until after the session.
+// The launch box: one line for parking a thought until after the session. It sits in the frame
+// with the satellites that came back and the task list (SkyPage.vue).
 const props = defineProps<{ sessionRunning: boolean }>();
 const emit = defineEmits<{ launch: [text: string] }>();
 
@@ -24,7 +25,7 @@ const hint = computed(
 </script>
 
 <template>
-  <form class="card launch" :title="hint" @submit.prevent="launch">
+  <form class="launch" :title="hint" @submit.prevent="launch">
     <span class="prompt" aria-hidden="true">›</span>
     <input
       v-model="text"
@@ -42,7 +43,7 @@ const hint = computed(
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 11px;
+  padding: 4px 0;
 }
 
 .prompt {
@@ -65,11 +66,6 @@ input {
 
 input::placeholder {
   color: var(--faint);
-}
-
-/* The frame lights up while you type in it. */
-.launch:focus-within {
-  --t: rgb(220 228 255 / 0.85);
 }
 
 button {
