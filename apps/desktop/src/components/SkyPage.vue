@@ -132,12 +132,14 @@ watch(
         <!-- Thoughts for later, together: what came back after the last session, the task list
              (opened from Tasks below), and the launch box. -->
         <div class="card thoughts">
-          <SatellitesBack
-            v-if="!session && satellites.back.length"
-            class="part"
-            :satellites="satellites.back"
-            @act="(id, action) => emit('act', id, action)"
-          />
+          <Unfold>
+            <SatellitesBack
+              v-if="!session && satellites.back.length"
+              class="part"
+              :satellites="satellites.back"
+              @act="(id, action) => emit('act', id, action)"
+            />
+          </Unfold>
           <Unfold>
             <div v-if="showingTasks" id="tasks" class="part tasks">
               <SatellitesView

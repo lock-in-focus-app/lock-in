@@ -115,6 +115,34 @@ const lockHelp = computed(() => {
   text-align: center;
 }
 
+/*
+ * Glassier than the other frames: a lighter tint, so more of the sky shows through, with a sheen
+ * across the top, a faint glare, lit edges and a little of the session's color pooling at the
+ * bottom. It's drawn with gradients rather than by blurring the sky behind it, which would be
+ * redone every frame the sky moves (theme.css).
+ */
+.session::before {
+  background-color: rgb(14 19 38 / 0.4);
+  box-shadow:
+    inset 0 1px 0 rgb(220 228 255 / 0.14),
+    inset 0 -1px 0 rgb(220 228 255 / 0.04),
+    inset 0 0 28px rgb(220 228 255 / 0.04),
+    0 12px 32px rgb(0 0 0 / 0.25);
+}
+
+.session::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgb(220 228 255 / 0.08), transparent 40%),
+    linear-gradient(115deg, transparent 32%, rgb(220 228 255 / 0.045) 44%, transparent 56%),
+    radial-gradient(120% 70% at 50% 125%, color-mix(in srgb, var(--c) 12%, transparent), transparent 70%);
+}
+
 p {
   margin: 0;
 }
