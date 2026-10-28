@@ -25,6 +25,8 @@ const props = defineProps<{
   satelliteHotkey: string;
   /** Whether a satellite has ever been launched. Until one is, the launch box says what they are. */
   launchedSatellite: boolean;
+  /** Whether to offer the tour for new users, which the Sky does once. */
+  offerTour: boolean;
   starCount: number;
   /** What the top of the page shows: the date, a quote for the day, time locked in today, and the streak running now. */
   glance: { date: string; quote?: { text: string; author?: string }; lockedInMs: number; streak: number };
@@ -54,6 +56,8 @@ const emit = defineEmits<{
   rename: [id: string, name: string];
   /** Show an earlier month's constellations on the Sky, or the latest (undefined). */
   month: [month: number | undefined];
+  /** The answer to the tour's offer: take it, or not. */
+  tour: [take: boolean];
 }>();
 
 // Stepping through the months, a month's constellations at a time.
@@ -120,6 +124,16 @@ watch(
               · Streak <b>{{ glance.streak }} days</b></span
             >
           </p>
+          <!-- Offered once, the first time the Sky shows, and in Settings after that. -->
+          <Unfold>
+            <div v-if="offerTour && !session" class="card offer">
+              <span class="mono">✦ New here? · <b>1-min tour</b></span>
+              <span class="keys">
+                <button class="key next" type="button" @click="emit('tour', true)">Take the tour</button>
+                <button class="key" type="button" @click="emit('tour', false)">No thanks</button>
+              </span>
+            </div>
+          </Unfold>
         </header>
 
         <div class="middle">
@@ -137,7 +151,7 @@ watch(
 
         <!-- Thoughts for later, together: what came back after the last session, the task list
              (opened from Tasks below), and the launch box. -->
-        <div class="card thoughts">
+        <div class="card thoughts" data-tour="satellites">
           <!-- The thoughts in orbit circle the frame. The orbits only just reach past it, to stay
                in the window and clear of the profiles above. -->
           <SatelliteOrbits
@@ -395,6 +409,26 @@ figcaption::before {
   min-height: 0;
   display: grid;
   place-items: center;
+}
+
+.offer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 6px 8px 6px 11px;
+  white-space: nowrap;
+}
+
+.offer .keys {
+  display: flex;
+  gap: 6px;
+}
+
+.offer .next {
+  color: var(--starlight);
+  border-color: var(--tick);
 }
 
 /* Explore on the left, the month in the middle and the tasks on the right. */

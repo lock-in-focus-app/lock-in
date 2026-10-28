@@ -20,6 +20,7 @@ const session = useStorageItem(activeSession);
 const profileList = useStorageItem(profiles);
 const linked = useStorageItem(desktopLinked);
 const satelliteList = useStorageItem(satellites);
+const offeredTour = useStorageItem(tourOffered);
 
 // Satellites the extension keeps itself. Linked to the app, they go to it straight away.
 const byState = (state: Satellite['state']) => (satelliteList.value ?? []).filter((s) => s.state === state);
@@ -67,6 +68,13 @@ function openSettings() {
   window.close();
 }
 
+// The tour for new users runs on the settings page, which it opens. The popup offers it once.
+async function takeTour() {
+  await tourOffered.setValue(true);
+  await browser.tabs.create({ url: `${browser.runtime.getURL('/options.html')}#tour` });
+  window.close();
+}
+
 function start(profile: Profile) {
   now.value = Date.now();
   void startSession(profile.id);
@@ -99,6 +107,13 @@ function start(profile: Profile) {
 
     <!-- Only once storage says there's no session, so a running one doesn't flash this first. -->
     <template v-else-if="session === null && profileList">
+      <div v-if="offeredTour === false" class="offer">
+        <p><span class="star" aria-hidden="true">✦</span> New here? A quick tour of what Lock In does.</p>
+        <span class="offer-buttons">
+          <button class="take" type="button" @click="takeTour">Take the tour</button>
+          <button type="button" @click="tourOffered.setValue(true)">No thanks</button>
+        </span>
+      </div>
       <SatellitesBack v-if="back.length" :satellites="back" @act="actOnSatellite" />
       <section>
         <p class="label">Start a session</p>
@@ -248,5 +263,41 @@ ul {
 
 .satellites {
   margin-top: 20px;
+}
+
+.offer {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--sky-raised);
+}
+
+.offer p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.offer-buttons {
+  display: flex;
+  gap: 2px;
+  margin: 6px 0 0 -8px;
+}
+
+.offer-buttons button {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: none;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.offer-buttons button:hover {
+  background: var(--sky-hover);
+  color: var(--starlight);
+}
+
+.offer-buttons .take {
+  color: var(--glow);
 }
 </style>

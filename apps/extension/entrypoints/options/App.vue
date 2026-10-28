@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { maxProfileNameLength, starColorFor } from '@lock-in/core';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import StarColorPicker from '@/components/StarColorPicker.vue';
 import QuotesSection from './components/QuotesSection.vue';
 import RedirectSection from './components/RedirectSection.vue';
 import SitesSection from './components/SitesSection.vue';
+import TourGuide, { type TourStep } from './components/TourGuide.vue';
 
 const profileList = useStorageItem(profiles);
 const session = useStorageItem(activeSession);
@@ -73,6 +74,45 @@ async function deletePicked() {
   picked.value = [];
   confirmingBulk.value = false;
 }
+
+// The tour for new users (PLAN Phase 5). The popup offers it once and opens this page at #tour;
+// after that it's here, at the top.
+const touring = ref<number>();
+const tourSteps: TourStep[] = [
+  {
+    target: 'profiles',
+    title: 'Profiles',
+    text: "A profile is a set of rules for a focus session. Start one from Lock In's button in your browser's toolbar (pin it to keep it a click away), and pick one here to change its rules.",
+  },
+  {
+    target: 'sites',
+    title: 'Sites',
+    text: 'Each site gets a level for this profile. Allowed leaves it alone, Tamed hides the distracting parts, Redirected sends you to a Lock In page first, and Restricted keeps it closed until the session ends.',
+  },
+  {
+    target: 'redirect',
+    title: 'The redirect page',
+    text: 'A redirected site shows one of these Lock In pages instead. If you really need the site, the intention gate asks what you came for, then lets you through for a few minutes.',
+  },
+  {
+    title: 'Satellites',
+    text: 'When a thought pulls you away mid-session, open the popup, type it and launch it. It waits in orbit and comes back when the session ends, to tick off, keep as a task, or leave for later.',
+  },
+  {
+    title: 'The Lock In app',
+    text: 'With the Lock In app on your computer too, the extension links to it by itself, and the popup says App linked. Sessions, profiles and satellites stay in step, and the app adds a timer, a sky of your focus, and a hotkey for satellites from any app. The tour is at the top of this page whenever you want it again.',
+  },
+];
+function takeTour() {
+  managing.value = false;
+  touring.value = 0;
+  void tourOffered.setValue(true);
+}
+onMounted(() => {
+  if (location.hash !== '#tour') return;
+  history.replaceState(null, '', location.pathname);
+  takeTour();
+});
 </script>
 
 <template>
@@ -85,10 +125,11 @@ async function deletePicked() {
         redirected or restricted. Pick a profile to edit it. Changes save as you go, and apply straight away if the
         profile is running.
       </p>
+      <button type="button" class="text-button take-tour" @click="takeTour">Take the tour</button>
     </header>
 
     <section v-if="profileList && profile">
-      <div v-if="!managing" class="profiles">
+      <div v-if="!managing" class="profiles" data-tour="profiles">
         <div class="tabs" role="tablist" aria-label="Profiles">
           <button
             v-for="p in profileList"
@@ -235,6 +276,7 @@ async function deletePicked() {
         <button type="button" class="text-button danger confirm-reset" @click="reset">Reset</button>
       </div>
     </footer>
+    <TourGuide v-if="touring !== undefined" v-model:step="touring" :steps="tourSteps" @end="touring = undefined" />
   </main>
 </template>
 
@@ -262,7 +304,12 @@ h1 {
 }
 
 .intro {
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+}
+
+.take-tour {
+  margin: 0 0 16px -8px;
+  color: var(--glow);
 }
 
 .manage {

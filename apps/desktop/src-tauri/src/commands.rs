@@ -154,6 +154,14 @@ pub fn sky_seen(app: AppHandle, at: i64) -> Result<()> {
     crate::engine(&app).sky_seen(at, crate::now_ms())
 }
 
+/// Notes that the tour for new users has been offered, taken or turned down.
+#[tauri::command]
+pub fn tour_offered(app: AppHandle) -> Result<()> {
+    crate::engine(&app).tour_offered(crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
 /// Trips to redirected sites that went back to focus, oldest first, for comets.
 #[tauri::command]
 pub fn turned_back(app: AppHandle) -> Result<Vec<GateVisit>> {

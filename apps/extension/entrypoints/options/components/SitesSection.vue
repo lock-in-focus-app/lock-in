@@ -31,8 +31,9 @@ const point = (recipeId: string, toggleId?: string) => {
     level, like redirecting YouTube Shorts while the rest of YouTube is tamed.
   </p>
   <ul class="list sites">
-    <li v-for="recipe in recipes" :key="recipe.id">
-      <div class="site">
+    <li v-for="(recipe, i) in recipes" :key="recipe.id">
+      <!-- The tour points at the first site's levels. -->
+      <div class="site" :data-tour="i === 0 ? 'sites' : undefined">
         <span class="name">{{ recipe.name }}</span>
         <LevelPicker
           :site-name="recipe.name"
