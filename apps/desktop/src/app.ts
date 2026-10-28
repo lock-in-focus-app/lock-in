@@ -3,6 +3,7 @@ import type {
   AppRule,
   ConstellationName,
   GateVisitRecord,
+  GlowColor,
   InstalledApp,
   SatelliteAction,
   SessionRecord,
@@ -115,6 +116,21 @@ export async function firstDayOfWeek(): Promise<number> {
   const firstDay = (locale.getWeekInfo?.() ?? locale.weekInfo)?.firstDay;
   // Counted from 1, for Monday, to 7, for Sunday.
   return firstDay ? firstDay % 7 : 1;
+}
+
+/**
+ * Shows a glow color in this window's frames' corner ticks and the tabs' dot. Starlight is the
+ * stylesheet's own, so it's left to the stylesheet.
+ */
+export function applyGlow(glow: GlowColor) {
+  const root = document.documentElement.style;
+  if (glow.hours === 0) {
+    root.removeProperty('--glint');
+    root.removeProperty('--dot');
+  } else {
+    root.setProperty('--glint', glow.color);
+    root.setProperty('--dot', glow.color);
+  }
 }
 
 /** Closes the satellite box and hands focus back to the app you were in. */
