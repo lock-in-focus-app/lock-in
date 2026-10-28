@@ -238,8 +238,9 @@ const skyComets = computed<SkyComet[]>(() => {
   const months = new Map(skyConstellations.value.map((c) => [c.id, c.month]));
   return all.filter((comet) => months.get(comet.constellationId) === month);
 });
-// Satellites circle the sky: in orbit, back and waiting to be sorted, or on the task list, the
-// latest launched. One ticked off stays until it has drifted away, the next time the Sky shows.
+// Satellites circle the sky: in orbit, or back and waiting to be sorted, the latest launched. One
+// that goes onto the task list leaves orbit: it stays until it has drifted away, the next time
+// the Sky shows, as tasks belong to the list (and one day to Reminders or Todoist), not the sky.
 const mostSatellites = 20;
 const playNow = ref<string[]>([]);
 const skySatellites = computed<SkySatellite[]>(() => {
@@ -247,10 +248,10 @@ const skySatellites = computed<SkySatellite[]>(() => {
   const leaving = (id: string, stateAt: number) =>
     seenAt !== undefined && (stateAt > seenAt || playNow.value.includes(`satellite:${id}`));
   return (snapshot.value?.satellites ?? [])
-    .filter((s) => ['orbiting', 'back', 'task'].includes(s.state) || (s.state === 'done' && leaving(s.id, s.stateAt)))
+    .filter((s) => ['orbiting', 'back'].includes(s.state) || (s.state === 'task' && leaving(s.id, s.stateAt)))
     .sort((a, b) => a.launchedAt - b.launchedAt)
     .slice(-mostSatellites)
-    .map((s) => ({ id: s.id, text: s.text, done: s.state === 'done' }));
+    .map((s) => ({ id: s.id, text: s.text, tasked: s.state === 'task' }));
 });
 // Each plays once, the next time the Sky is shown between sessions, then counts as seen.
 const visible = ref(document.visibilityState === 'visible');
@@ -264,7 +265,7 @@ const unseen = computed(() => {
     ...skyEvents.value.map((event) => ({ key: `event:${event.id}`, at: event.at })),
     ...skyComets.value.map((comet) => ({ key: `comet:${comet.id}`, at: comet.at })),
     ...(snapshot.value?.satellites ?? [])
-      .filter((s) => s.state === 'done' && skySatellites.value.some((shown) => shown.id === s.id))
+      .filter((s) => s.state === 'task' && skySatellites.value.some((shown) => shown.id === s.id))
       .map((s) => ({ key: `satellite:${s.id}`, at: s.stateAt })),
   ]
     .filter((item) => item.at > seenAt)

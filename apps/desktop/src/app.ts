@@ -142,6 +142,18 @@ export function applyGlow(glow: GlowColor) {
   }
 }
 
+/**
+ * Marks the page `resting` while its window isn't focused, as when you work in another app during
+ * a session. Looping animations pause then to save battery, as the sky does (NightSky.vue), and
+ * carry on where they were when it's focused again.
+ */
+export function restWhenAway() {
+  const rest = () => document.documentElement.classList.toggle('resting', !document.hasFocus());
+  window.addEventListener('focus', rest);
+  window.addEventListener('blur', rest);
+  rest();
+}
+
 /** Closes the satellite box and hands focus back to the app you were in. */
 export const closeCapture = () => invoke<void>('close_capture');
 

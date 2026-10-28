@@ -203,6 +203,16 @@ onUnmounted(() => observer.disconnect());
   }
 }
 
+/* While the window isn't focused they rest where they are, to save battery (app.ts), though one
+   can still fade in or join, and carry on when it is again. */
+:root.resting .orbit {
+  animation-play-state: paused;
+}
+
+:root.resting .satellite {
+  animation-play-state: paused, running;
+}
+
 /* Reduced motion: the satellites stay still where they are, and only fade in. */
 @media (prefers-reduced-motion: reduce) {
   .orbit {
