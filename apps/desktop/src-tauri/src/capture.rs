@@ -50,12 +50,13 @@ pub fn open(app: &AppHandle) -> Result<()> {
     }
     *came_from(app) = processes::frontmost_other_app();
     // No Dock icon or app switcher entry: it's gone again in a few seconds. The window is
-    // see-through, with room around the box for its shadow, so the box can fade in and out
-    // over whatever's open (Capture.vue) rather than appear as a solid rectangle. On macOS that
-    // needs `macOSPrivateApi` in tauri.conf.json, which only rules out the Mac App Store.
+    // see-through, with room around the box for its shadow and the satellites circling it, so
+    // the box can fade in and out over whatever's open (Capture.vue) rather than appear as a
+    // solid rectangle. On macOS that needs `macOSPrivateApi` in tauri.conf.json, which only rules
+    // out the Mac App Store.
     let window = WebviewWindowBuilder::new(app, WINDOW, WebviewUrl::App("capture.html".into()))
         .title("Launch a satellite")
-        .inner_size(688.0, 118.0)
+        .inner_size(760.0, 160.0)
         .resizable(false)
         .maximizable(false)
         .minimizable(false)
