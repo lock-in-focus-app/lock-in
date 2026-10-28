@@ -123,13 +123,14 @@ describe('weeklyReport', () => {
     expect(focus).toEqual({
       focusedMs: 105 * MIN,
       lastWeekMs: 40 * MIN,
+      lastWeekDays: [0, 0, 0, 0, 40, 0, 0].map((m) => m * MIN),
       overtimeMs: 10 * MIN,
       sessions: 3,
       longestMs: 60 * MIN,
       days: [75, 0, 30, 0, 0, 0, 0].map((m) => m * MIN),
       profiles: [
-        { name: 'Deep work', focusedMs: 80 * MIN, sessions: 2 },
-        { name: 'Writing', focusedMs: 25 * MIN, sessions: 1 },
+        { id: 'deep', name: 'Deep work', focusedMs: 80 * MIN, sessions: 2 },
+        { id: 'write', name: 'Writing', focusedMs: 25 * MIN, sessions: 1 },
       ],
       emergencyPasses: 1,
       idle: 1,

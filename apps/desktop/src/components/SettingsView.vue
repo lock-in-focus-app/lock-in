@@ -18,6 +18,10 @@ const emit = defineEmits<{
 // Sample data is for trying the app while developing it, so release builds don't offer it.
 const development = import.meta.env.DEV;
 
+// The sections are numbered in order, like the weekly report's.
+const sections = ['sessions', 'browsers', 'sky', ...(development ? ['sample'] : [])];
+const numbered = (section: string) => String(sections.indexOf(section) + 1).padStart(2, '0');
+
 function save(patch: Partial<Settings>) {
   emit('update:settings', { ...props.settings, ...patch });
 }
@@ -25,48 +29,55 @@ function save(patch: Partial<Settings>) {
 
 <template>
   <section class="settings">
-    <div class="card group">
-      <h2>Sessions</h2>
-      <div class="row">
-        <span>Emergency passes per week</span>
-        <NumberField
-          label="Emergency passes per week"
-          unit="passes"
-          :min="0"
-          :max="14"
-          :model-value="settings.passesPerWeek"
-          @update:model-value="save({ passesPerWeek: $event })"
-        />
+    <section class="read" aria-labelledby="sessions">
+      <h2 id="sessions" class="mono">{{ numbered('sessions') }} — Sessions</h2>
+      <div class="field">
+        <div class="line">
+          Emergency passes per week
+          <NumberField
+            label="Emergency passes per week"
+            unit="passes"
+            :min="0"
+            :max="14"
+            :model-value="settings.passesPerWeek"
+            @update:model-value="save({ passesPerWeek: $event })"
+          />
+        </div>
+        <span class="mono status"
+          ><span class="dot pass" aria-hidden="true" />Left now <b>{{ String(passesLeft).padStart(2, '0') }}</b></span
+        >
+        <p class="help">
+          For ending a Hard session before its timer is done. Each one comes back 7 days after it's used. During a Hard
+          session this can only go down.
+        </p>
       </div>
-      <p class="help">
-        For ending a Hard session before its timer is done. Each one comes back 7 days after it's used.
-        {{ passesLeft }} left right now. During a Hard session this can only go down.
-      </p>
-
-      <div class="row">
-        <span>End a session after</span>
-        <NumberField
-          label="Minutes away before a session ends"
-          unit="min away"
-          :min="0"
-          :max="120"
-          :model-value="settings.idleMinutes"
-          @update:model-value="save({ idleMinutes: $event })"
-        />
+      <div class="field">
+        <div class="line">
+          End a session after
+          <NumberField
+            label="Minutes away before a session ends"
+            unit="min away"
+            :min="0"
+            :max="120"
+            :model-value="settings.idleMinutes"
+            @update:model-value="save({ idleMinutes: $event })"
+          />
+        </div>
+        <p class="help">
+          With no keyboard or mouse input for this long, a session ends by itself, and the time away isn't counted. 0
+          turns this off.
+        </p>
       </div>
-      <p class="help">
-        With no keyboard or mouse input for this long, a session ends by itself, and the time away isn't counted. 0
-        turns this off.
-      </p>
-    </div>
+    </section>
 
-    <div class="card group">
-      <h2>Browsers</h2>
+    <section class="read" aria-labelledby="browsers">
+      <h2 id="browsers" class="mono">{{ numbered('browsers') }} — Browsers</h2>
       <ul v-if="browsers.length" class="browsers">
-        <li v-for="browser in browsers" :key="browser.path" class="row">
-          <span :title="browser.path">{{ browser.name }}</span>
+        <li v-for="browser in browsers" :key="browser.path">
+          <span class="name" :title="browser.path">{{ browser.name }}</span>
+          <span class="mono status"><span class="dot" aria-hidden="true" />Linked</span>
           <button
-            class="forget"
+            class="key"
             type="button"
             :disabled="sessionRunning"
             :aria-label="`Forget ${browser.name}`"
@@ -85,120 +96,155 @@ function save(patch: Partial<Settings>) {
             : "Forget a browser you've stopped using."
         }}
       </p>
-
-      <ToggleSwitch
-        label="Close browsers without the extension"
-        :model-value="settings.closeBrowsers"
-        @update:model-value="save({ closeBrowsers: $event })"
-      />
-      <p class="help">
-        In a Medium session, the browser closes a minute after the warning. In Hard, the session also counts as broken.
-        During a Hard session this can't be turned off.
-      </p>
-    </div>
-
-    <div class="card group">
-      <h2>Sky</h2>
-      <ToggleSwitch
-        label="Battery saver"
-        :model-value="settings.batterySaver"
-        @update:model-value="save({ batterySaver: $event })"
-      />
-      <p class="help">
-        The stars twinkle 30 times a second instead of 60, so they're a little less smooth. Either way, the sky pauses
-        while this window isn't the one you're using, and stops when it's closed.
-      </p>
-    </div>
-
-    <div v-if="development" class="card group">
-      <h2>Sample data</h2>
-      <div class="row">
-        <span>Six weeks of made-up sessions</span>
-        <span class="buttons">
-          <button class="small" type="button" @click="emit('sample-data', 'add')">Add</button>
-          <button class="small" type="button" @click="emit('sample-data', 'remove')">Remove</button>
-        </span>
+      <div class="field">
+        <ToggleSwitch
+          label="Close browsers without the extension"
+          :model-value="settings.closeBrowsers"
+          @update:model-value="save({ closeBrowsers: $event })"
+        />
+        <p class="help">
+          In a Medium session, the browser closes a minute after the warning. In Hard, the session also counts as
+          broken. During a Hard session this can't be turned off.
+        </p>
       </div>
-      <p class="help">
-        For trying the sky and the weekly report. Only in development builds. Sample sessions are marked, so Remove
-        takes them all out and leaves your own.
-      </p>
-    </div>
+    </section>
 
-    <button class="done" type="button" @click="emit('close')">Done</button>
+    <section class="read" aria-labelledby="sky">
+      <h2 id="sky" class="mono">{{ numbered('sky') }} — Sky</h2>
+      <div class="field">
+        <ToggleSwitch
+          label="Battery saver"
+          :model-value="settings.batterySaver"
+          @update:model-value="save({ batterySaver: $event })"
+        />
+        <p class="help">
+          The stars twinkle 30 times a second instead of 60, so they're a little less smooth. Either way, the sky pauses
+          while this window isn't the one you're using, and stops when it's closed.
+        </p>
+      </div>
+    </section>
+
+    <section v-if="development" class="read" aria-labelledby="sample">
+      <h2 id="sample" class="mono">{{ numbered('sample') }} — Sample data <span class="faint">· dev builds</span></h2>
+      <div class="field">
+        <div class="line">
+          Six weeks of made-up sessions
+          <span class="buttons">
+            <button class="key" type="button" @click="emit('sample-data', 'add')">Add</button>
+            <button class="key" type="button" @click="emit('sample-data', 'remove')">Remove</button>
+          </span>
+        </div>
+        <p class="help">
+          For trying the sky and the weekly report. Sample sessions are marked, so Remove takes them all out and leaves
+          your own.
+        </p>
+      </div>
+    </section>
+
+    <button class="card done mono" type="button" @click="emit('close')">Done · Back to the sky</button>
+    <p class="colophon mono">Lock In · AGPL-3.0 · Stays on this computer</p>
   </section>
 </template>
 
 <style scoped>
-.settings {
-  display: grid;
-  gap: 12px;
-}
-
-.group {
-  padding: 4px 14px 2px;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 40px;
-}
-
-.help {
-  margin: 0 0 16px;
-  color: var(--dim);
-  font-size: 12px;
+/* Numbered sections with hairlines between them, like the weekly report. */
+.read {
+  padding: 14px 0 4px;
+  border-bottom: 1px solid var(--line);
 }
 
 h2 {
-  margin: 10px 0 0;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 0 0 2px;
+  font-weight: 400;
+}
+
+.faint {
+  color: var(--faint);
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+}
+
+.field + .field {
+  border-top: 1px dashed var(--line);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.help {
+  margin: 0;
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot.pass {
+  --c: var(--glow);
 }
 
 .browsers {
-  margin: 0;
+  margin: 4px 0 8px;
   padding: 0;
   list-style: none;
 }
 
+.browsers li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+}
+
+.name {
+  flex: 1;
+}
+
+.key:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .none {
-  margin: 0 0 4px;
-  font-size: 13px;
+  margin: 6px 0 8px;
+  font-size: 12.5px;
 }
 
 .buttons {
   display: flex;
-  gap: 4px;
-}
-
-.forget,
-.small {
-  padding: 4px 10px;
-  background: var(--sky-raised);
-  font-size: 12px;
-}
-
-.small:hover,
-.forget:hover:not(:disabled) {
-  background: var(--sky-hover);
-}
-
-.forget:disabled {
-  opacity: 0.5;
-  cursor: default;
+  gap: 6px;
 }
 
 .done {
-  width: 100%;
-  padding: 10px;
-  background: var(--sky-raised);
+  display: block;
+  margin: 16px auto 0;
+  padding: 6px 12px;
+  background: none;
+  color: var(--dim);
+  transition: color 300ms;
 }
 
 .done:hover {
-  background: var(--sky-hover);
+  color: var(--starlight);
+}
+
+.colophon {
+  margin: 12px 0 4px;
+  text-align: center;
 }
 </style>

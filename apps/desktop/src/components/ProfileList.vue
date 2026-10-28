@@ -1,218 +1,252 @@
 <script setup lang="ts">
-import type { AppRule, ProfileSummary, Strictness, TimerEnd, TimerSettings } from '@lock-in/core';
+import type { AppRule, ProfileSummary, Strictness, TimerSettings } from '@lock-in/core';
 import { starColorFor } from '@lock-in/core';
 import { ref } from 'vue';
 import AppRulesEditor from './AppRulesEditor.vue';
 import StarColorPicker from './StarColorPicker.vue';
-import { vTilt } from '../tilt';
 import TimerEditor from './TimerEditor.vue';
 import Unfold from './Unfold.vue';
 
-defineProps<{ profiles: ProfileSummary[]; canHideApps: boolean }>();
-// Only for setting profiles up. Sessions start from the Sky (SkyPage.vue), which keeps this
-// page's purpose clear.
+// Only for setting profiles up, as the Observatory HUD's channels (PLAN Phase 5): each profile is a
+// frame with a port in its star color, opening in place onto its Timer, Apps, Sites and Star
+// panels. Sessions start from the Sky (SkyPage.vue), which keeps this page's purpose clear.
+defineProps<{
+  profiles: ProfileSummary[];
+  canHideApps: boolean;
+  /** How many stars each profile has in the sky, by its id. */
+  starCounts: Record<string, number>;
+}>();
 const emit = defineEmits<{
   'set-timer': [profileId: string, timer: TimerSettings];
   'set-apps': [profileId: string, apps: AppRule[]];
   'set-star-color': [profileId: string, color: string];
 }>();
 
-// Which profile's timer, apps or star color is open, one at a time.
-type Panel = 'timer' | 'apps' | 'star';
-const editing = ref<{ profileId: string; panel: Panel }>();
-const isOpen = (profileId: string, panel: Panel) =>
-  editing.value?.profileId === profileId && editing.value.panel === panel;
-const toggle = (profileId: string, panel: Panel) =>
-  (editing.value = isOpen(profileId, panel) ? undefined : { profileId, panel });
+// Which profile is open, one at a time, and on which panel.
+type Panel = 'timer' | 'apps' | 'sites' | 'star';
+const panels: { id: Panel; label: string }[] = [
+  { id: 'timer', label: 'Timer' },
+  { id: 'apps', label: 'Apps' },
+  { id: 'sites', label: 'Sites' },
+  { id: 'star', label: 'Star' },
+];
+const open = ref<{ profileId: string; panel: Panel }>();
+const toggle = (profileId: string) =>
+  (open.value = open.value?.profileId === profileId ? undefined : { profileId, panel: 'timer' });
 
-const endLabels: Record<TimerEnd, string> = {
-  silent: 'ends silently',
-  gentle: 'quiet notification',
-  alert: 'notification and sound',
-};
-
-const strictnessLabels: Record<Strictness, string> = {
-  gentle: '',
-  medium: ' · Medium',
-  hard: ' · Hard',
-};
-
-function timerSummary(timer: TimerSettings): string {
-  if (timer.minutes <= 0) return 'No timer';
-  return `${timer.minutes} min timer${strictnessLabels[timer.strictness]} · ${endLabels[timer.onEnd]}`;
-}
+const strictness: Record<Strictness, string> = { gentle: 'Gentle', medium: 'Medium', hard: 'Hard' };
 
 function summary(profile: ProfileSummary): string {
+  const { minutes } = profile.timer;
   const apps = profile.apps.length;
-  const appCount = apps === 0 ? '' : ` · ${apps} ${apps === 1 ? 'app' : 'apps'}`;
-  return timerSummary(profile.timer) + appCount;
+  return [
+    minutes > 0 ? `${minutes} min · ${strictness[profile.timer.strictness]}` : 'No timer',
+    apps > 0 && `${apps} ${apps === 1 ? 'app' : 'apps'}`,
+  ]
+    .filter((part) => typeof part === 'string')
+    .join(' · ');
 }
 </script>
 
 <template>
-  <section>
-    <h2>Profiles</h2>
-    <p class="label">Set up how each session works. Sessions start from the Sky.</p>
-    <ul>
-      <li v-for="profile in profiles" :key="profile.id">
-        <div v-tilt class="row">
-          <div class="profile">
-            <span class="name">
-              <span class="star" :style="{ color: starColorFor(profile.id, profile.starColor) }" aria-hidden="true"
-                >✦</span
-              >
-              {{ profile.name }}
-            </span>
-            <span class="summary">{{ summary(profile) }}</span>
-          </div>
-          <button
-            class="edit"
-            type="button"
-            :aria-expanded="isOpen(profile.id, 'timer')"
-            :aria-label="`Timer for ${profile.name}`"
-            @click="toggle(profile.id, 'timer')"
-          >
-            Timer
-          </button>
-          <button
-            class="edit"
-            type="button"
-            :aria-expanded="isOpen(profile.id, 'apps')"
-            :aria-label="`Apps for ${profile.name}`"
-            @click="toggle(profile.id, 'apps')"
-          >
-            Apps
-          </button>
-          <button
-            class="edit"
-            type="button"
-            :aria-expanded="isOpen(profile.id, 'star')"
-            :aria-label="`Star color for ${profile.name}`"
-            @click="toggle(profile.id, 'star')"
-          >
-            Star
-          </button>
-        </div>
+  <section class="profiles" aria-labelledby="profiles-intro">
+    <p id="profiles-intro" class="intro mono">How each session works · Sessions start from the Sky</p>
+    <div class="channels">
+      <div
+        v-for="profile in profiles"
+        :key="profile.id"
+        class="card channel"
+        :style="{ '--c': starColorFor(profile.id, profile.starColor) }"
+      >
+        <span class="port" aria-hidden="true" />
+        <button
+          class="head"
+          type="button"
+          :aria-expanded="open?.profileId === profile.id"
+          :aria-controls="`profile-${profile.id}`"
+          @click="toggle(profile.id)"
+        >
+          <b>{{ profile.name }}</b>
+          <span class="stars mono">
+            <b>{{ String(starCounts[profile.id] ?? 0).padStart(2, '0') }}</b>
+            {{ starCounts[profile.id] === 1 ? 'star' : 'stars' }}
+          </span>
+          <span class="mono">{{ summary(profile) }}</span>
+        </button>
         <Unfold>
-          <div v-if="editing?.profileId === profile.id" :key="editing.panel" class="panel-space">
-            <div class="card panel">
+          <div v-if="open?.profileId === profile.id" :id="`profile-${profile.id}`">
+            <nav class="panels" :aria-label="`Settings for ${profile.name}`">
+              <button
+                v-for="panel in panels"
+                :key="panel.id"
+                class="tab mono"
+                type="button"
+                :aria-current="open.panel === panel.id ? 'page' : undefined"
+                @click="open.panel = panel.id"
+              >
+                {{ panel.label }}
+              </button>
+            </nav>
+            <div :key="open.panel" class="panel">
               <TimerEditor
-                v-if="editing.panel === 'timer'"
+                v-if="open.panel === 'timer'"
                 :timer="profile.timer"
                 @update:timer="emit('set-timer', profile.id, $event)"
               />
               <AppRulesEditor
-                v-else-if="editing.panel === 'apps'"
+                v-else-if="open.panel === 'apps'"
                 :apps="profile.apps"
                 :can-hide="canHideApps"
                 @update:apps="emit('set-apps', profile.id, $event)"
               />
-              <div v-else class="star-panel">
-                <p>The color of this profile's stars in your sky.</p>
+              <p v-else-if="open.panel === 'sites'" class="help">
+                Which sites this profile tames or redirects, and how, is set in the Lock In browser extension's
+                settings.
+              </p>
+              <div v-else class="star">
                 <StarColorPicker
                   :color="starColorFor(profile.id, profile.starColor)"
                   :profile-name="profile.name"
                   @update:color="emit('set-star-color', profile.id, $event)"
                 />
+                <p class="help">The color of this profile's stars in your sky.</p>
               </div>
             </div>
           </div>
         </Unfold>
-      </li>
-    </ul>
-    <p class="help">Sites for each profile are set in the browser extension's settings, and apps here.</p>
+      </div>
+    </div>
+    <p class="help foot">Sites for each profile are set in the browser extension's settings, and apps here.</p>
   </section>
 </template>
 
 <style scoped>
-h2 {
-  margin: 0 0 2px;
-  font-size: 15px;
+.intro {
+  margin: 4px 0 14px;
+}
+
+.channels {
+  display: grid;
+  gap: 12px;
+}
+
+/* The profile's port: a glowing dot in its star color on the frame's top edge. */
+.port {
+  position: absolute;
+  top: -3px;
+  left: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c);
+}
+
+.head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 12px 12px 10px;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+}
+
+.head > b {
+  font-size: 13.5px;
   font-weight: 600;
 }
 
-.label,
-.help {
-  margin: 0 0 12px;
-  color: var(--dim);
-  font-size: 12px;
+.stars {
+  grid-row: span 2;
+  text-align: right;
 }
 
-.help {
-  margin-top: 16px;
+.stars b {
+  display: block;
+  color: var(--c);
+  font:
+    200 22px/1 system-ui,
+    sans-serif;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--c) 50%, transparent);
 }
 
-ul {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.panels {
+  display: flex;
+  gap: 14px;
+  margin: 0 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
-.row {
+/* Mono tabs with a glowing dot for the open panel, like the pages' tabs. */
+.tab {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px;
-}
-
-.profile {
-  flex: 1;
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  padding: 8px 10px;
-}
-
-.name {
-  font-weight: 600;
-}
-
-.star {
-  margin-right: 2px;
-  text-shadow: 0 0 6px currentColor;
-}
-
-.summary {
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.panel-space {
-  padding-top: 6px;
-}
-
-.star-panel {
-  padding: 12px;
-}
-
-.star-panel p {
-  margin: 0 0 8px;
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.edit {
-  align-self: stretch;
-  padding: 0 10px;
-  border-radius: 8px;
+  gap: 6px;
+  padding: 0;
+  border-radius: 0;
   background: none;
-  color: var(--dim);
-  font-size: 12px;
-  transition:
-    background 300ms,
-    color 300ms;
+  transition: color 400ms;
 }
 
-.edit:hover,
-.edit[aria-expanded='true'] {
-  background: rgb(255 255 255 / 0.07);
+.tab::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 400ms;
+}
+
+.tab:hover,
+.tab[aria-current='page'] {
   color: var(--starlight);
 }
 
+.tab[aria-current='page']::before {
+  opacity: 1;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.panel {
+  padding: 4px 12px 10px;
+  animation: rise 500ms var(--ease);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+.help {
+  margin: 10px 0 4px;
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.star {
+  padding-top: 10px;
+}
+
+.foot {
+  margin-top: 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .edit {
+  .panel {
+    animation: none;
+  }
+
+  .tab,
+  .tab::before {
     transition: none;
   }
 }

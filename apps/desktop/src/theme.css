@@ -1,13 +1,11 @@
 /* The colors are shared with the extension's pages (apps/extension/assets/theme.css). */
 :root {
   --sky: #0b1020;
-  --sky-raised: #151b31;
-  --sky-hover: #1e2643;
   --starlight: #f3f0e6;
   --dim: #a9b1cc;
   --glow: #f5c86b;
   /* The Observatory HUD (PLAN Phase 5): hairlines, bright corner ticks and small mono readouts. */
-  --faint: #6b7390;
+  --faint: #7c84a3;
   --line: rgb(220 228 255 / 0.1);
   --tick: rgb(220 228 255 / 0.55);
   --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
@@ -52,9 +50,8 @@ button {
 
 /*
  * A frame over the night sky, like an instrument's readout: a hairline border with bright corner
- * ticks. It's drawn on a layer behind the content, so a tilting card (`v-tilt`, tilt.ts) can lean
- * it in 3D while the text only lifts by whole pixels and stays sharp. Its background is tinted
- * rather than blurred, since blurring the sky behind it would be redone every frame the sky moves.
+ * ticks, drawn on a layer behind the content. Its background is tinted rather than blurred, since
+ * blurring the sky behind it would be redone every frame the sky moves.
  */
 .card {
   --t: var(--tick);
@@ -63,8 +60,7 @@ button {
   border-radius: 4px;
 }
 
-.card::before,
-.tilt::after {
+.card::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -142,57 +138,4 @@ button.card:hover::before {
 :focus-visible {
   outline: 1px solid #cfe0ff;
   outline-offset: 2px;
-}
-
-.tilt {
-  transition: translate 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.tilt::before,
-.tilt::after {
-  transform: perspective(700px) rotateX(var(--tilt-y, 0deg)) rotateY(var(--tilt-x, 0deg));
-  transition:
-    transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    border-color 500ms,
-    box-shadow 500ms,
-    opacity 500ms;
-}
-
-/* A soft sheen that follows the pointer across the glass. */
-.tilt::after {
-  background: radial-gradient(
-    circle at var(--sheen-x, 50%) var(--sheen-y, 0%),
-    rgb(255 255 255 / 0.08),
-    transparent 65%
-  );
-  opacity: 0;
-}
-
-.tilt:hover {
-  translate: 0 -2px;
-}
-
-.tilt:hover::before {
-  border-color: rgb(220 228 255 / 0.22);
-}
-
-.tilt:hover::after {
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tilt,
-  .tilt::before,
-  .tilt::after {
-    transition: none;
-  }
-
-  .tilt:hover {
-    translate: none;
-  }
-
-  .tilt::before,
-  .tilt::after {
-    transform: none;
-  }
 }

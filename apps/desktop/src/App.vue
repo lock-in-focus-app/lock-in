@@ -282,6 +282,12 @@ const skyPlanets = computed<SkyPlanet[]>(() => {
     tint: starColorFor(planet.topProfileId, colors.get(planet.topProfileId)),
   }));
 });
+// How many stars each profile has, for the Profiles page.
+const profileStars = computed(() => {
+  const counts: Record<string, number> = {};
+  for (const star of skyStars.value) counts[star.profileId] = (counts[star.profileId] ?? 0) + 1;
+  return counts;
+});
 const aimedConstellation = computed(() => skyConstellations.value.find((c) => c.id === skyView.value.aimed));
 const starCount = computed(() => skyConstellations.value.reduce((count, c) => count + c.stars.length, 0));
 const reportConstellation = computed(() => skyConstellations.value.find((c) => c.weekStart === reportWeek.value));
@@ -418,6 +424,7 @@ async function run(action: () => Promise<void>) {
           v-else-if="view === 'profiles'"
           :profiles="snapshot.profiles"
           :can-hide-apps="snapshot.canHideApps"
+          :star-counts="profileStars"
           @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
           @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
           @set-star-color="(id: string, color: string) => run(() => setProfileStarColor(id, color))"
@@ -429,6 +436,7 @@ async function run(action: () => Promise<void>) {
           :events="rare"
           :comets="allComets"
           :streaks="reportStreaks"
+          :profiles="snapshot.profiles"
           @week="(week: number) => (reportWeek = week)"
           @rename="rename"
         />
@@ -452,9 +460,6 @@ async function run(action: () => Promise<void>) {
 
 <style scoped>
 main {
-  /* See-through, so the sky shows through the controls. */
-  --sky-raised: rgb(21 27 49 / 0.72);
-  --sky-hover: rgb(30 38 67 / 0.82);
   position: relative;
   z-index: 1;
   max-width: 480px;

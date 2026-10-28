@@ -13,7 +13,8 @@ const checked = defineModel<boolean>({ required: true });
     @click="checked = !checked"
   >
     <span class="label">{{ label }}</span>
-    <span class="track" aria-hidden="true"><span class="thumb" /></span>
+    <span class="state mono" aria-hidden="true">{{ checked ? 'On' : 'Off' }}</span>
+    <span class="track" aria-hidden="true" />
   </button>
 </template>
 
@@ -21,12 +22,16 @@ const checked = defineModel<boolean>({ required: true });
 .toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 0;
+  padding: 0;
   background: none;
+  font-size: 12.5px;
   text-align: left;
+}
+
+.label {
+  flex: 1;
 }
 
 .toggle:disabled {
@@ -34,46 +39,46 @@ const checked = defineModel<boolean>({ required: true });
   opacity: 0.5;
 }
 
+/* A small square track with a glowing dot that slides across. */
 .track {
   flex: none;
   position: relative;
-  width: 34px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--sky-hover);
-  transition: background 200ms;
+  width: 30px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  transition: border-color 400ms;
 }
 
-.thumb {
+.track::after {
+  content: '';
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 14px;
-  height: 14px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--dim);
+  background: var(--faint);
   transition:
-    transform 450ms var(--spring),
-    background 200ms;
+    translate 400ms var(--ease),
+    background 400ms,
+    box-shadow 400ms;
 }
 
 [aria-checked='true'] .track {
-  background: color-mix(in srgb, var(--glow) 35%, var(--sky-hover));
+  border-color: rgb(159 227 201 / 0.4);
 }
 
-[aria-checked='true'] .thumb {
-  transform: translateX(14px);
-  background: var(--glow);
-}
-
-.toggle:focus-visible {
-  outline: 2px solid var(--glow);
-  outline-offset: 2px;
-  border-radius: 6px;
+[aria-checked='true'] .track::after {
+  translate: 16px 0;
+  background: #9fe3c9;
+  box-shadow: 0 0 8px #9fe3c9;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thumb {
+  .track,
+  .track::after {
     transition: none;
   }
 }

@@ -85,7 +85,7 @@ const weekLabel = (start: number) =>
       >
         ‹
       </button>
-      <span class="month">{{ title }}</span>
+      <span class="month mono">{{ title }}</span>
       <button
         type="button"
         class="arrow"
@@ -96,7 +96,7 @@ const weekLabel = (start: number) =>
         ›
       </button>
     </div>
-    <div class="row weekdays" aria-hidden="true">
+    <div class="row weekdays mono" aria-hidden="true">
       <span v-for="(weekday, i) in weekdays" :key="i">{{ weekday }}</span>
     </div>
     <!-- Months slide in from the side of the arrow that was pressed. -->
@@ -186,19 +186,21 @@ const weekLabel = (start: number) =>
 
 .month {
   flex: 1;
+  color: var(--starlight);
   text-align: center;
-  font-weight: 600;
 }
 
 .arrow {
   width: 28px;
   height: 28px;
   background: none;
-  font-size: 16px;
+  color: var(--dim);
+  font: 13px var(--mono);
+  transition: color 300ms;
 }
 
 .arrow:hover:not(:disabled) {
-  background: var(--sky-hover);
+  color: var(--starlight);
 }
 
 .arrow:disabled {
@@ -212,24 +214,24 @@ const weekLabel = (start: number) =>
   text-align: center;
 }
 
-.weekdays {
-  color: var(--dim);
-  font-size: 11px;
-}
-
 .week {
   padding: 4px 0;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
   background: none;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 300ms,
+    border-color 300ms;
 }
 
 .week:hover:not(:disabled) {
-  background: var(--sky-hover);
+  background: rgb(220 228 255 / 0.06);
 }
 
 .week.selected {
-  background: var(--sky-hover);
-  box-shadow: inset 0 0 0 1px var(--glow);
+  border-color: rgb(245 200 107 / 0.55);
+  background: rgb(245 200 107 / 0.06);
 }
 
 .week:disabled {
@@ -240,7 +242,7 @@ const weekLabel = (start: number) =>
 .day {
   position: relative;
   padding-bottom: 6px;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .day.outside {
@@ -263,5 +265,6 @@ const weekLabel = (start: number) =>
   margin-left: -2px;
   border-radius: 50%;
   background: var(--glow);
+  box-shadow: 0 0 4px var(--glow);
 }
 </style>
