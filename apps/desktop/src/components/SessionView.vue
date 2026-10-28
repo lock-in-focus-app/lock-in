@@ -157,6 +157,11 @@ p {
   animation: breathe 4s ease-in-out infinite;
 }
 
+/* It rests while the window isn't focused, to save battery (app.ts). */
+:root.resting .head .dot {
+  animation-play-state: paused;
+}
+
 @keyframes breathe {
   50% {
     opacity: 0.4;

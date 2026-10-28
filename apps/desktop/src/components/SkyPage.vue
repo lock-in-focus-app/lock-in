@@ -379,6 +379,11 @@ figcaption::before {
   box-shadow: 0 0 5px rgb(225 230 255 / 0.4);
 }
 
+/* It rests while the window isn't focused, to save battery (app.ts). */
+:root.resting .emblem span span {
+  animation-play-state: paused;
+}
+
 @keyframes circle {
   to {
     rotate: 1turn;

@@ -1,8 +1,8 @@
 // Satellites in the night sky (PLAN §5): a tiny body with two solar panels and a light that
-// blinks now and then, drawn by code. Thoughts in orbit, waiting to be sorted and on the task
-// list all look the same; one ticked off drifts away the first time the Sky shows it.
+// blinks now and then, drawn by code. Thoughts in orbit and waiting to be sorted look the same;
+// one that goes onto the task list drifts away the first time the Sky shows it.
 
-/** How long a ticked-off satellite takes to drift away. */
+/** How long a satellite that went onto the task list takes to drift away. */
 export const leaveMs = 9000;
 /** How often the light blinks, and how long each blink takes to fade. */
 const blinkMs = 2600;

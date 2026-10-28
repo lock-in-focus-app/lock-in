@@ -39,7 +39,7 @@ import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 //
 // Satellites (satellite.ts) slowly circle the constellations on the Sky and while exploring, each
 // on its own orbit, nearest of all. They fade in when launched and out when deleted, and one
-// ticked off drifts away the first time it's in `play`. What one says shows beneath it on hover
+// that went onto the task list drifts away the first time it's in `play`. What one says shows beneath it on hover
 // only with `satelliteText` (exploring between sessions). Under reduced motion they sit still.
 
 export interface SkyStar {
@@ -75,11 +75,12 @@ export type SkyPlanet = Planet & { label: string; tint: string };
 export type SkyComet = Comet & { constellationId: string };
 /** A rare event, with its week's constellation if it has one, where a supernova's nebula stays. */
 export type SkyEvent = RareEvent & { constellationId?: string };
-/** A satellite: a thought in orbit, waiting to be sorted or on the task list, or ticked off (`done`). */
+/** A satellite: a thought in orbit or waiting to be sorted, or one that just went onto the task
+ * list (`tasked`), which drifts away. */
 export interface SkySatellite {
   id: string;
   text: string;
-  done: boolean;
+  tasked: boolean;
 }
 
 const props = defineProps<{
@@ -107,8 +108,8 @@ const props = defineProps<{
   /** Whether stars twinkle at 30 frames a second instead of 60, to save battery. */
   batterySaver?: boolean;
   /**
-   * Comets (`comet:` and their id), events (`event:` and their id) and ticked-off satellites
-   * (`satellite:` and their id) to play, the first time they're here.
+   * Comets (`comet:` and their id), events (`event:` and their id) and satellites that went onto
+   * the task list (`satellite:` and their id) to play, the first time they're here.
    */
   play?: string[];
 }>();
@@ -935,8 +936,8 @@ function drawSatellites(c: CanvasRenderingContext2D, time: number, width: number
   for (const [id, { satellite, orbit, alpha: shownAlpha, glow }] of orbiters) {
     const key = `satellite:${id}`;
     const progress = played(key, time);
-    // A ticked-off one goes round as before until it leaves, and is gone after.
-    if (satellite.done && progress === undefined && started.has(key)) continue;
+    // One that went onto the task list goes round as before until it leaves, and is gone after.
+    if (satellite.tasked && progress === undefined && started.has(key)) continue;
     const leaving = progress !== undefined && progress >= 0 ? progress : undefined;
     const away = leaving ?? 0;
     const turn = still.matches ? 0 : (time / orbit.lapMs) * Math.PI * 2;
@@ -1018,7 +1019,7 @@ function startPlaying(keys: readonly string[]) {
       kind === 'comet'
         ? props.comets?.find((c) => c.id === id) && 'comet'
         : kind === 'satellite'
-          ? props.satellites?.find((s) => s.id === id && s.done) && 'satellite'
+          ? props.satellites?.find((s) => s.id === id && s.tasked) && 'satellite'
           : props.events?.find((e) => e.id === id)?.kind;
     if (!found) continue;
     const passing = found === 'shootingStar' || found === 'meteorShower' || found === 'aurora';
