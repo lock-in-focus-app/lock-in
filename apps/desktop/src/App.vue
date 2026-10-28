@@ -37,6 +37,7 @@ import {
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import {
   actOnSatellite,
+  applyGlow,
   addSampleData,
   constellationNames as savedNames,
   endSession,
@@ -325,19 +326,10 @@ const glance = computed(() => {
 const totalStardust = computed(() => stardust(sessions.value));
 const milkyWayFill = computed(() => milkyWay(sessions.value));
 // The glow color picked in Settings, if lifetime focus has unlocked it, for the frames' corner
-// ticks and the tabs' dot. Starlight is the theme's own, so it's left to the stylesheet.
+// ticks and the tabs' dot.
 const lifetimeFocus = computed(() => lifetimeFocusMs(sessions.value));
 const glow = computed(() => glowFor(snapshot.value?.settings.glow ?? '', lifetimeFocus.value));
-watchEffect(() => {
-  const root = document.documentElement.style;
-  if (glow.value.hours === 0) {
-    root.removeProperty('--glint');
-    root.removeProperty('--dot');
-  } else {
-    root.setProperty('--glint', glow.value.color);
-    root.setProperty('--dot', glow.value.color);
-  }
-});
+watchEffect(() => applyGlow(glow.value));
 // Exploring shows it clear; otherwise it's hazy between sessions.
 const clarity = computed(() =>
   exploring.value ? 1 : skyClarity(now.value, !!snapshot.value?.session, log.value[log.value.length - 1]),
