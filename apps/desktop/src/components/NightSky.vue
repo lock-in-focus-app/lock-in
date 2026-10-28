@@ -163,6 +163,11 @@ const twinkleFrom = 17;
 
 let context: CanvasRenderingContext2D | null = null;
 let frame = 0;
+/**
+ * While only twinkling (and planets circling), the loop sleeps until its next frame is due rather
+ * than waking for every one the screen shows (120 a second on some screens). `frame` is -1 then.
+ */
+let nap: ReturnType<typeof setTimeout> | undefined;
 let lastDrawn = 0;
 let lastTime = 0;
 let shownClarity = props.clarity;
@@ -1039,18 +1044,38 @@ function tick(time: number) {
   const sky = canvas.value;
   // Places are shares of the sky's size, so they're only worked out while it has one.
   const sized = !!sky && sky.width > 0 && sky.height > 0;
-  const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || turning || plays.size > 0;
+  // Gliding and playing things draw every frame the screen does. Planets circling are too slow
+  // to need that, so like twinkling they draw 60 times a second (or 20, behind other windows).
+  const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || plays.size > 0;
   // Under reduced motion nothing twinkles, so the loop stops once everything has settled.
   const moving = !still.matches || hazing;
   const every = document.hasFocus() ? frameMs.front : frameMs.behind;
   if (!moving || panning || viewing || gliding || time - lastDrawn >= every) draw(time);
   // Nothing is drawn while the window is hidden; showing it again wakes the sky.
-  const going = (moving || panning || viewing || gliding) && document.visibilityState !== 'hidden';
-  frame = going ? requestAnimationFrame(tick) : 0;
+  const going = (moving || panning || viewing || gliding || turning) && document.visibilityState !== 'hidden';
+  if (!going) frame = 0;
+  else if (panning || viewing || gliding) frame = requestAnimationFrame(tick);
+  else {
+    frame = -1;
+    nap = setTimeout(
+      () => {
+        nap = undefined;
+        frame = requestAnimationFrame(tick);
+      },
+      Math.max(0, lastDrawn + every - performance.now() - 4),
+    );
+  }
 }
 
 function wake() {
   if (still.matches) shownClarity = props.clarity;
+  // Something changed, so no more sleeping until the next frame.
+  if (nap !== undefined) {
+    clearTimeout(nap);
+    nap = undefined;
+    frame = requestAnimationFrame(tick);
+    return;
+  }
   if (!frame) {
     lastTime = 0;
     frame = requestAnimationFrame(tick);
@@ -1285,6 +1310,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   cancelAnimationFrame(frame);
+  clearTimeout(nap);
   observer.disconnect();
   still.removeEventListener('change', wake);
   window.removeEventListener('pointermove', point);
