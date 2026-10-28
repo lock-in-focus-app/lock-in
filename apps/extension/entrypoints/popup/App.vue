@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
   endLock,
+  starColorFor,
   findRecipe,
   formatClock,
   siteFor,
@@ -68,6 +69,9 @@ async function takeTour() {
   window.close();
 }
 
+// Each profile's star color, as in the app's sky.
+const color = (profile: Profile | undefined) => (profile ? starColorFor(profile.id, profile.starColor) : undefined);
+
 function start(profile: Profile) {
   now.value = Date.now();
   void startSession(profile.id);
@@ -77,35 +81,47 @@ function start(profile: Profile) {
 <template>
   <main>
     <header>
-      <span class="star" aria-hidden="true">✦</span>
-      <h1>Lock In</h1>
-      <span v-if="linked" class="linked" title="Sessions stay in step with the Lock In app">App linked</span>
-      <button class="settings" type="button" @click="openSettings">Settings</button>
+      <h1 class="mono"><span aria-hidden="true">✦ </span>Lock In</h1>
+      <span v-if="linked" class="linked mono" title="Sessions stay in step with the Lock In app">
+        <span class="dot" aria-hidden="true" />App linked
+      </span>
+      <button class="key settings" type="button" @click="openSettings">Settings</button>
     </header>
 
-    <section v-if="session" class="active">
-      <p class="label">Locked in · {{ activeProfile?.name ?? 'Unknown profile' }}</p>
+    <section v-if="session" class="card active" :style="{ '--c': color(activeProfile) }">
+      <p class="mono label">
+        <span class="dot" aria-hidden="true" /><span
+          >Locked in · <b>{{ activeProfile?.name ?? 'Unknown profile' }}</b></span
+        >
+      </p>
       <p class="elapsed" :class="{ done: elapsed.startsWith('Done') }">{{ elapsed }}</p>
       <EndEarly v-if="endingEarly && lock" :lock="lock" @end="endSession()" @cancel="endingEarly = false" />
-      <button v-else class="end" type="button" @click="requestEnd">End session</button>
+      <button v-else class="key end" type="button" @click="requestEnd">End session</button>
     </section>
 
     <!-- Only once storage says there's no session, so a running one doesn't flash this first. -->
     <template v-else-if="session === null && profileList">
-      <div v-if="offeredTour === false" class="offer">
+      <div v-if="offeredTour === false" class="card offer">
         <p><span class="star" aria-hidden="true">✦</span> New here? A quick tour of what Lock In does.</p>
         <span class="offer-buttons">
-          <button class="take" type="button" @click="takeTour">Take the tour</button>
-          <button type="button" @click="tourOffered.setValue(true)">No thanks</button>
+          <button class="key lit" type="button" @click="takeTour">Take the tour</button>
+          <button class="key" type="button" @click="tourOffered.setValue(true)">No thanks</button>
         </span>
       </div>
       <section>
-        <p class="label">Start a session</p>
+        <p class="mono label">▶ Start a session</p>
         <ul>
           <li v-for="profile in profileList" :key="profile.id">
-            <button class="profile" type="button" @click="start(profile)">
-              <span class="name">{{ profile.name }}</span>
+            <button
+              class="card profile"
+              type="button"
+              :style="{ '--c': color(profile) }"
+              :title="`Start a ${profile.name} session`"
+              @click="start(profile)"
+            >
+              <span class="name"><span class="dot" aria-hidden="true" />{{ profile.name }}</span>
               <span class="summary">{{ profileSummary(profile) }}</span>
+              <span class="start mono" aria-hidden="true">▶ Start</span>
             </button>
           </li>
         </ul>
@@ -126,36 +142,41 @@ function start(profile: Profile) {
 <style>
 body {
   width: 300px;
+  min-height: 0;
 }
 </style>
 
 <style scoped>
 main {
-  padding: 16px;
+  padding: 14px 14px 16px;
 }
 
 header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
 }
 
 h1 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  color: var(--starlight);
+  font-weight: 400;
+  letter-spacing: 0.22em;
 }
 
+h1 span,
 .star {
   color: var(--glow);
 }
 
 .linked {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   margin-left: auto;
-  color: var(--dim);
-  font-size: 11px;
 }
 
 .linked + .settings {
@@ -164,22 +185,14 @@ h1 {
 
 .settings {
   margin-left: auto;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: none;
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.settings:hover {
-  background: var(--sky-raised);
-  color: var(--starlight);
 }
 
 .label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0 0 8px;
   color: var(--dim);
-  font-size: 12px;
 }
 
 ul {
@@ -190,65 +203,79 @@ ul {
   list-style: none;
 }
 
+/* A profile to start, like the app's: its color dot, what it does, and a spelled-out Start. */
 .profile {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   width: 100%;
-  padding: 10px 12px;
-  text-align: left;
-  background: var(--sky-raised);
-  transition:
-    background 150ms,
-    transform 150ms;
-}
-
-.profile:hover {
-  background: var(--sky-hover);
+  padding: 11px 12px 8px;
 }
 
 .profile:active {
-  transform: scale(0.98);
+  scale: 0.98;
 }
 
 .name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .summary {
-  color: var(--dim);
-  font-size: 12px;
+  color: var(--faint);
+  font-size: 11.5px;
+  line-height: 1.4;
 }
 
+.start {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--line);
+  color: var(--dim);
+  transition:
+    color 300ms,
+    text-shadow 300ms;
+}
+
+.profile:hover .start,
+.profile:focus-visible .start {
+  color: var(--c);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent);
+}
+
+/* The running session: its profile, then a big clock. */
 .active {
+  padding: 12px 14px 14px;
   text-align: center;
 }
 
+.active .label {
+  justify-content: center;
+}
+
 .elapsed {
-  margin: 4px 0 16px;
+  margin: 6px 0 14px;
   font-size: 40px;
-  font-weight: 300;
+  font-weight: 200;
+  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--c, var(--glint)) 30%, transparent);
 }
 
 .elapsed.done {
-  font-size: 28px;
+  font-size: 26px;
 }
 
 .end {
   width: 100%;
-  padding: 10px;
-  background: var(--sky-raised);
-}
-
-.end:hover {
-  background: var(--sky-hover);
+  padding: 8px;
 }
 
 .offer {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--sky-raised);
 }
 
 .offer p {
@@ -259,24 +286,7 @@ ul {
 
 .offer-buttons {
   display: flex;
-  gap: 2px;
-  margin: 6px 0 0 -8px;
-}
-
-.offer-buttons button {
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: none;
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.offer-buttons button:hover {
-  background: var(--sky-hover);
-  color: var(--starlight);
-}
-
-.offer-buttons .take {
-  color: var(--glow);
+  gap: 6px;
+  margin-top: 8px;
 }
 </style>

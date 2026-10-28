@@ -61,7 +61,7 @@ function proceed() {
 h1 {
   margin: 0;
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 300;
   line-height: 1.2;
 }
 
@@ -69,9 +69,9 @@ textarea {
   box-sizing: border-box;
   width: 100%;
   padding: 12px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 10px;
-  background: var(--sky-raised);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgb(8 11 22 / 0.6);
   color: var(--starlight);
   font: inherit;
   font-size: 15px;
@@ -79,7 +79,7 @@ textarea {
 }
 
 textarea:focus {
-  border-color: var(--glow);
+  border-color: var(--tick-bright);
   outline: none;
 }
 

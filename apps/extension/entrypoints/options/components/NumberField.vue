@@ -30,8 +30,8 @@ function commit(event: Event) {
 input {
   width: 4.5em;
   padding: 6px 8px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
   background: var(--sky-raised);
   color: var(--starlight);
   font: inherit;
@@ -39,7 +39,7 @@ input {
 }
 
 input:focus {
-  border-color: var(--glow);
+  border-color: var(--tick-bright);
   outline: none;
 }
 </style>

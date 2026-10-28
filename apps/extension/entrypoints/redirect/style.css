@@ -1,33 +1,44 @@
-/* Buttons shared by every redirect destination. */
+/* Buttons shared by every redirect destination, as the app's: worded, framed in hairlines. */
 .primary,
 .secondary {
   padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: none;
+  font: 11px/1.5 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   transition:
-    background 150ms,
-    filter 150ms,
+    color 300ms,
+    border-color 300ms,
+    background 300ms,
     transform 150ms;
 }
 
+/* Back to focus is the easy choice, so it glows. */
 .primary {
-  background: var(--glow);
-  color: var(--sky);
-  font-weight: 600;
+  border-color: color-mix(in srgb, var(--glow) 55%, transparent);
+  background: color-mix(in srgb, var(--glow) 8%, transparent);
+  color: var(--glow);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--glow) 50%, transparent);
 }
 
 .primary:hover {
-  filter: brightness(1.08);
+  border-color: var(--glow);
+  background: color-mix(in srgb, var(--glow) 14%, transparent);
 }
 
 .secondary {
-  background: var(--sky-raised);
+  color: var(--dim);
 }
 
 .secondary:not(:disabled):hover {
-  background: var(--sky-hover);
+  border-color: rgb(220 228 255 / 0.3);
+  color: var(--starlight);
 }
 
 .secondary:disabled {
-  color: var(--dim);
+  color: var(--faint);
   cursor: default;
 }
 
@@ -42,6 +53,7 @@
   color: var(--dim);
   font-size: 13px;
   text-decoration: underline;
+  text-decoration-color: var(--line-bright);
   text-underline-offset: 3px;
 }
 

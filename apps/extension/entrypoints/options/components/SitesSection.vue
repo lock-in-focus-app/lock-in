@@ -88,7 +88,7 @@ const point = (recipeId: string, toggleId?: string) => {
     redirecting YouTube Shorts while the rest of YouTube is tamed. Any other site can be added by its address at the
     bottom.
   </p>
-  <dl class="legend">
+  <dl class="card legend">
     <div v-for="level in siteLevels" :key="level.id">
       <dt>{{ level.label }}</dt>
       <dd>{{ level.id === 'tamed' ? `${level.detail} You pick what's hidden under each site.` : level.detail }}</dd>
@@ -164,11 +164,9 @@ const point = (recipeId: string, toggleId?: string) => {
 /* What each level does, above the list. */
 .legend {
   display: grid;
-  gap: 6px;
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 10px;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
 }
 
 .legend div {
@@ -178,12 +176,17 @@ const point = (recipeId: string, toggleId?: string) => {
 }
 
 .legend dt {
-  font-weight: 600;
+  padding-top: 2px;
+  color: var(--dim);
+  font: 10px/1.5 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .legend dd {
   margin: 0;
-  color: var(--dim);
+  color: var(--faint);
+  font-size: 13px;
 }
 
 .sites {
@@ -192,13 +195,14 @@ const point = (recipeId: string, toggleId?: string) => {
 
 .sites li {
   padding: 14px 16px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
   background: var(--sky-raised);
 }
 
 .site {
   display: grid;
-  grid-template-columns: 1fr minmax(0, 320px);
+  grid-template-columns: 1fr minmax(0, 340px);
   align-items: center;
   gap: 12px;
 }
@@ -206,7 +210,7 @@ const point = (recipeId: string, toggleId?: string) => {
 .toggles {
   margin-top: 6px;
   padding: 2px 0 0 12px;
-  border-left: 2px solid var(--sky-hover);
+  border-left: 1px solid var(--line);
 }
 
 .name .text-button {

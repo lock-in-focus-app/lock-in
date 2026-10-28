@@ -68,49 +68,59 @@ const typedRight = computed(() => typed.value.trim().replace(/\s+/g, ' ') === ta
 
 p {
   margin: 0;
+  font-size: 12.5px;
 }
 
 .help {
-  color: var(--dim);
-  font-size: 12px;
+  color: var(--faint);
+  font-size: 11.5px;
 }
 
 .target {
   padding: 8px;
-  border-radius: 8px;
-  background: var(--sky-raised);
-  font-family: ui-monospace, monospace;
-  font-size: 15px;
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+  font: 14px var(--mono);
   letter-spacing: 0.05em;
   user-select: none;
 }
 
 input {
   padding: 8px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 8px;
-  background: var(--sky);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgb(8 11 22 / 0.5);
   color: var(--starlight);
-  font-family: ui-monospace, monospace;
-  font-size: 15px;
+  font: 14px var(--mono);
   text-align: center;
+  caret-color: #9fe3c9;
 }
 
 input:focus {
-  border-color: var(--glow);
+  border-color: var(--tick);
   outline: none;
 }
 
 button {
-  padding: 10px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: none;
+  font: 10px/1.5 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    color 300ms,
+    border-color 300ms;
 }
 
 .confirm {
-  background: var(--sky-raised);
+  color: var(--dim);
 }
 
 .confirm:hover:not(:disabled) {
-  background: var(--sky-hover);
+  border-color: rgb(220 228 255 / 0.3);
+  color: var(--starlight);
 }
 
 .confirm:disabled {
@@ -118,9 +128,14 @@ button {
   cursor: default;
 }
 
+/* Keeping going is the easy choice. */
 .keep {
-  background: var(--glow);
-  color: var(--sky);
-  font-weight: 600;
+  border-color: color-mix(in srgb, var(--glow) 50%, transparent);
+  color: var(--glow);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--glow) 50%, transparent);
+}
+
+.keep:hover {
+  border-color: var(--glow);
 }
 </style>

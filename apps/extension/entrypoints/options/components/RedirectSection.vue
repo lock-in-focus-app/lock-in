@@ -265,7 +265,8 @@ function removeLink(id: string) {
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
   background: var(--sky-raised);
   cursor: pointer;
 }
@@ -277,7 +278,8 @@ function removeLink(id: string) {
 
 .rows {
   padding: 4px 12px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
   background: var(--sky-raised);
 }
 

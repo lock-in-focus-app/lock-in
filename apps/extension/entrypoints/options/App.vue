@@ -114,14 +114,14 @@ onMounted(() => {
 <template>
   <main>
     <header>
-      <p class="brand"><span class="star" aria-hidden="true">✦</span> Lock In</p>
+      <p class="brand mono"><span class="star" aria-hidden="true">✦ </span>Lock In</p>
       <h1>Settings</h1>
       <p class="help intro">
         A profile is a set of rules for a focus session: which sites stay as they are, which are tamed, and which are
         redirected or restricted. Pick a profile to edit it. Changes save as you go, and apply straight away if the
         profile is running.
       </p>
-      <button type="button" class="text-button take-tour" @click="takeTour">Take the tour</button>
+      <button type="button" class="key lit take-tour" @click="takeTour">Take the tour</button>
     </header>
 
     <section v-if="profileList && profile">
@@ -139,8 +139,10 @@ onMounted(() => {
             <span v-if="session?.profileId === p.id" class="running" title="Running now" aria-label="(running now)" />
           </button>
         </div>
-        <button type="button" class="new" @click="createProfile().then((id) => select(id, true))">+ New profile</button>
-        <button v-if="!managing" type="button" class="text-button" @click="startManaging">Manage</button>
+        <button type="button" class="key new" @click="createProfile().then((id) => select(id, true))">
+          + New profile
+        </button>
+        <button v-if="!managing" type="button" class="key" @click="startManaging">Manage</button>
       </div>
 
       <div v-if="managing" class="manage">
@@ -278,15 +280,16 @@ onMounted(() => {
 
 <style scoped>
 main {
-  max-width: 560px;
+  max-width: 600px;
   margin: 0 auto;
-  padding: 40px 16px 80px;
+  padding: 48px 20px 96px;
 }
 
 .brand {
   margin: 0;
-  color: var(--dim);
-  font-size: 13px;
+  color: var(--starlight);
+  font-size: 11px;
+  letter-spacing: 0.22em;
 }
 
 .star {
@@ -294,9 +297,10 @@ main {
 }
 
 h1 {
-  margin: 4px 0 8px;
-  font-size: 28px;
-  font-weight: 500;
+  margin: 10px 0 8px;
+  font-size: 30px;
+  font-weight: 200;
+  letter-spacing: 0.01em;
 }
 
 .intro {
@@ -304,8 +308,7 @@ h1 {
 }
 
 .take-tour {
-  margin: 0 0 16px -8px;
-  color: var(--glow);
+  margin: 4px 0 24px;
 }
 
 .manage {
@@ -341,50 +344,56 @@ h1 {
   gap: 8px;
 }
 
+/* The profiles, as a segmented switch like the app's, the picked one lit from below. */
 .tabs {
   display: flex;
   flex: 1 1 auto;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 12px;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
   background: var(--sky-raised);
 }
 
 .tabs button {
   flex: 1;
-  padding: 8px 12px;
+  padding: 9px 12px;
+  border-radius: 2px;
   background: none;
-  color: var(--dim);
+  color: var(--faint);
+  font-size: 13px;
   white-space: nowrap;
   transition:
-    background 150ms,
-    color 150ms;
+    background 300ms,
+    color 300ms,
+    box-shadow 300ms;
+}
+
+.tabs button:hover {
+  color: var(--dim);
 }
 
 .tabs button[aria-selected='true'] {
   background: var(--sky-hover);
   color: var(--starlight);
+  box-shadow: inset 0 -1px 0 #cfe0ff;
 }
 
 .running {
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-left: 4px;
+  width: 5px;
+  height: 5px;
+  margin-left: 6px;
   border-radius: 50%;
   background: var(--glow);
+  box-shadow: 0 0 6px var(--glow);
   vertical-align: middle;
 }
 
-.new {
-  padding: 8px 12px;
-  background: none;
-  color: var(--glow);
-}
-
-.new:hover {
-  background: var(--sky-raised);
+.new,
+.profiles > .key {
+  padding: 7px 10px;
 }
 
 .profile {
@@ -426,7 +435,7 @@ h1 {
 footer {
   margin-top: 48px;
   padding-top: 16px;
-  border-top: 1px solid var(--sky-raised);
+  border-top: 1px solid var(--line);
 }
 
 .reset {

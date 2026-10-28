@@ -50,7 +50,7 @@ describe('redirect destinations', () => {
     it('offers the unstick page when the answer is "stuck"', async () => {
       await clickButton('Stuck');
       await clickButton('Stuck? Try a 2-minute unstick');
-      expect(await pageText()).toContain('A 2-minute unstick');
+      expect(await pageText()).toContain('A 2-MINUTE UNSTICK');
       await expect.poll(async () => (await stored(control)).gateVisits?.at(-1)?.why).toBe('stuck');
     });
 
