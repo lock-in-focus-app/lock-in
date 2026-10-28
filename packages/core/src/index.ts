@@ -99,6 +99,7 @@ export {
   constellations,
   maxConstellationNameLength,
   skyPlaces,
+  weekMonth,
   type Constellation,
 } from './constellations';
 export {

@@ -8,9 +8,9 @@ import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
 // from the reward engine (packages/core/src/constellations.ts); this only draws them, with light
-// pollution washing them out as `clarity` falls. It redraws about 20 times a second while stars
-// twinkle or the haze is moving, every frame while something moves, and only when something
-// changes under reduced motion.
+// pollution washing them out as `clarity` falls. It redraws 60 times a second while stars twinkle
+// or the haze is moving (20 while the window is behind others), every frame the screen shows while
+// something moves, only when something changes under reduced motion, and not at all while hidden.
 //
 // It has two layouts, and constellations glide from one to the other. On the Sky (`sky`), they
 // gather close together, the newest in the middle, like one starry collection. Exploring spreads
@@ -22,10 +22,10 @@ import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 // dragged around and zoomed (the wheel, a pinch, the keyboard or `zoom`), out as far as the oldest
 // constellation.
 //
-// To stay smooth after years of focus (PLAN §5, performance at scale), the Sky shows the latest
-// half year of constellations, and older ones fold away into the Milky Way, which fills in behind
-// everything as total focus grows. Exploring starts on the same ones, and zooming out finds the
-// rest; far away, a constellation's stars fold into a soft glow. Only what's on screen is drawn,
+// To stay smooth after years of focus (PLAN §5, performance at scale), the Sky shows a month's
+// constellations at a time, the latest unless `month` steps back, and the rest fold away into the
+// Milky Way, which fills in behind everything as total focus grows. Exploring starts on the latest
+// weeks, and zooming out finds the rest; far away, a constellation's stars fold into a soft glow. Only what's on screen is drawn,
 // and still things are drawn once and reused.
 //
 // Planets (one a month) sit nearer than the stars, around the edge of the constellations, the
@@ -58,6 +58,8 @@ export interface SkyConstellation {
   name: string;
   /** When its week starts (epoch ms). */
   weekStart: number;
+  /** The month its week belongs to (its start, epoch ms), which the Sky shows a month at a time. */
+  month: number;
   stars: SkyStar[];
   /** Lines joining its stars, as pairs of indexes into `stars`. */
   lines: [number, number][];
@@ -82,6 +84,8 @@ export interface SkySatellite {
 const props = defineProps<{
   /** Oldest first. */
   constellations: SkyConstellation[];
+  /** On the Sky, the month whose weeks it shows (its start, epoch ms). The latest if not given. */
+  month?: number;
   /** Oldest first. */
   planets?: SkyPlanet[];
   /** How filled in the Milky Way is, from 0 to 1. */
@@ -110,7 +114,12 @@ const canvas = ref<HTMLCanvasElement>();
 const still = window.matchMedia('(prefers-reduced-motion: reduce)');
 /** How long the haze takes to drift most of the way to a new clarity. */
 const hazeDriftMs = 2500;
-const frameMs = 50;
+/**
+ * How often to redraw while only twinkling: 60 times a second with the window in front, and 20
+ * behind other windows (e.g. while you work in another app during a session), to save battery. A
+ * little under the time between frames, so a 120 Hz screen draws every other one.
+ */
+const frameMs = { front: 1000 / 60 - 2, behind: 50 };
 /** How far the view pans toward the pointer, as a share of the sky, and how much it zooms in. */
 const driftPan = 0.04;
 const driftZoom = 0.06;
@@ -138,8 +147,8 @@ const satelliteLapSpreadMs = 3 * 60_000;
 const satelliteFadeMs = 1500;
 /** The widest a satellite's text is shown, in pixels before the screen's scale. */
 const satelliteTextWidth = 260;
-/** How many weeks' constellations the Sky shows, the latest. Exploring starts on as many. */
-const skyWeeks = 26;
+/** How many of the latest weeks exploring starts on. Zooming out finds the rest. */
+const exploreWeeks = 12;
 /** How far in exploring can zoom, and how long the view takes to catch up when zoomed or let go. */
 const mostZoom = 4;
 const viewMs = 500;
@@ -345,20 +354,40 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
     // Satellites stay out of the report.
     return { places, ring: { ...(ring ?? { x: 0.5, y: 0.35, across: 0.44, down: 0.22 }), alpha: 0 } };
   }
-  // Packed close, so the Sky reads as one starry collection, fitted between the header and the
-  // cards at the bottom. Exploring clears the cards away, and they spread out into separate
-  // constellations to admire one at a time. Both fit the latest weeks: on the Sky, older ones fold
-  // away into the Milky Way, and exploring finds them further out.
-  const gather = props.drift ? 1 : skyGather;
-  const spots = skyPlaces(list.length).map((s) => ({ x: s.x * gather, y: s.y * gather }));
-  const latest = list.length - skyWeeks;
-  const bounds = (some: readonly { x: number; y: number }[]) => ({
-    left: Math.min(...some.map((s) => s.x)) - reach.x,
-    right: Math.max(...some.map((s) => s.x)) + reach.x,
-    top: Math.min(...some.map((s) => s.y)) - reach.up,
-    bottom: Math.max(...some.map((s) => s.y)) + reach.down,
-  });
-  const box = bounds(spots.slice(Math.max(0, latest)));
+  // On the Sky, a month's weeks at a time (the latest month, or `month`), packed close so they read
+  // as one starry collection, fitted between the header and the cards at the bottom. Every other
+  // month sits in the same spots unseen, so stepping from one month to another fades between them.
+  // Exploring clears the cards away, and they all spread out into separate constellations to
+  // admire one at a time, starting on the latest weeks, with older ones further out.
+  const shownMonth = props.month ?? list[list.length - 1]?.month;
+  let spots: { x: number; y: number }[];
+  let fitted: { x: number; y: number }[];
+  if (props.drift) {
+    spots = skyPlaces(list.length);
+    fitted = spots.slice(-exploreWeeks);
+  } else {
+    // Each month's weeks spiral out from its newest.
+    const months = new Map<number, number[]>();
+    list.forEach((constellation, i) =>
+      months.set(constellation.month, [...(months.get(constellation.month) ?? []), i]),
+    );
+    spots = [];
+    for (const indexes of months.values()) {
+      const near = skyPlaces(indexes.length);
+      indexes.forEach((index, j) => (spots[index] = { x: near[j]!.x * skyGather, y: near[j]!.y * skyGather }));
+    }
+    fitted = (shownMonth === undefined ? [] : (months.get(shownMonth) ?? [])).map((index) => spots[index]!);
+  }
+  const bounds = (some: readonly { x: number; y: number }[]) => {
+    if (!some.length) some = [{ x: 0, y: 0 }];
+    return {
+      left: Math.min(...some.map((s) => s.x)) - reach.x,
+      right: Math.max(...some.map((s) => s.x)) + reach.x,
+      top: Math.min(...some.map((s) => s.y)) - reach.up,
+      bottom: Math.max(...some.map((s) => s.y)) + reach.down,
+    };
+  };
+  const box = bounds(fitted);
   const area = {
     left: 0.06 * width,
     right: 0.94 * width,
@@ -382,7 +411,7 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
     places.set(constellation.id, {
       ...spread(spots[i]!),
       unit: unit / width,
-      alpha: props.drift || i >= latest ? 1 : 0,
+      alpha: props.drift || constellation.month === shownMonth ? 1 : 0,
       label: props.names ? 1 : 0,
       lift: 0,
     });
@@ -399,10 +428,15 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
   const across = ((area.right - area.left) / 2) * 0.92;
   const down = ((area.bottom - area.top) / 2) * 0.95;
   const base = Math.min(width, height) * (props.drift ? 0.065 : 0.055);
+  // On the Sky, the shown month's planet is the newest, with the few months before it.
+  let newest = planets.length - 1;
+  if (!props.drift && shownMonth !== undefined) {
+    while (newest >= 0 && planets[newest]!.monthStart > shownMonth) newest--;
+  }
   planets.forEach((planet, i) => {
-    const age = planets.length - 1 - i;
+    const age = newest - i;
     const angle = -0.3 * Math.PI + age * goldenAngle + orbit;
-    const radius = (base * (0.45 + 0.55 * planet.size)) / (1 + 0.25 * Math.min(age, 8));
+    const radius = (base * (0.45 + 0.55 * planet.size)) / (1 + 0.25 * Math.min(Math.max(age, 0), 8));
     // Room for its rings and moons, so it isn't cut off at the window's edges.
     const room = radius * 2.8;
     // While exploring, older ones sit further out, among their months' constellations.
@@ -418,7 +452,7 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
       world.top = Math.min(world.top, (y - room) / height);
       world.bottom = Math.max(world.bottom, (y + room) / height);
     }
-    const shownHere = props.drift || age < skyPlanets;
+    const shownHere = props.drift || (age >= 0 && age < skyPlanets);
     places.set(planetKey(planet), {
       x: x / width,
       y: y / height,
@@ -1008,7 +1042,8 @@ function tick(time: number) {
   const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || turning || plays.size > 0;
   // Under reduced motion nothing twinkles, so the loop stops once everything has settled.
   const moving = !still.matches || hazing;
-  if (!moving || panning || viewing || gliding || time - lastDrawn >= frameMs) draw(time);
+  const every = document.hasFocus() ? frameMs.front : frameMs.behind;
+  if (!moving || panning || viewing || gliding || time - lastDrawn >= every) draw(time);
   // Nothing is drawn while the window is hidden; showing it again wakes the sky.
   const going = (moving || panning || viewing || gliding) && document.visibilityState !== 'hidden';
   frame = going ? requestAnimationFrame(tick) : 0;
@@ -1200,6 +1235,7 @@ watch(
     props.clarity,
     props.names,
     props.week,
+    props.month,
     props.drift,
     props.comets,
     props.events,

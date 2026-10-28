@@ -5,6 +5,7 @@ import {
   constellations,
   maxConstellationNameLength,
   skyPlaces,
+  weekMonth,
 } from './constellations';
 import { weekStart } from './insights';
 import type { Star } from './sky';
@@ -99,6 +100,17 @@ describe('constellations', () => {
     expect(after[1]).not.toBe(before[1]);
     expect(after[1]!.stars[1]!.focusedMs).toBe(growing.focusedMs);
     expect(after).toEqual(constellations([...sky.slice(0, 3), growing]));
+  });
+});
+
+describe('weekMonth', () => {
+  it('puts a week in the month its middle falls in', () => {
+    // Monday 26 October to Sunday 1 November: mostly October.
+    expect(weekMonth(weekStart(monday, 1))).toBe(new Date(2026, 9, 1).getTime());
+    // Thursday 29 October to Wednesday 4 November: its middle is on 1 November.
+    expect(weekMonth(weekStart(monday + 3 * DAY, 4))).toBe(new Date(2026, 10, 1).getTime());
+    // Monday 28 September to Sunday 4 October: its middle, Thursday, is 1 October.
+    expect(weekMonth(new Date(2026, 8, 28).getTime())).toBe(new Date(2026, 9, 1).getTime());
   });
 });
 

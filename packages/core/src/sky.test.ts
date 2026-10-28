@@ -107,12 +107,12 @@ describe('milkyWay', () => {
     expect(milkyWay([])).toBe(0);
     const hours = (n: number, extra: Partial<SessionRecord> = {}) =>
       session(0, n * 60, { focusedMs: n * 60 * MIN, ...extra });
-    expect(milkyWay([hours(20)])).toBeCloseTo(0.1);
-    expect(milkyWay([hours(20), hours(400, { broken: true })])).toBeCloseTo(0.1);
+    expect(milkyWay([hours(15)])).toBeCloseTo(0.1);
+    expect(milkyWay([hours(15), hours(400, { broken: true })])).toBeCloseTo(0.1);
     expect(milkyWay([hours(400, { focusedMs: 300 * 60 * MIN, overtimeMs: 100 * 60 * MIN })])).toBeCloseTo(
-      Math.sqrt(0.2),
+      Math.sqrt(400 / 1500),
     );
-    expect(milkyWay([hours(1500), hours(1500)])).toBe(1);
+    expect(milkyWay([hours(1000), hours(500)])).toBe(1);
   });
 });
 

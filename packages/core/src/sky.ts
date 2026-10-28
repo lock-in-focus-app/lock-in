@@ -21,7 +21,7 @@ const brightestOvertimeMinutes = 30;
 /** Overtime minutes are worth this much stardust (unannounced, PLAN §2). */
 const overtimeStardust = 1.5;
 /** Focus hours by which the Milky Way has filled in. */
-const fullMilkyWayHours = 2000;
+const fullMilkyWayHours = 1500;
 /** How long the sky stays clear after a session, as a share of the session's length. */
 const afterglowShare = 0.2;
 /** How long the haze takes to creep back once the afterglow is over. */
@@ -101,7 +101,7 @@ export function stardust(sessions: readonly SessionRecord[]): number {
 /**
  * How much of the Milky Way has filled in, from 0 to 1, from all the time focused (overtime
  * included, broken sessions not). It fills in quickest at first, so the first hours show, and is
- * all there by 2,000 hours: years of focus.
+ * all there by 1,500 hours: years of focus.
  */
 export function milkyWay(sessions: readonly SessionRecord[]): number {
   let focusedMs = 0;

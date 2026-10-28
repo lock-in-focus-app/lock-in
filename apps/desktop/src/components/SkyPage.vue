@@ -18,6 +18,9 @@ const props = defineProps<{
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   starCount: number;
   stardust: number;
+  /** The months with constellations, oldest first, and the one the Sky shows if stepped back (else the latest). */
+  months: number[];
+  month?: number;
 }>();
 const exploring = defineModel<boolean>('exploring', { required: true });
 const emit = defineEmits<{
@@ -28,7 +31,28 @@ const emit = defineEmits<{
   act: [id: string, action: SatelliteAction];
   /** Zoom the sky in (above 1) or out, while exploring. */
   zoom: [factor: number];
+  /** Show an earlier month's constellations on the Sky, or the latest (undefined). */
+  month: [month: number | undefined];
 }>();
+
+// Stepping through the months, a month's constellations at a time.
+const shownIndex = computed(() =>
+  props.month === undefined ? props.months.length - 1 : props.months.indexOf(props.month),
+);
+const monthName = new Intl.DateTimeFormat(undefined, { month: 'long' });
+const monthAndYear = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+const monthLabel = computed(() => {
+  const month = props.months[shownIndex.value];
+  if (month === undefined) return '';
+  return new Date(month).getFullYear() === new Date().getFullYear()
+    ? monthName.format(month)
+    : monthAndYear.format(month);
+});
+function step(by: number) {
+  const index = shownIndex.value + by;
+  if (index < 0 || index >= props.months.length) return;
+  emit('month', index === props.months.length - 1 ? undefined : props.months[index]);
+}
 
 const showingTasks = ref(false);
 const taskCount = computed(() => props.satellites.orbiting.length + props.satellites.tasks.length);
@@ -61,6 +85,27 @@ watch(
         </div>
 
         <div class="bottom">
+          <div v-if="!session && months.length > 1" class="months">
+            <button
+              class="text-button"
+              type="button"
+              aria-label="Earlier month"
+              :disabled="shownIndex <= 0"
+              @click="step(-1)"
+            >
+              ‹
+            </button>
+            <span aria-live="polite">{{ monthLabel }}</span>
+            <button
+              class="text-button"
+              type="button"
+              aria-label="Later month"
+              :disabled="shownIndex >= months.length - 1"
+              @click="step(1)"
+            >
+              ›
+            </button>
+          </div>
           <div class="bar">
             <span class="stats">
               <template v-if="starCount">
@@ -174,6 +219,30 @@ watch(
 
 .tasks :deep(section:first-child) {
   margin-top: 0;
+}
+
+.months {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.months span {
+  min-width: 96px;
+  text-align: center;
+}
+
+.months .text-button {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.months .text-button:disabled {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .zoom {

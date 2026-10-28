@@ -27,6 +27,7 @@ import {
   stars,
   starSparkle,
   streaks,
+  weekMonth,
   weekStart,
 } from '@lock-in/core';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -175,6 +176,7 @@ const skyConstellations = computed<(SkyConstellation & { named: boolean })[]>(()
       name: named[i]!,
       named: names.value.has(constellation.id),
       weekStart: constellation.weekStart,
+      month: weekMonth(constellation.weekStart),
       lines: constellation.lines,
       stars: drawn,
     };
@@ -192,6 +194,16 @@ const loadSky = async () => {
 onMounted(() => run(loadSky));
 const rare = computed(() => (sky.value ? rareEvents(log.value, sky.value.secret) : []));
 const allComets = computed(() => (sky.value ? comets(resisted.value, sky.value.secret) : []));
+// The Sky shows a month's weeks at a time: the latest, unless you step back to an earlier one.
+// It's back on the latest whenever you leave the Sky or start a session.
+const skyMonths = computed(() => [...new Set(skyConstellations.value.map((c) => c.month))]);
+const steppedMonth = ref<number>();
+const skyMonth = computed(() => (skyMonths.value.includes(steppedMonth.value!) ? steppedMonth.value : undefined));
+watch(view, (to) => to !== 'sky' && (steppedMonth.value = undefined));
+watch(
+  () => snapshot.value?.session?.id,
+  (id) => id && (steppedMonth.value = undefined),
+);
 const constellationOfWeek = computed(() => new Map(skyConstellations.value.map((c) => [c.weekStart, c.id])));
 const weekConstellation = (at: number) =>
   firstDay.value === undefined ? undefined : constellationOfWeek.value.get(weekStart(at, firstDay.value));
@@ -206,7 +218,8 @@ const skyEvents = computed<SkyEvent[]>(() => {
 /** The most comets a constellation shows, the latest. */
 const cometsPerWeek = 3;
 const thisWeek = computed(() => (firstDay.value === undefined ? 0 : weekStart(minute.value * 60_000, firstDay.value)));
-// The Sky shows this week's comets; exploring and the weekly report show each week's.
+// The Sky shows this week's comets (or a month's, stepped back to one); exploring and the
+// weekly report show each week's.
 const skyComets = computed<SkyComet[]>(() => {
   const byWeek = new Map<string, SkyComet[]>();
   for (const comet of allComets.value) {
@@ -215,7 +228,11 @@ const skyComets = computed<SkyComet[]>(() => {
     byWeek.set(constellationId, [...(byWeek.get(constellationId) ?? []), { ...comet, constellationId }]);
   }
   const all = [...byWeek.values()].flatMap((list) => list.slice(-cometsPerWeek));
-  return exploring.value || reportWeek.value !== undefined ? all : all.filter((comet) => comet.at >= thisWeek.value);
+  if (exploring.value || reportWeek.value !== undefined) return all;
+  const month = skyMonth.value;
+  if (month === undefined) return all.filter((comet) => comet.at >= thisWeek.value);
+  const months = new Map(skyConstellations.value.map((c) => [c.id, c.month]));
+  return all.filter((comet) => months.get(comet.constellationId) === month);
 });
 // Satellites circle the sky: in orbit, back and waiting to be sorted, or on the task list, the
 // latest launched. One ticked off stays until it has drifted away, the next time the Sky shows.
@@ -328,6 +345,7 @@ async function run(action: () => Promise<void>) {
   <NightSky
     ref="nightSky"
     :constellations="skyConstellations"
+    :month="skyMonth"
     :planets="skyPlanets"
     :milky-way="milkyWayFill"
     :clarity="clarity"
@@ -370,6 +388,9 @@ async function run(action: () => Promise<void>) {
           :satellites="satellites"
           :star-count="starCount"
           :stardust="totalStardust"
+          :months="skyMonths"
+          :month="skyMonth"
+          @month="(month: number | undefined) => (steppedMonth = month)"
           @start="(id: string) => run(() => startSession(id))"
           @end="run(endSession)"
           @pass="run(spendEmergencyPass)"

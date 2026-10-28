@@ -125,6 +125,15 @@ function joined(points: readonly { x: number; y: number }[]): [number, number][]
 }
 
 /**
+ * The month a week belongs to (its start, local midnight on the 1st): the one its middle falls in,
+ * so every week belongs to exactly one month. The Sky shows a month's weeks at a time.
+ */
+export function weekMonth(weekStart: number): number {
+  const middle = new Date(weekStart + (addWeeks(weekStart, 1) - weekStart) / 2);
+  return new Date(middle.getFullYear(), middle.getMonth(), 1).getTime();
+}
+
+/**
  * Where each constellation sits on the Sky page, in the same order as `constellations` gives
  * them: the newest in the middle and older ones spiralling out around it, close together but
  * never overlapping. In a constellation's own units, so each one spans 2 across.
