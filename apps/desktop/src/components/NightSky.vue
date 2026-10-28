@@ -9,8 +9,9 @@ import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
 // from the reward engine (packages/core/src/constellations.ts); this only draws them, with light
 // pollution washing them out as `clarity` falls. It redraws 60 times a second while stars twinkle
-// or the haze is moving (20 while the window is behind others), every frame the screen shows while
-// something moves, only when something changes under reduced motion, and not at all while hidden.
+// (30 with `batterySaver`), every frame the screen shows while something glides or plays, and
+// only when something changes under reduced motion. While the window isn't focused it pauses,
+// still drawn as it was, and nothing is drawn at all while it's hidden.
 //
 // It has two layouts, and constellations glide from one to the other. On the Sky (`sky`), they
 // gather close together, the newest in the middle, like one starry collection. Exploring spreads
@@ -103,6 +104,8 @@ const props = defineProps<{
   satellites?: SkySatellite[];
   /** Whether hovering a satellite shows what it says beneath it. */
   satelliteText?: boolean;
+  /** Whether stars twinkle at 30 frames a second instead of 60, to save battery. */
+  batterySaver?: boolean;
   /**
    * Comets (`comet:` and their id), events (`event:` and their id) and ticked-off satellites
    * (`satellite:` and their id) to play, the first time they're here.
@@ -115,11 +118,10 @@ const still = window.matchMedia('(prefers-reduced-motion: reduce)');
 /** How long the haze takes to drift most of the way to a new clarity. */
 const hazeDriftMs = 2500;
 /**
- * How often to redraw while only twinkling: 60 times a second with the window in front, and 20
- * behind other windows (e.g. while you work in another app during a session), to save battery. A
- * little under the time between frames, so a 120 Hz screen draws every other one.
+ * How often to redraw while only twinkling: 60 times a second, or 30 to save battery. A little
+ * under the time between frames, so a 120 Hz screen draws every other one (or every fourth).
  */
-const frameMs = { front: 1000 / 60 - 2, behind: 50 };
+const frameMs = { smooth: 1000 / 60 - 2, saver: 1000 / 30 - 2 };
 /** How far the view pans toward the pointer, as a share of the sky, and how much it zooms in. */
 const driftPan = 0.04;
 const driftZoom = 0.06;
@@ -163,6 +165,19 @@ const twinkleFrom = 17;
 
 let context: CanvasRenderingContext2D | null = null;
 let frame = 0;
+/**
+ * While the window isn't focused (e.g. while you work in another app during a session), the sky
+ * pauses to save battery: nothing twinkles, circles or plays, though it's still drawn again when
+ * something changes. The animation clock stops too, so it all carries on from where it was.
+ */
+let paused = !document.hasFocus();
+let pausedAt = performance.now();
+/** How long the sky has been paused altogether, which the animation clock leaves out. */
+let pausedMs = 0;
+/** The animation clock (ms), from the time on the page's clock. */
+const clock = (now: number) => (paused ? pausedAt : now) - pausedMs;
+/** Whether things settle straight away instead of easing: under reduced motion, or while paused. */
+const resting = () => still.matches || paused;
 /**
  * While only twinkling (and planets circling), the loop sleeps until its next frame is due rather
  * than waking for every one the screen shows (120 a second on some screens). `frame` is -1 then.
@@ -479,7 +494,7 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
 
 /** Moves each constellation a step toward where the layout puts it. Returns whether any are still on their way. */
 function glide(elapsed: number, width: number, height: number): boolean {
-  const follow = still.matches ? 1 : 1 - Math.exp(-elapsed / (glideMs / 3));
+  const follow = resting() ? 1 : 1 - Math.exp(-elapsed / (glideMs / 3));
   let moving = false;
   const { places: goals, ring: ringGoal } = targets(width, height);
   if (!ring) ring = { ...ringGoal };
@@ -514,7 +529,7 @@ function glide(elapsed: number, width: number, height: number): boolean {
       stills.delete(id);
     }
   }
-  const brighten = still.matches ? 1 : 1 - Math.exp(-elapsed / (shineMs / 3));
+  const brighten = resting() ? 1 : 1 - Math.exp(-elapsed / (shineMs / 3));
   for (const id of goals.keys()) {
     const level = shine.get(id) ?? 0;
     const target = id === hovered ? 1 : 0;
@@ -524,7 +539,7 @@ function glide(elapsed: number, width: number, height: number): boolean {
       moving = true;
     }
   }
-  const fade = still.matches ? 1 : 1 - Math.exp(-elapsed / (satelliteFadeMs / 3));
+  const fade = resting() ? 1 : 1 - Math.exp(-elapsed / (satelliteFadeMs / 3));
   for (const [id, orbiter] of orbiters) {
     const visible = orbiter.gone ? 0 : 1;
     const glow = `satellite:${id}` === hovered ? 1 : 0;
@@ -546,7 +561,7 @@ function resize() {
   const scale = window.devicePixelRatio || 1;
   sky.width = Math.round(sky.clientWidth * scale);
   sky.height = Math.round(sky.clientHeight * scale);
-  draw(performance.now());
+  draw(clock(performance.now()));
 }
 
 /**
@@ -988,7 +1003,7 @@ function markSpot(id: string, x: number, y: number, width: number, height: numbe
 /** Starts playing what's new in `play`, one after another. Under reduced motion, what stays just appears. */
 function startPlaying(keys: readonly string[]) {
   let next = 0;
-  const now = performance.now();
+  const now = clock(performance.now());
   for (const key of keys) {
     if (started.has(key)) continue;
     started.add(key);
@@ -1011,11 +1026,13 @@ function startPlaying(keys: readonly string[]) {
 /** Whether planets circle and spin: only while exploring, and not at all under reduced motion. */
 const circling = () => !!props.drift && props.week === undefined && !still.matches && !!props.planets?.length;
 
-function tick(time: number) {
+function tick(now: number) {
+  const time = clock(now);
   const elapsed = lastTime ? time - lastTime : 0;
   lastTime = time;
-  const turning = circling();
+  const turning = circling() && !paused;
   if (turning) orbit += (elapsed / planetLapMs) * Math.PI * 2;
+  if (paused) shownClarity = props.clarity;
   const hazing = Math.abs(props.clarity - shownClarity) > 0.002;
   if (hazing) {
     shownClarity += (props.clarity - shownClarity) * (1 - Math.exp(-elapsed / (hazeDriftMs / 3)));
@@ -1034,7 +1051,7 @@ function tick(time: number) {
   else if (!dragging) view = kept(view);
   const viewing =
     Math.abs(view.x - seen.x) + Math.abs(view.y - seen.y) + Math.abs(Math.log(view.zoom / seen.zoom)) > 0.0005;
-  if (viewing && !dragging && !still.matches) {
+  if (viewing && !dragging && !resting()) {
     const toward = 1 - Math.exp(-elapsed / (viewMs / 3));
     seen.x += (view.x - seen.x) * toward;
     seen.y += (view.y - seen.y) * toward;
@@ -1046,10 +1063,10 @@ function tick(time: number) {
   const sized = !!sky && sky.width > 0 && sky.height > 0;
   // Gliding and playing things draw every frame the screen does. Planets circling are too slow
   // to need that, so like twinkling they draw 60 times a second (or 20, behind other windows).
-  const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || plays.size > 0;
-  // Under reduced motion nothing twinkles, so the loop stops once everything has settled.
-  const moving = !still.matches || hazing;
-  const every = document.hasFocus() ? frameMs.front : frameMs.behind;
+  const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || (plays.size > 0 && !paused);
+  // Under reduced motion or paused nothing twinkles, so the loop stops once everything has settled.
+  const moving = !resting() || hazing;
+  const every = props.batterySaver ? frameMs.saver : frameMs.smooth;
   if (!moving || panning || viewing || gliding || time - lastDrawn >= every) draw(time);
   // Nothing is drawn while the window is hidden; showing it again wakes the sky.
   const going = (moving || panning || viewing || gliding || turning) && document.visibilityState !== 'hidden';
@@ -1062,13 +1079,13 @@ function tick(time: number) {
         nap = undefined;
         frame = requestAnimationFrame(tick);
       },
-      Math.max(0, lastDrawn + every - performance.now() - 4),
+      Math.max(0, lastDrawn + every - time - 4),
     );
   }
 }
 
 function wake() {
-  if (still.matches) shownClarity = props.clarity;
+  if (resting()) shownClarity = props.clarity;
   // Something changed, so no more sleeping until the next frame.
   if (nap !== undefined) {
     clearTimeout(nap);
@@ -1239,6 +1256,18 @@ function hover(event: PointerEvent) {
   }
 }
 
+/** Pauses the sky while the window isn't focused, and carries on when it is again. */
+function focusChanged() {
+  const away = !document.hasFocus();
+  if (away === paused) return;
+  const now = performance.now();
+  if (away) pausedAt = now;
+  else pausedMs += now - pausedAt;
+  paused = away;
+  lastTime = 0;
+  wake();
+}
+
 function settle() {
   aim = { x: 0, y: 0, zoom: 0 };
   hovered = undefined;
@@ -1265,6 +1294,7 @@ watch(
     props.comets,
     props.events,
     props.satellites,
+    props.batterySaver,
   ],
   wake,
 );
@@ -1303,6 +1333,8 @@ onMounted(() => {
   window.addEventListener('pointercancel', letGo);
   window.addEventListener('wheel', wheel, { passive: false });
   window.addEventListener('keydown', press);
+  window.addEventListener('focus', focusChanged);
+  window.addEventListener('blur', focusChanged);
   document.addEventListener('visibilitychange', wake);
   document.documentElement.addEventListener('pointerleave', settle);
   wake();
@@ -1319,6 +1351,8 @@ onUnmounted(() => {
   window.removeEventListener('pointercancel', letGo);
   window.removeEventListener('wheel', wheel);
   window.removeEventListener('keydown', press);
+  window.removeEventListener('focus', focusChanged);
+  window.removeEventListener('blur', focusChanged);
   document.removeEventListener('visibilitychange', wake);
   document.documentElement.removeEventListener('pointerleave', settle);
 });

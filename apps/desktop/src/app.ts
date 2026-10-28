@@ -30,10 +30,16 @@ export function useSnapshot() {
 }
 
 /** The current time, ticking once a second while the component is shown. */
+/** The time, once a second, for clocks on the page. It doesn't tick while the window is hidden. */
 export function useNow() {
   const now = ref(Date.now());
-  const tick = setInterval(() => (now.value = Date.now()), 1000);
-  onUnmounted(() => clearInterval(tick));
+  const update = () => document.visibilityState !== 'hidden' && (now.value = Date.now());
+  const tick = setInterval(update, 1000);
+  document.addEventListener('visibilitychange', update);
+  onUnmounted(() => {
+    clearInterval(tick);
+    document.removeEventListener('visibilitychange', update);
+  });
   return now;
 }
 
