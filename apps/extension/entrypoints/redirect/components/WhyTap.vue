@@ -40,13 +40,16 @@ fieldset {
 legend {
   margin-bottom: 8px;
   padding: 0;
-  color: var(--dim);
-  font-size: 12px;
+  color: var(--faint);
+  font: 10px/1.5 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .chip {
   padding: 6px 12px;
-  border-radius: 999px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
   background: var(--sky-raised);
   color: var(--dim);
   font-size: 13px;
@@ -61,7 +64,8 @@ legend {
 }
 
 .chip[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--glow) 25%, var(--sky-raised));
+  border-color: color-mix(in srgb, var(--glow) 60%, transparent);
+  background: color-mix(in srgb, var(--glow) 14%, var(--sky-raised));
   color: var(--starlight);
   transform: scale(1.05);
 }

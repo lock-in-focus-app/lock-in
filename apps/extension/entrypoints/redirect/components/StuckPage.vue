@@ -71,7 +71,9 @@ const nextStep = computed(() => answers.value[1]?.trim());
 .eyebrow {
   margin: 0 0 12px;
   color: var(--glow);
-  font-size: 12px;
+  font: 10px/1.5 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .progress {
@@ -85,8 +87,8 @@ const nextStep = computed(() => answers.value[1]?.trim());
 .progress li {
   width: 24px;
   height: 4px;
-  border-radius: 2px;
-  background: var(--sky-hover);
+  border-radius: 1px;
+  background: var(--line-bright);
   transition: background 300ms;
 }
 
@@ -97,7 +99,7 @@ const nextStep = computed(() => answers.value[1]?.trim());
 h1 {
   margin: 0;
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 300;
 }
 
 .body {
@@ -116,16 +118,16 @@ input {
   width: 100%;
   margin-bottom: 16px;
   padding: 12px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 10px;
-  background: var(--sky-raised);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgb(8 11 22 / 0.6);
   color: var(--starlight);
   font: inherit;
   font-size: 15px;
 }
 
 input:focus {
-  border-color: var(--glow);
+  border-color: var(--tick-bright);
   outline: none;
 }
 

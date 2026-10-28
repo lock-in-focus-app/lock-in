@@ -57,7 +57,7 @@ describe('redirects and the intention gate', () => {
     expect(tab.url()).toBe(gate(urls.reddit));
     expect(await gateText()).toContain('What did you come here for?');
     expect(await gateText()).toContain('First try at Reddit today');
-    expect(await gateText()).toContain('Lock In · Deep Work');
+    expect(await gateText()).toContain('LOCK IN · DEEP WORK');
   });
 
   it('counts each attempt', async () => {

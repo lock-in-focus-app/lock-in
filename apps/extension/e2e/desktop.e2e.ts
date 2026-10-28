@@ -73,8 +73,8 @@ describe('the desktop app link', () => {
     await tab.goto(urls.other);
     const popup = await openPopup(t, tab);
     const popupText = await text(popup);
-    expect(popupText).toContain('App linked');
-    expect(popupText).toContain('Locked in · Deep Work');
+    expect(popupText).toContain('APP LINKED');
+    expect(popupText).toContain('LOCKED IN · DEEP WORK');
     expect(await popup.$eval('.elapsed', (el) => el.textContent)).toMatch(/^1[45]:\d\d$/);
     await tab.close();
   });
@@ -154,7 +154,7 @@ describe('the desktop app link', () => {
     const tab = await t.browser.newPage();
     await tab.goto(urls.other);
     const popup = await openPopup(t, tab);
-    expect(await text(popup)).not.toContain('App linked');
+    expect(await text(popup)).not.toContain('APP LINKED');
     await popup.click('button.end');
     await expect.poll(async () => (await stored(control)).activeSession ?? null).toBeNull();
     const storage = await stored(control);
@@ -240,7 +240,7 @@ describe('without the desktop app', () => {
       const tab = await t.browser.newPage();
       await tab.goto(urls.other);
       const popup = await openPopup(t, tab);
-      expect(await text(popup)).not.toContain('App linked');
+      expect(await text(popup)).not.toContain('APP LINKED');
       await popup.click('button.profile');
       await popup.waitForSelector('.elapsed');
       expect((await stored(control)).activeSession?.profileId).toBe('writing');

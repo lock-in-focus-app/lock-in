@@ -109,8 +109,10 @@ onUnmounted(() => {
       "
       aria-hidden="true"
     />
-    <section ref="panel" class="tour" aria-labelledby="tour-title" :style="{ top: `${top}px` }">
-      <p class="count"><span class="star" aria-hidden="true">✦</span> Tour · {{ step + 1 }} of {{ steps.length }}</p>
+    <section ref="panel" class="card tour" aria-labelledby="tour-title" :style="{ top: `${top}px` }">
+      <p class="mono count">
+        Tour · <b>{{ String(step + 1).padStart(2, '0') }}</b> / {{ String(steps.length).padStart(2, '0') }}
+      </p>
       <Transition name="step" mode="out-in">
         <div :key="step" aria-live="polite">
           <h2 id="tour-title">{{ current.title }}</h2>
@@ -118,11 +120,11 @@ onUnmounted(() => {
         </div>
       </Transition>
       <div class="buttons">
-        <button v-if="step > 0" type="button" class="text-button" @click="step--">Back</button>
-        <button ref="next" type="button" class="text-button next" @click="last ? emit('end') : step++">
-          {{ last ? 'Done' : 'Next' }}
+        <button v-if="step > 0" type="button" class="key" @click="step--">‹ Back</button>
+        <button ref="next" type="button" class="key lit next" @click="last ? emit('end') : step++">
+          {{ last ? 'Done' : 'Next ›' }}
         </button>
-        <button v-if="!last" type="button" class="text-button skip" @click="emit('end')">Skip tour</button>
+        <button v-if="!last" type="button" class="key skip" @click="emit('end')">Skip tour</button>
       </div>
     </section>
   </div>
@@ -136,22 +138,29 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* The part the step is about, outlined in the glow color a little way out from it. */
+/* The part the step is about, framed with bright corner ticks a little way out from it. */
 .spot {
+  --t: var(--tick-bright);
   position: absolute;
-  margin: -8px 0 0 -8px;
-  padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--glow) 70%, transparent);
-  border-radius: 14px;
-  box-shadow: 0 0 24px color-mix(in srgb, var(--glow) 18%, transparent);
-  box-sizing: content-box;
-  translate: -1px -1px;
+  margin: -6px 0 0 -6px;
+  padding: 6px;
+  border-radius: 6px;
+  box-shadow: 0 0 28px rgb(220 228 255 / 0.07);
+  background:
+    linear-gradient(var(--t), var(--t)) top left / 12px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) top left / 1px 12px no-repeat,
+    linear-gradient(var(--t), var(--t)) top right / 12px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) top right / 1px 12px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom left / 12px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom left / 1px 12px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom right / 12px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom right / 1px 12px no-repeat;
   opacity: 0;
   transition:
-    top 520ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    left 520ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 520ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    height 520ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 520ms var(--ease),
+    left 520ms var(--ease),
+    width 520ms var(--ease),
+    height 520ms var(--ease),
     opacity 400ms ease;
 }
 
@@ -159,61 +168,71 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-/* The panel, as wide as the page, over whatever's beneath. */
+/* The frame, as wide as the page, over whatever's beneath. */
 .tour {
+  --t: var(--tick-bright);
   position: absolute;
   left: 50%;
   width: min(480px, calc(100vw - 32px));
   box-sizing: border-box;
-  padding: 14px 16px 12px;
-  border: 1px solid var(--sky-hover);
-  border-radius: 14px;
-  background: var(--sky-raised);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+  padding: 10px 14px 12px;
   translate: -50% 0;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.5);
   pointer-events: auto;
-  transition: top 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation: arrive 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: top 520ms var(--ease);
+  animation: arrive 500ms var(--ease) both;
+}
+
+.tour::before {
+  background-color: rgb(11 15 30 / 0.94);
 }
 
 @keyframes arrive {
   from {
     opacity: 0;
     translate: -50% 8px;
+    filter: blur(4px);
   }
 }
 
 .count {
   margin: 0 0 4px;
-  color: var(--dim);
-  font-size: 12px;
-}
-
-.star {
-  color: var(--glow);
 }
 
 h2 {
+  display: block;
   margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 600;
+  color: var(--starlight);
+  font:
+    400 16px/1.4 system-ui,
+    -apple-system,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+h2::before,
+h2::after {
+  content: none;
 }
 
 .text {
   margin: 0;
   color: var(--dim);
+  font-size: 13px;
   line-height: 1.5;
   text-wrap: pretty;
 }
 
-.buttons {
+.keys {
   display: flex;
-  gap: 2px;
-  margin: 10px 0 0 -8px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .next {
-  color: var(--glow);
+  color: var(--starlight);
+  border-color: var(--tick);
 }
 
 /* Skipping is over on the right, away from Next. */
@@ -223,12 +242,15 @@ h2 {
 
 .step-enter-active,
 .step-leave-active {
-  transition: opacity 200ms ease;
+  transition:
+    opacity 220ms ease,
+    filter 220ms ease;
 }
 
 .step-enter-from,
 .step-leave-to {
   opacity: 0;
+  filter: blur(2px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -239,6 +261,11 @@ h2 {
 
   .tour {
     animation-name: fade;
+  }
+
+  .step-enter-from,
+  .step-leave-to {
+    filter: none;
   }
 
   @keyframes fade {

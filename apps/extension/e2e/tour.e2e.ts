@@ -53,13 +53,13 @@ describe('the tour for new users', () => {
 
     const titles = [await tourTitle(page)];
     for (let step = 1; step < 4; step++) {
-      await clickButton(page, 'Next');
+      await clickButton(page, 'Next ›');
       await expect.poll(() => tourTitle(page)).not.toBe(titles[titles.length - 1]);
       titles.push(await tourTitle(page));
     }
     expect(titles).toEqual(['Profiles', 'Sites', 'The redirect page', 'The Lock In app']);
     expect(await page.$$eval('.tour button', (buttons) => buttons.map((b) => b.textContent!.trim()))).toEqual([
-      'Back',
+      '‹ Back',
       'Done',
     ]);
 

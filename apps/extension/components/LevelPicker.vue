@@ -38,34 +38,39 @@ const index = computed(() => levels.value.findIndex((l) => l.id === level.value)
 </template>
 
 <style scoped>
+/* A segmented switch like the app's: mono choices in a hairline frame, the picked one lit. */
 .levels {
   position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  padding: 3px;
-  border-radius: 9px;
-  background: var(--sky);
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgb(8 11 22 / 0.55);
 }
 
 /* Slides under the chosen level. */
 .indicator {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / 4);
-  border-radius: 7px;
-  background: var(--sky-hover);
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / 4);
+  border-radius: 2px;
+  background: rgb(220 228 255 / 0.08);
+  box-shadow: inset 0 -1px 0 #cfe0ff;
   transition: transform 450ms var(--spring);
 }
 
 button {
   position: relative;
-  padding: 5px 4px;
+  padding: 7px 2px;
   background: none;
-  color: var(--dim);
-  font-size: 12px;
-  transition: color 150ms;
+  color: var(--faint);
+  font: 9.5px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 300ms;
 }
 
 button[aria-checked='true'] {
@@ -77,18 +82,20 @@ button.restricted[aria-checked='true'] {
 }
 
 button:not(:disabled):hover {
+  color: var(--dim);
+}
+
+button[aria-checked='true']:hover {
   color: var(--starlight);
 }
 
 button:disabled {
   cursor: default;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 button:focus-visible {
-  outline: 2px solid var(--glow);
   outline-offset: -2px;
-  border-radius: 7px;
 }
 
 @media (prefers-reduced-motion: reduce) {

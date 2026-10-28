@@ -46,7 +46,7 @@ describe('popup toggles', () => {
 
   describe('without a session', () => {
     it('shows the site and a profile picker', async () => {
-      expect(await text(popup)).toContain('On this site · Reddit');
+      expect(await text(popup)).toContain('ON THIS SITE · REDDIT');
       expect(await popup.$('select')).not.toBeNull();
     });
 
@@ -84,7 +84,7 @@ describe('popup toggles', () => {
       await flip(popup, 'Grayscale');
       await expect.poll(async () => (await page()).grayscale).toBe(false);
       await expect.poll(() => text(popup)).toContain('Changed for this session');
-      expect(await text(popup)).toContain('Save to Writing');
+      expect(await text(popup)).toContain('SAVE TO WRITING');
 
       const storage = await stored(popup);
       expect(writing(storage).toggles?.grayscale).toBe(true);
@@ -113,7 +113,7 @@ describe('popup toggles', () => {
     popup = await openPopup(t, other);
     await popup.waitForSelector('main > .site');
     const shown = await text(popup);
-    expect(shown).toContain('On this site · other.test');
+    expect(shown).toContain('ON THIS SITE · OTHER.TEST');
     expect(shown).toContain('Keep it away from now on');
   });
 });

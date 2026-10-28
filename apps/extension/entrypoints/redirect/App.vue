@@ -123,33 +123,37 @@ function ordinal(n: number): string {
 
 <template>
   <main>
-    <p class="brand">
-      <span class="star" aria-hidden="true">✦</span> Lock In<template v-if="profileName"> · {{ profileName }}</template>
+    <p class="brand mono">
+      <span class="star" aria-hidden="true">✦ </span>Lock In<template v-if="profileName">
+        · <b>{{ profileName }}</b></template
+      >
     </p>
 
     <template v-if="ready && settings">
-      <p class="badge">{{ badge }}</p>
+      <p class="badge"><span class="dot" aria-hidden="true" />{{ badge }}</p>
 
-      <IntentionGate
-        v-if="destination === 'gate'"
-        :site-name="siteName"
-        :wait-seconds="waitSeconds"
-        :require-reason="settings.gate.requireReason"
-        :pass-minutes="settings.gate.passMinutes"
-        @back="backToFocus"
-        @continue="proceed"
-      >
-        <p class="destination" :title="target?.href">{{ destinationText }}</p>
-      </IntentionGate>
-      <QuoteCard v-else-if="destination === 'quote'" @back="backToFocus" />
-      <LinkCard v-else-if="destination === 'link' && link" :link="link" />
-      <BlockedCard
-        v-else-if="destination === 'blocked'"
-        :site-name="siteName"
-        :profile-name="profileName"
-        @back="backToFocus"
-      />
-      <StuckPage v-else @back="backToFocus" />
+      <div class="card stage">
+        <IntentionGate
+          v-if="destination === 'gate'"
+          :site-name="siteName"
+          :wait-seconds="waitSeconds"
+          :require-reason="settings.gate.requireReason"
+          :pass-minutes="settings.gate.passMinutes"
+          @back="backToFocus"
+          @continue="proceed"
+        >
+          <p class="destination" :title="target?.href">{{ destinationText }}</p>
+        </IntentionGate>
+        <QuoteCard v-else-if="destination === 'quote'" @back="backToFocus" />
+        <LinkCard v-else-if="destination === 'link' && link" :link="link" />
+        <BlockedCard
+          v-else-if="destination === 'blocked'"
+          :site-name="siteName"
+          :profile-name="profileName"
+          @back="backToFocus"
+        />
+        <StuckPage v-else @back="backToFocus" />
+      </div>
 
       <footer>
         <WhyTap v-if="visitId" v-model="why" />
@@ -174,10 +178,10 @@ function ordinal(n: number): string {
       </footer>
     </template>
 
-    <template v-else-if="!target || (looked && !recipe)">
+    <div v-else-if="!target || (looked && !recipe)" class="card stage">
       <h1>Nothing to open here</h1>
       <button type="button" class="primary" @click="backToFocus">Back to focus</button>
-    </template>
+    </div>
   </main>
 </template>
 
@@ -187,30 +191,45 @@ main {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  max-width: 460px;
+  max-width: 480px;
   min-height: 100vh;
   margin: 0 auto;
   padding: 32px 16px;
 }
 
 .brand {
-  margin: 0 0 40px;
-  color: var(--dim);
-  font-size: 13px;
+  margin: 0 0 36px;
+  color: var(--starlight);
+  letter-spacing: 0.22em;
 }
 
 .star {
   color: var(--glow);
 }
 
+/* How many tries today, as a small readout with a glowing dot. */
 .badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   align-self: flex-start;
   margin: 0 0 12px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
   background: var(--sky-raised);
-  color: var(--glow);
-  font-size: 12px;
+  color: var(--dim);
+  font: 11px/1.5 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.badge .dot {
+  --c: var(--glow);
+}
+
+/* Where the visit landed: the gate, a quote, a link or the unstick, in one frame. */
+.stage {
+  padding: 24px 22px 22px;
 }
 
 .destination {
@@ -224,13 +243,13 @@ main {
 h1 {
   margin: 0 0 24px;
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 200;
 }
 
 footer {
   margin-top: 40px;
   padding-top: 20px;
-  border-top: 1px solid var(--sky-raised);
+  border-top: 1px solid var(--line);
 }
 
 .more {

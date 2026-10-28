@@ -95,8 +95,10 @@ function set(toggleId: string, value: boolean) {
 </script>
 
 <template>
-  <section class="site">
-    <p class="heading">On this site · {{ recipe.name }}</p>
+  <section class="card site">
+    <p class="mono heading">
+      On this site · <b>{{ recipe.name }}</b>
+    </p>
 
     <label v-if="!session && profiles.length > 1" class="picker">
       <span>Editing</span>
@@ -136,13 +138,13 @@ function set(toggleId: string, value: boolean) {
 
     <div v-if="canKeepAway" class="keep-away">
       <span>Keep it away from now on</span>
-      <button type="button" @click="keepAway('redirected')">Redirect it</button>
-      <button type="button" @click="keepAway('restricted')">Restrict it</button>
+      <button class="key" type="button" @click="keepAway('redirected')">Redirect it</button>
+      <button class="key" type="button" @click="keepAway('restricted')">Restrict it</button>
     </div>
 
     <p v-if="needsReach && (rule?.level ?? 'allowed') !== 'allowed'" class="reach">
       <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
-      <button type="button" class="save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+      <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
     </p>
 
     <ToggleSwitch
@@ -155,7 +157,9 @@ function set(toggleId: string, value: boolean) {
 
     <p v-if="session && hasSessionChanges" class="footer">
       <span>Changed for this session</span>
-      <button type="button" class="save" @click="saveSessionChanges(recipe.id)">Save to {{ profile?.name }}</button>
+      <button type="button" class="key lit save" @click="saveSessionChanges(recipe.id)">
+        Save to {{ profile?.name }}
+      </button>
     </p>
     <p v-else-if="!session" class="footer">
       <span>Applies whenever {{ profile?.name }} is running</span>
@@ -167,16 +171,14 @@ function set(toggleId: string, value: boolean) {
 </template>
 
 <style scoped>
+/* The site the tab is on, in a frame of its own below the session. */
 .site {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--sky-hover);
+  margin-top: 14px;
+  padding: 11px 12px 12px;
 }
 
 .heading {
-  margin: 0 0 4px;
-  color: var(--dim);
-  font-size: 12px;
+  margin: 0 0 6px;
 }
 
 .picker {
@@ -189,21 +191,20 @@ function set(toggleId: string, value: boolean) {
 }
 
 select {
-  font: inherit;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgb(8 11 22 / 0.7);
   color: var(--starlight);
-  background: var(--sky-raised);
-  border: 1px solid var(--sky-hover);
-  border-radius: 6px;
-  padding: 2px 6px;
-}
-
-.detail {
-  margin-bottom: 8px;
+  font: inherit;
 }
 
 .levels {
   margin: 8px 0 6px;
-  background: var(--sky-raised);
+}
+
+.detail {
+  margin-bottom: 6px;
 }
 
 .note {
@@ -218,24 +219,14 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 8px 0 0;
-  color: var(--dim);
-  font-size: 12px;
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  color: var(--faint);
+  font-size: 11.5px;
 }
 
-.save {
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--sky-raised);
-  color: var(--glow);
-  font-size: 12px;
-}
-
-.save:hover {
-  background: var(--sky-hover);
-}
-
-/* Spelled out, two buttons side by side, during a session on a site that's open. */
+/* Spelled out, two keys side by side, during a session on a site that's open. */
 .keep-away {
   display: flex;
   flex-wrap: wrap;
@@ -250,17 +241,9 @@ select {
   flex-basis: 100%;
 }
 
-.keep-away button {
+.keep-away .key {
   flex: 1;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--sky-raised);
-  color: var(--starlight);
-  font-size: 12px;
-}
-
-.keep-away button:hover {
-  background: var(--sky-hover);
+  padding: 7px 8px;
 }
 
 .reach {
@@ -268,7 +251,7 @@ select {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px 8px;
+  gap: 6px 8px;
   margin: 8px 0 0;
   color: var(--glow);
   font-size: 12px;

@@ -21,7 +21,7 @@ const url = computed(() => parseHttpUrl(props.link.url));
 h1 {
   margin: 0;
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 300;
 }
 
 .lead {
@@ -32,13 +32,18 @@ h1 {
 .open {
   display: grid;
   gap: 2px;
-  border-radius: 10px;
+  border-radius: 3px;
   padding: 14px 16px;
   text-decoration: none;
 }
 
 .title {
-  font-size: 16px;
+  font:
+    16px/1.4 system-ui,
+    -apple-system,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .host {
