@@ -1,7 +1,7 @@
 // Commands the window can call with `invoke('name', { args })`. Tauri turns the camelCase
 // argument names the UI uses into these snake_case ones.
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::apps::{AppRule, InstalledApp};
 use crate::engine::{Activity, ConstellationName, SkyState, Snapshot};
@@ -45,6 +45,29 @@ pub fn set_profile_star_color(app: AppHandle, profile_id: String, color: String)
     crate::engine(&app).set_profile_star_color(&profile_id, &color, crate::now_ms())?;
     crate::changed(&app);
     Ok(())
+}
+
+/// Changes the satellite box's hotkey, once the new one is registered. Empty turns it off.
+#[tauri::command]
+pub fn set_satellite_hotkey(app: AppHandle, hotkey: String) -> Result<()> {
+    let old = crate::engine(&app).settings().satellite_hotkey.clone();
+    let new = crate::capture::rebind(&app, &old, &hotkey)?;
+    let saved = crate::engine(&app).set_satellite_hotkey(new.clone(), crate::now_ms());
+    if let Err(error) = saved {
+        let _ = crate::capture::rebind(&app, &new, &old);
+        return Err(error);
+    }
+    crate::changed(&app);
+    Ok(())
+}
+
+/// Ignores the satellite box's hotkey while Settings records a new one, so pressing the one
+/// in use doesn't open the box.
+#[tauri::command]
+pub fn pause_satellite_hotkey(app: AppHandle, paused: bool) {
+    app.state::<crate::capture::Paused>()
+        .0
+        .store(paused, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[tauri::command]

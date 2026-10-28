@@ -57,10 +57,12 @@ fn menu(app: &AppHandle, snapshot: &Snapshot) -> tauri::Result<Menu<Wry>> {
             builder
         }
     };
-    // The accelerator is only shown here; the hotkey itself works from anywhere (capture.rs).
-    let launch = MenuItemBuilder::with_id("satellite", "Launch a satellite…")
-        .accelerator("Alt+P")
-        .build(app)?;
+    // The hotkey is only shown here; it works from anywhere (capture.rs). Both read the same text.
+    let mut launch = MenuItemBuilder::with_id("satellite", "Launch a satellite…");
+    if !snapshot.settings.satellite_hotkey.is_empty() {
+        launch = launch.accelerator(&snapshot.settings.satellite_hotkey);
+    }
+    let launch = launch.build(app)?;
     builder
         .separator()
         .item(&launch)

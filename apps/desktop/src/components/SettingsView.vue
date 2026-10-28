@@ -2,7 +2,9 @@
 import type { KnownBrowser, Settings } from '@lock-in/core';
 import { glowFor, nextGlow, unlockedGlows } from '@lock-in/core';
 import { computed } from 'vue';
+import { mac } from '../app';
 import GlowPicker from './GlowPicker.vue';
+import HotkeyField from './HotkeyField.vue';
 import NumberField from './NumberField.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
 
@@ -24,7 +26,7 @@ const emit = defineEmits<{
 const development = import.meta.env.DEV;
 
 // The sections are numbered in order, like the weekly report's.
-const sections = ['sessions', 'browsers', 'sky', 'glow', ...(development ? ['sample'] : [])];
+const sections = ['sessions', 'satellites', 'browsers', 'sky', 'glow', ...(development ? ['sample'] : [])];
 const numbered = (section: string) => String(sections.indexOf(section) + 1).padStart(2, '0');
 
 function save(patch: Partial<Settings>) {
@@ -84,6 +86,19 @@ const glowHelp = computed(() => {
         <p class="help">
           With no keyboard or mouse input for this long, a session ends by itself, and the time away isn't counted. 0
           turns this off.
+        </p>
+      </div>
+    </section>
+
+    <section class="read" aria-labelledby="satellites">
+      <h2 id="satellites" class="mono">{{ numbered('satellites') }} — Satellites</h2>
+      <div class="field">
+        <HotkeyField :hotkey="settings.satelliteHotkey" />
+        <p class="help">
+          Opens the satellite box from any app, to park a thought without leaving what you're doing. To change it, press
+          Change and then the new keys together. It needs {{ mac ? 'Option' : 'Alt' }}, or two of
+          {{ mac ? 'Control, Shift and Command' : 'Control, Shift and the Windows key' }}, so it doesn't take a shortcut
+          other apps use. The menu bar can always open the box too.
         </p>
       </div>
     </section>

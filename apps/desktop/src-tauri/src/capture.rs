@@ -1,26 +1,31 @@
 // The satellite box: a small, Spotlight-style window for launching a thought from anywhere,
-// opened with Alt+P (Option+P on a Mac) or from the menu bar.
+// opened with its hotkey (Alt+P, or Option+P on a Mac, unless it's changed in Settings) or from
+// the menu bar.
 
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::plugin::TauriPlugin;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, Wry};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use crate::error::Result;
+use crate::hotkey::{self, Problem};
 use crate::processes;
 
 pub const WINDOW: &str = "capture";
 
-fn hotkey() -> Shortcut {
-    Shortcut::new(Some(Modifiers::ALT), Code::KeyP)
-}
+/// Whether the hotkey is ignored for now, while Settings records a new one.
+#[derive(Default)]
+pub struct Paused(pub AtomicBool);
 
-/// Hears the hotkey from anywhere. `listen` turns it on once the app is set up.
+/// Hears the hotkey from anywhere. `listen` turns it on once the app is set up. It's the only
+/// global shortcut the app registers, so any press is the hotkey.
 pub fn plugin() -> TauriPlugin<Wry> {
     tauri_plugin_global_shortcut::Builder::new()
-        .with_handler(|app, shortcut, event| {
-            if *shortcut == hotkey()
+        .with_handler(|app, _shortcut, event| {
+            let paused = app.state::<Paused>().0.load(Ordering::Relaxed);
+            if !paused
                 && event.state() == ShortcutState::Pressed
                 && let Err(error) = open(app)
             {
@@ -30,12 +35,44 @@ pub fn plugin() -> TauriPlugin<Wry> {
         .build()
 }
 
-/// Starts listening for the hotkey. Another app may already have it, so that only gets logged;
-/// the box still opens from the menu bar.
+/// Starts listening for the hotkey set in Settings, unless it's turned off. Another app may
+/// already have it, so that only gets logged; the box still opens from the menu bar.
 pub fn listen(app: &AppHandle) {
-    if let Err(error) = app.global_shortcut().register(hotkey()) {
-        eprintln!("Lock In: couldn't set up Alt+P for satellites: {error}");
+    let saved = crate::engine(app).settings().satellite_hotkey.clone();
+    if saved.is_empty() {
+        return;
     }
+    let registered =
+        hotkey::parse(&saved).and_then(|shortcut| app.global_shortcut().register(shortcut).map_err(|_| Problem::Taken));
+    if let Err(problem) = registered {
+        eprintln!("Lock In: couldn't set up {saved} for satellites: {problem}");
+    }
+}
+
+/// Swaps the hotkey `old` for `new` (empty turns it off), and returns the new one as it's
+/// saved. If the new one can't be used, the old one stays.
+pub fn rebind(app: &AppHandle, old: &str, new: &str) -> Result<String> {
+    let new = match new {
+        "" => None,
+        new => Some(hotkey::parse(new)?),
+    };
+    let old = hotkey::parse(old).ok();
+    let shortcuts = app.global_shortcut();
+    if new != old {
+        // Not registered already if another app had it, which is fine.
+        if let Some(old) = old {
+            let _ = shortcuts.unregister(old);
+        }
+        if let Some(new) = new
+            && shortcuts.register(new).is_err()
+        {
+            if let Some(old) = old {
+                let _ = shortcuts.register(old);
+            }
+            return Err(Problem::Taken.into());
+        }
+    }
+    Ok(new.map(|shortcut| hotkey::text(&shortcut)).unwrap_or_default())
 }
 
 /// The app that was in front when the box opened, to hand back to once it closes.

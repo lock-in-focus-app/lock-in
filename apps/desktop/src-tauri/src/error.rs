@@ -17,6 +17,7 @@ pub enum Error {
     InvalidStarColor,
     UnknownConstellation,
     DevelopmentOnly,
+    Hotkey(crate::hotkey::Problem),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -37,6 +38,7 @@ impl fmt::Display for Error {
             Error::InvalidStarColor => f.write_str("a star color has to be a hex color like #f5c86b"),
             Error::UnknownConstellation => f.write_str("that constellation doesn't exist"),
             Error::DevelopmentOnly => f.write_str("that's only in development builds"),
+            Error::Hotkey(problem) => write!(f, "{problem}"),
         }
     }
 }
@@ -59,6 +61,12 @@ impl From<serde_json::Error> for Error {
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
         Error::Io(error)
+    }
+}
+
+impl From<crate::hotkey::Problem> for Error {
+    fn from(problem: crate::hotkey::Problem) -> Self {
+        Error::Hotkey(problem)
     }
 }
 

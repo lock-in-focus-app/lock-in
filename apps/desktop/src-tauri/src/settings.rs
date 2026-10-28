@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::hotkey;
+
 /// App-wide settings, as opposed to per-profile ones.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 // `default` fills in any field a saved copy is missing, so new settings can be added later.
@@ -23,6 +25,10 @@ pub struct Settings {
     /// `glowColors`. Colors past the first come with lifetime focus hours; the app shows the
     /// default if this one isn't unlocked (or isn't known).
     pub glow: String,
+    /// The hotkey that opens the satellite box from anywhere, like "Alt+KeyP" (see hotkey.rs).
+    /// Empty turns it off. It only changes once the new one is registered, through its own
+    /// command (`set_satellite_hotkey`).
+    pub satellite_hotkey: String,
 }
 
 pub const MAX_PASSES_PER_WEEK: u32 = 14;
@@ -37,6 +43,7 @@ impl Default for Settings {
             close_browsers: false,
             battery_saver: false,
             glow: DEFAULT_GLOW.into(),
+            satellite_hotkey: hotkey::DEFAULT_HOTKEY.into(),
         }
     }
 }
@@ -50,6 +57,12 @@ impl Settings {
         let id_like = |c: char| c.is_ascii_lowercase() || c == '-';
         if self.glow.is_empty() || self.glow.len() > 32 || !self.glow.chars().all(id_like) {
             self.glow = DEFAULT_GLOW.into();
+        }
+        if !self.satellite_hotkey.is_empty() {
+            self.satellite_hotkey = match hotkey::parse(&self.satellite_hotkey) {
+                Ok(shortcut) => hotkey::text(&shortcut),
+                Err(_) => hotkey::DEFAULT_HOTKEY.into(),
+            };
         }
         self
     }
@@ -71,6 +84,7 @@ mod tests {
                 close_browsers: true,
                 battery_saver: false,
                 glow: DEFAULT_GLOW.into(),
+                satellite_hotkey: hotkey::DEFAULT_HOTKEY.into(),
             }
         );
     }
@@ -89,5 +103,17 @@ mod tests {
             ..Settings::default()
         };
         assert_eq!(aurora.clamped().glow, "aurora");
+    }
+
+    #[test]
+    fn a_hotkey_that_cant_be_used_goes_back_to_the_default() {
+        let with = |hotkey: &str| Settings {
+            satellite_hotkey: hotkey.into(),
+            ..Settings::default()
+        };
+        assert_eq!(with("Super+KeyC").clamped().satellite_hotkey, hotkey::DEFAULT_HOTKEY);
+        assert_eq!(with("nonsense").clamped().satellite_hotkey, hotkey::DEFAULT_HOTKEY);
+        assert_eq!(with("super+shift+KeyK").clamped().satellite_hotkey, "Shift+Super+KeyK");
+        assert_eq!(with("").clamped().satellite_hotkey, "", "off stays off");
     }
 }
