@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lock In · UI redesign prototypes</title>
+    <style>
+      :root {
+        --s: 1;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 20px 24px 32px;
+        background: #04060d;
+        color: #eef0f6;
+        font:
+          13px/1.45 system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      h1 small {
+        display: block;
+        color: #8890a8;
+        font-size: 12px;
+        font-weight: 400;
+      }
+      .states {
+        display: flex;
+        flex-wrap: wrap;
+        max-width: 100%;
+        padding: 3px;
+        border-radius: 18px;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        background: rgb(255 255 255 / 0.04);
+      }
+      .states button {
+        padding: 5px 12px;
+        border: 0;
+        border-radius: 99px;
+        background: none;
+        color: #8890a8;
+        font: inherit;
+        font-size: 12px;
+        white-space: nowrap;
+        cursor: pointer;
+        transition:
+          background 300ms,
+          color 300ms;
+      }
+      .states button[aria-pressed='true'] {
+        background: #eef0f6;
+        color: #0b0d16;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+      }
+      figure {
+        margin: 0;
+        width: calc(400px * var(--s));
+      }
+      .frame {
+        width: calc(400px * var(--s));
+        height: calc(600px * var(--s));
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 1px rgb(255 255 255 / 0.08),
+          0 30px 60px -30px rgb(0 0 0 / 0.9);
+      }
+      iframe {
+        width: 400px;
+        height: 600px;
+        border: 0;
+        transform: scale(var(--s));
+        transform-origin: 0 0;
+      }
+      figcaption {
+        margin-top: 10px;
+      }
+      figcaption b {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+      }
+      figcaption a {
+        color: #8890a8;
+        font-weight: 400;
+        font-size: 12px;
+      }
+      figcaption p {
+        margin: 3px 0 0;
+        color: #8890a8;
+        font-size: 12px;
+      }
+      .checklist {
+        max-width: 760px;
+        margin: 32px auto 0;
+      }
+      .checklist h2 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .checklist h2 small {
+        margin-left: 8px;
+        color: #8890a8;
+        font-size: 12px;
+        font-weight: 400;
+      }
+      .checklist ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 2px;
+      }
+      .checklist label {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        align-items: start;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .checklist label:hover {
+        background: rgb(255 255 255 / 0.04);
+      }
+      .checklist input {
+        margin-top: 2px;
+        accent-color: #9fe3c9;
+      }
+      .checklist input:checked + span {
+        color: #8890a8;
+        text-decoration: line-through;
+        text-decoration-color: rgb(255 255 255 / 0.25);
+      }
+      .checklist em {
+        color: #8890a8;
+        font:
+          11px ui-monospace,
+          Menlo,
+          monospace;
+        font-style: normal;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        Lock In · UI redesign prototypes
+        <small
+          >Each frame is the real 400×600 window and clickable. Start a session from a profile; Esc leaves
+          Explore.</small
+        >
+      </h1>
+      <nav class="states" aria-label="Show every prototype on">
+        <button data-state="home" aria-pressed="true">Sky</button>
+        <button data-state="session">Session</button>
+        <button data-state="explore">Explore</button>
+        <button data-state="week">Your week</button>
+        <button data-state="profiles" title="C only">Profiles · C</button>
+        <button data-state="settings" title="C only">Settings · C</button>
+      </nav>
+    </header>
+    <div class="grid">
+      <figure>
+        <div class="frame"><iframe src="a-nebula-glass.html" title="A · Nebula glass"></iframe></div>
+        <figcaption>
+          <b>A · Nebula glass <a href="a-nebula-glass.html" target="_blank">Open alone ↗</a></b>
+          <p>
+            Dark smoked glass, the star color bleeding from behind each card, one floating console with the satellite
+            box and an icon toolbar, tiny corner stats.
+          </p>
+        </figcaption>
+      </figure>
+      <figure>
+        <div class="frame"><iframe src="b-bento-drift.html" title="B · Bento drift"></iframe></div>
+        <figcaption>
+          <b>B · Bento drift <a href="b-bento-drift.html" target="_blank">Open alone ↗</a></b>
+          <p>
+            Frosted bento tiles that float up in turn, a date-block header, one accent tile in a star color,
+            this-vs-last hatched bars and segmented profile bars.
+          </p>
+        </figcaption>
+      </figure>
+      <figure>
+        <div class="frame">
+          <iframe src="c-observatory-hud.html" title="C · Observatory HUD" data-more="profiles settings"></iframe>
+        </div>
+        <figcaption>
+          <b>C · Observatory HUD <a href="c-observatory-hud.html" target="_blank">Open alone ↗</a></b>
+          <p>
+            Hairline frames with corner ticks, mono readouts, a ruler for the session's time, corner readouts while
+            exploring. Also has Profiles and Settings.
+          </p>
+        </figcaption>
+      </figure>
+    </div>
+    <section class="checklist" aria-labelledby="changes">
+      <h2 id="changes">Changes to check <small>Ticks are saved in this browser only.</small></h2>
+      <ul id="checks"></ul>
+    </section>
+    <script>
+      // The intuitiveness pass, one line per change, with the prototypes it's in.
+      const changes = [
+        ['C', 'Removed the dotted lines from the profile buttons to the stars.'],
+        ['A B C', 'A "Start a session · pick a profile" label above the profile buttons.'],
+        [
+          'A B C',
+          'Each profile button ends in "Start ▶", which lights up in the profile\'s color on hover; hovering says "Start a Deep Work session".',
+        ],
+        [
+          'C',
+          'Profile buttons show length and strictness (50 min / Medium) instead of strictness alone; color dot moved next to the name.',
+        ],
+        [
+          'A B C',
+          "Satellites that came back get the app's four actions as words: Done, Later, Task, × (A had unlabeled icons; B and C had no Task).",
+        ],
+        [
+          'A B C',
+          "Tasks are reachable from the Sky: A's list button opens a drawer, B's satellite tile switches between Came back and Tasks, C's \"Tasks 03 ▾\" opens a drawer. The drawer closes when a session starts.",
+        ],
+        ['A', "The toolbar's current page shows its name next to its icon."],
+        [
+          'A B C',
+          '"End session" says "End early" while the timer runs, with a line on what the profile\'s strictness will ask.',
+        ],
+        [
+          'A B C',
+          'Your week is greyed out during a session (B used to hide it), and hovering says it opens again when the session ends.',
+        ],
+        ['A B C', 'Explore says "Explore the sky" with a hover explanation; leaving says "Done exploring · Esc".'],
+        [
+          'A B C',
+          '"Dust" is spelled "stardust", and hovering the stats explains stars and stardust. A\'s "clear at 9:40" is now the date.',
+        ],
+        ['C', 'Removed the "Clarity" readouts; the session footer says "Passes left".'],
+        ['C', "Removed the dotted line from the report's constellation name to the constellation."],
+        [
+          'C',
+          "Removed the dotted lines from the satellites to the running session, and the line-drawing code behind all of C's dotted lines.",
+        ],
+        ['A B C', 'The satellite box says what a satellite is (placeholder and hover) and shows how to launch.'],
+        ['A B C', 'Visible focus rings for keyboard use.'],
+        [
+          'A B C',
+          'Strictness labels match the app: Writing is Gentle (was "Easy", not a real level); Wind Down has none, since it has no timer.',
+        ],
+      ];
+      const saved = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('lock-in-proto-checks') ?? '[]');
+        } catch {
+          return [];
+        }
+      })();
+      document.getElementById('checks').innerHTML = changes
+        .map(
+          ([where, what], i) =>
+            `<li><label><input type="checkbox" data-i="${i}" ${saved.includes(i) ? 'checked' : ''} /><span>${what}</span><em>${where}</em></label></li>`,
+        )
+        .join('');
+      document.getElementById('checks').addEventListener('change', () => {
+        const ticked = [...document.querySelectorAll('#checks input:checked')].map((box) => +box.dataset.i);
+        try {
+          localStorage.setItem('lock-in-proto-checks', JSON.stringify(ticked));
+        } catch {}
+      });
+      const frames = [...document.querySelectorAll('iframe')];
+      const buttons = [...document.querySelectorAll('.states button')];
+      for (const button of buttons)
+        button.addEventListener('click', () => {
+          for (const b of buttons) b.setAttribute('aria-pressed', b === button);
+          // Only C has Profiles and Settings so far; the others stay where they are.
+          const state = button.dataset.state;
+          for (const frame of frames)
+            if (['home', 'session', 'explore', 'week'].includes(state) || (frame.dataset.more ?? '').includes(state))
+              frame.contentWindow.postMessage({ state }, '*');
+        });
+      // Shrink the frames to fit three across, but never below half size; narrower windows wrap.
+      const fit = () =>
+        document.documentElement.style.setProperty(
+          '--s',
+          Math.min(1, Math.max(0.5, (innerWidth - 48 - 32 - 20) / 1200)),
+        );
+      addEventListener('resize', fit);
+      fit();
+    </script>
+  </body>
+</html>
