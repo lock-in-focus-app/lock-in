@@ -15,6 +15,7 @@ import {
   comets,
   constellationNames,
   constellations,
+  dayStart,
   formatDuration,
   milkyWay,
   planets,
@@ -304,6 +305,18 @@ const rename = (id: string, name: string) =>
     await nameConstellation(id, name);
     await loadNames();
   });
+// At a glance on the Sky: the date, the time locked in today (counting the session going on, and
+// time past the timer) and the streak running now. A session counts on the day it started, as in
+// the weekly report.
+const dateFormat = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+const glance = computed(() => {
+  const at = minute.value * 60_000;
+  const today = dayStart(at);
+  const lockedInMs = sessions.value
+    .filter((session) => session.startedAt >= today)
+    .reduce((sum, session) => sum + session.focusedMs + session.overtimeMs, 0);
+  return { date: dateFormat.format(at), lockedInMs, streak: streaks(skyStars.value, at).current };
+});
 const totalStardust = computed(() => stardust(sessions.value));
 const milkyWayFill = computed(() => milkyWay(sessions.value));
 // Exploring shows it clear; otherwise it's hazy between sessions.
@@ -402,6 +415,7 @@ async function run(action: () => Promise<void>) {
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
           :star-count="starCount"
+          :glance="glance"
           :stardust="totalStardust"
           :week-count="skyConstellations.length"
           :planet-count="skyPlanets.length"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
-import { starColorFor } from '@lock-in/core';
+import { formatDuration, starColorFor } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
 import ExploreView from './ExploreView.vue';
 import LaunchDock from './LaunchDock.vue';
@@ -20,6 +20,8 @@ const props = defineProps<{
   passesLeft: number;
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   starCount: number;
+  /** What the readout at the top shows: the date, time locked in today, and the streak running now. */
+  glance: { date: string; lockedInMs: number; streak: number };
   stardust: number;
   /** For Explore's readouts: how many weeks and planets there are, how far in it's zoomed, and the
    * constellation in the crosshair. */
@@ -90,6 +92,17 @@ watch(
   <div class="sky-page">
     <Transition name="puff">
       <div v-show="!exploring" class="layer">
+        <p class="glance mono">
+          <span>{{ glance.date }}</span>
+          <span>
+            <span title="Time locked in today, including any past the timer"
+              >Today <b>{{ formatDuration(glance.lockedInMs) }}</b></span
+            >
+            <span v-if="glance.streak >= 2" title="Days in a row with a star">
+              · Streak <b>{{ glance.streak }} days</b></span
+            >
+          </span>
+        </p>
         <SatellitesBack
           v-if="!session && satellites.back.length"
           :satellites="satellites.back"
@@ -190,6 +203,17 @@ watch(
   flex-direction: column;
   gap: 10px;
   transform-origin: 50% 60%;
+}
+
+.glance {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+}
+
+.glance > span:first-child {
+  color: var(--dim);
 }
 
 .middle {
