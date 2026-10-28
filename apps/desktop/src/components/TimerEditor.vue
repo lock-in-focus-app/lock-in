@@ -115,7 +115,7 @@ function save(patch: Partial<TimerSettings>) {
           :model-value="timer.showSinceDone"
           @update:model-value="save({ showSinceDone: $event })"
         />
-        <p class="help">Shows "Done · 37 min ago" instead of just "Done", so you can see the extra you did.</p>
+        <p class="help">Shows "Done · 37 min ago" instead of just "Done", so you can see how long extra you worked.</p>
       </div>
     </template>
   </div>
