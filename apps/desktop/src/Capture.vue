@@ -38,9 +38,10 @@ async function launch() {
   error.value = '';
   try {
     if (await launchSatellite(text.value)) {
-      // A moment to see it lift off, with the frame fading after it.
+      // A moment to see it lift off, with the frame drifting up after it, and a little longer
+      // so the window only closes once the frame's gone.
       launched.value = true;
-      await wait(320);
+      await wait(580);
     } else {
       // Nothing to launch, so it just closes.
       leaving.value = true;
@@ -147,12 +148,17 @@ html body {
   transition-duration: 180ms;
 }
 
-/* Launched: the thought lifts off and the frame fades after it. */
+/* Launched: the thought lifts off, and the frame drifts up after it, fading out of focus. */
 .capture.launched {
   opacity: 0;
+  translate: 0 -6px;
+  scale: 0.99;
+  filter: blur(3px);
   transition:
-    opacity 220ms ease 100ms,
-    filter 220ms ease 100ms;
+    opacity 420ms ease-in-out 120ms,
+    translate 460ms var(--ease) 120ms,
+    scale 460ms var(--ease) 120ms,
+    filter 420ms ease 120ms;
 }
 
 .line {
@@ -160,12 +166,12 @@ html body {
   align-items: center;
   gap: 10px;
   transition:
-    translate 320ms var(--ease),
-    opacity 220ms;
+    translate 420ms var(--ease),
+    opacity 300ms ease;
 }
 
 .launched .line {
-  translate: 0 -12px;
+  translate: 0 -14px;
   opacity: 0;
 }
 
@@ -239,8 +245,11 @@ input::placeholder {
   }
 
   .capture.leaving,
+  .capture.launched,
   .launched .line {
     translate: none;
+    scale: none;
+    filter: none;
   }
 
   .what .dot {
