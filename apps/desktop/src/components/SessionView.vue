@@ -116,13 +116,12 @@ const lockHelp = computed(() => {
 }
 
 /*
- * Glassier than the other frames: a lighter tint, so more of the sky shows through, with a sheen
- * across the top, a faint glare, lit edges and a little of the session's color pooling at the
- * bottom. It's drawn with gradients rather than by blurring the sky behind it, which would be
+ * Glassier than the other frames: the same dark tint, so the clock stays easy to read, with a
+ * sheen across the top, a faint glare, lit edges and a little of the session's color pooling at
+ * the bottom. It's drawn with gradients rather than by blurring the sky behind it, which would be
  * redone every frame the sky moves (theme.css).
  */
 .session::before {
-  background-color: rgb(14 19 38 / 0.4);
   box-shadow:
     inset 0 1px 0 rgb(220 228 255 / 0.14),
     inset 0 -1px 0 rgb(220 228 255 / 0.04),
