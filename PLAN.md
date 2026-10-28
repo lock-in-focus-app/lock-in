@@ -171,7 +171,7 @@ To make the name instantly clear:
 
 **The task list** is a checklist on the dashboard, kept in the app, as long as you like. Ticked-off tasks stay underneath for 24 hours ("Done · last 24 hours"), so one ticked by accident can be unticked; after that they drop off the list (they're still kept for insights). Later: export to Reminders, Todoist and the like.
 
-**In the browser extension**, the popup (focused and ready to type into during a session) and every redirect page have the launch box. When the extension is linked to the app, each satellite is handed over and the app keeps it from then on, so there's one list to review, in the app. The extension holds on to a satellite until the app confirms it has it, so one launched as the link drops goes over next time. Without the app, the extension keeps them itself, with the same rules: they come back however the session ends, and the popup's start screen shows the same quiet "came back" checklist, what's in orbit, and the task list with its 24 hours of ticked-off tasks. If the extension links to the app later, everything it kept moves over.
+**Only in the desktop app.** Satellites used to be in the extension too (the popup and redirect pages had the launch box, handed over to the app when linked), but that was taken out as out of scope: the app's Alt+P box works from anywhere, browser included, so there's one place to launch and one list to review. An older extension's handover messages are ignored.
 
 **The look (with the UI redesign in Phase 5):** dreamy and slow. Tiny satellites drift around the UI in lazy orbits among faint, twinkling stars, e.g. around the launch box and the task list, and a launched thought visibly lifts off and joins them. It should feel calm, never busy: slow loops of tens of seconds, soft glows, nothing that flickers or pulls the eye during a session. It's drawn with CSS or a small canvas (no animation library) and stays still with reduced motion.
 
@@ -408,7 +408,7 @@ lock-in/
 
 **Phase 3: Satellites & insights**
 - ✅ Satellites (§4) in the desktop app: the Alt+P box, menu-bar capture, the post-session return, and the task list.
-- ✅ Satellites in the extension: capture from the popup and redirect pages, sent to the app when linked and kept by the extension when it runs alone.
+- ~~Satellites in the extension~~: built, then taken out as out of scope (§4); satellites live in the app.
 - ✅ Weekly report (§6) in the desktop app.
 
 **Phase 4: The night sky**
@@ -439,7 +439,7 @@ Built in slices, one PR each:
     - No lines drawn between the UI and the sky: they were tried and dropped as unclear.
 - ✅ The satellites' dreamy orbiting look (§4): the thoughts in orbit circle the thoughts frame on the Sky as tiny satellites, as they do the Alt+P box, and a launched thought lifts out of the launch box and joins them with a glint. The launch box is marked by a tiny satellite circling a star, with the hotkey beside Launch; the tour explains satellites (it replaced a first-use line). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
 - Richer report charts if the plain lines and bars stop being enough, e.g. focus across many weeks or a day-by-hour heatmap. A chart library such as [vue-data-ui](https://vue-data-ui.graphieros.com/docs) could do these; weigh its size against the performance budget (§8) first.
-- ✅ A short tour for new users, in the app and the extension. The app's Sky offers it once in a one-line strip (Take the tour, No thanks), and the extension's popup does the same. It walks the real pages, five short steps each, with the part a step is about framed and the page switching as it goes: the app's covers the sky, starting a session, profiles, satellites (and Alt+P) and the browser; the extension's covers profiles, site levels, the redirect page, satellites in the popup and linking the app. Every step has Back, Next and Skip tour (and Esc ends it). It can be taken again from the app's Settings › Tour and from the top of the extension's settings page.
+- ✅ A short tour for new users, in the app and the extension. The app's Sky offers it once in a one-line strip (Take the tour, No thanks), and the extension's popup does the same. It walks the real pages in short steps, with the part a step is about framed and the page switching as it goes: the app's covers the sky, starting a session, profiles, satellites (and Alt+P) and the browser; the extension's covers profiles, site levels, the redirect page and linking the app. Every step has Back, Next and Skip tour (and Esc ends it). It can be taken again from the app's Settings › Tour and from the top of the extension's settings page.
 - ✅ Sites editable from either side: the app's Profiles › Sites sets each site's level and adds or removes sites by address, and the extension's settings and popup can add any site too (the popup offers "Keep it away from now on" during a session).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).

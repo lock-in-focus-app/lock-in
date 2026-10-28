@@ -152,8 +152,8 @@ impl Store {
         Ok(())
     }
 
-    /// Saves a new satellite, launched here or handed over by the extension, in whatever state
-    /// it got to. One that's already saved is left as it is. Returns whether it was new.
+    /// Saves a new satellite, in whatever state it's in. One that's already saved is left as
+    /// it is. Returns whether it was new.
     pub fn save_satellite(&self, satellite: &Satellite, session_id: Option<&str>) -> Result<bool> {
         let tasked = matches!(satellite.state, SatelliteState::Task | SatelliteState::Done);
         let added = self.db.execute(

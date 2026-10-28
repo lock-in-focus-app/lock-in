@@ -95,12 +95,8 @@ const tourSteps: TourStep[] = [
     text: 'A redirected site shows one of these Lock In pages instead. If you really need the site, the intention gate asks what you came for, then lets you through for a few minutes.',
   },
   {
-    title: 'Satellites',
-    text: 'When a thought pulls you away mid-session, open the popup, type it and launch it. It waits in orbit while you focus, then comes back later to turn into a task or leave for later.',
-  },
-  {
     title: 'The Lock In app',
-    text: 'With the Lock In app on your computer too, the extension links to it by itself, and the popup says App linked. Sessions, profiles and satellites stay in step, and the app adds a timer, a sky of your focus, and a hotkey for satellites from any app. The tour is at the top of this page whenever you want it again.',
+    text: 'With the Lock In app on your computer too, the extension links to it by itself, and the popup says App linked. Sessions and profiles stay in step, and the app adds a timer, a sky of your focus, and satellites: a hotkey to set a passing thought aside from any app. The tour is at the top of this page whenever you want it again.',
   },
 ];
 function takeTour() {

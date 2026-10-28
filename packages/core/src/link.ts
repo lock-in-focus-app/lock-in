@@ -1,4 +1,3 @@
-import type { Satellite } from './generated/Satellite';
 import type { GateVisit, Profile, Session } from './types';
 
 // Messages between the extension and the desktop app, which talk over Native Messaging.
@@ -20,14 +19,10 @@ export interface Synced<T> {
 export type ToDesktop =
   | { type: 'hello'; protocol: number; browser: string }
   | { type: 'state'; profiles?: Synced<Profile[]>; activeSession?: Synced<Session | null> }
-  | { type: 'gateVisit'; visit: GateVisit }
-  /** A satellite launched in the browser, handed over for the app to keep. */
-  | { type: 'satellite'; satellite: Satellite };
+  | { type: 'gateVisit'; visit: GateVisit };
 
 export type FromDesktop =
   /** The bridge reached the app, or lost it. Sent by the bridge itself. */
   | { type: 'linked' }
   | { type: 'unlinked' }
-  | { type: 'state'; profiles: Synced<Profile[]>; activeSession: Synced<Session | null> }
-  /** The app has the satellite now, so the extension can let it go. */
-  | { type: 'satelliteKept'; id: string };
+  | { type: 'state'; profiles: Synced<Profile[]>; activeSession: Synced<Session | null> };
