@@ -1,11 +1,4 @@
-import {
-  starterProfiles,
-  type GateVisit,
-  type OwnQuote,
-  type Profile,
-  type Satellite,
-  type Session,
-} from '@lock-in/core';
+import { starterProfiles, type GateVisit, type OwnQuote, type Profile, type Session } from '@lock-in/core';
 
 /** The running session, shared by the popup and every content script. */
 export const activeSession = storage.defineItem<Session | null>('local:activeSession', {
@@ -24,14 +17,6 @@ export const gateVisits = storage.defineItem<GateVisit[]>('local:gateVisits', {
 
 /** Quotes the user added. They show up on the quote card alongside the bundled ones. */
 export const ownQuotes = storage.defineItem<OwnQuote[]>('local:ownQuotes', {
-  fallback: [],
-});
-
-/**
- * Thoughts launched to come back later. Without the desktop app, the extension keeps them;
- * once linked, it hands each one over to the app and lets it go.
- */
-export const satellites = storage.defineItem<Satellite[]>('local:satellites', {
   fallback: [],
 });
 

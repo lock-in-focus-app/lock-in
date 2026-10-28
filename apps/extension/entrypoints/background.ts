@@ -35,11 +35,5 @@ export default defineBackground(() => {
     return true;
   });
 
-  // However a session ends (here, in the app or in another browser), the satellites in orbit
-  // come back. Nothing pops up; they wait in the popup.
-  activeSession.watch((session, previous) => {
-    if (previous && session?.id !== previous.id) void bringSatellitesBack();
-  });
-
   linkDesktopApp();
 });

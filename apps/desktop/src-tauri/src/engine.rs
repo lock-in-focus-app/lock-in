@@ -596,32 +596,6 @@ impl Engine {
         Ok(true)
     }
 
-    /// Takes on a satellite launched in the browser, in whatever state it got to there.
-    /// Returns whether it's new; one the app already has is left as the app has it.
-    pub fn adopt_satellite(&mut self, satellite: Satellite, now: i64) -> Result<bool> {
-        let Some(text) = satellites::cleaned(&satellite.text) else {
-            return Ok(false);
-        };
-        let mut id = satellite.id;
-        truncate(&mut id, 100);
-        if id.is_empty() || satellite.state == SatelliteState::Deleted {
-            return Ok(false);
-        }
-        let satellite = Satellite { id, text, ..satellite };
-        let session_id = self
-            .session()
-            .filter(|s| satellite.state == SatelliteState::Orbiting && satellite.launched_at >= s.started_at)
-            .map(|s| s.id.as_str());
-        if !self.store.save_satellite(&satellite, session_id)? {
-            return Ok(false);
-        }
-        if satellite.state != SatelliteState::Done || satellite.state_at >= now - DONE_TASKS_SHOWN_MS {
-            self.satellites.push(satellite);
-            self.satellites.sort_by_key(|s| s.launched_at);
-        }
-        Ok(true)
-    }
-
     /// Ticks off, snoozes, keeps as a task or deletes a satellite. A ticked-off task can go
     /// back on the list for a day afterwards.
     pub fn act_on_satellite(&mut self, id: &str, action: SatelliteAction, now: i64) -> Result<()> {
@@ -1531,78 +1505,6 @@ mod tests {
         assert_eq!(
             shown(&Engine::load(store, 3 * MIN + DAY).unwrap(), 3 * MIN + DAY),
             vec!["oops"]
-        );
-    }
-
-    #[test]
-    fn adopts_satellites_from_the_browser() {
-        let mut engine = engine();
-        engine.start_session("writing", MIN).unwrap();
-        let now = 10 * MIN;
-        let from_browser = |id: &str, text: &str, state, state_at| Satellite {
-            id: id.into(),
-            text: text.into(),
-            launched_at: 2 * MIN,
-            state,
-            state_at,
-        };
-        let adopt = |engine: &mut Engine, satellite| engine.adopt_satellite(satellite, now).unwrap();
-
-        assert!(adopt(
-            &mut engine,
-            from_browser("o", " in orbit ", SatelliteState::Orbiting, 2 * MIN)
-        ));
-        assert!(adopt(
-            &mut engine,
-            from_browser("t", "a task", SatelliteState::Task, 3 * MIN)
-        ));
-        // Ticked off over a day ago: kept for insights, but not shown.
-        let old = now - DONE_TASKS_SHOWN_MS - 1;
-        assert!(adopt(
-            &mut engine,
-            from_browser("d", "old task", SatelliteState::Done, old)
-        ));
-        assert!(!adopt(
-            &mut engine,
-            from_browser("x", "gone", SatelliteState::Deleted, 3 * MIN)
-        ));
-        assert!(!adopt(
-            &mut engine,
-            from_browser("e", "  ", SatelliteState::Back, 3 * MIN)
-        ));
-        // Handed over twice: the app's copy stays as it is.
-        assert!(!adopt(
-            &mut engine,
-            from_browser("o", "changed", SatelliteState::Task, 4 * MIN)
-        ));
-        assert_eq!(
-            satellites(&engine),
-            vec![("in orbit", SatelliteState::Orbiting), ("a task", SatelliteState::Task)]
-        );
-
-        // The one in orbit belongs to the running session, and comes back when it ends.
-        engine.end_session(now, EndReason::Stopped).unwrap();
-        assert_eq!(
-            satellites(&engine),
-            vec![("in orbit", SatelliteState::Back), ("a task", SatelliteState::Task)]
-        );
-        let rows: Vec<(String, Option<String>, Option<i64>)> = engine
-            .store
-            .db_for_tests()
-            .prepare("SELECT id, session_id, tasked_at FROM satellites ORDER BY id")
-            .unwrap()
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap();
-        let session_id = engine.store.sessions().unwrap()[0].id.clone();
-        assert_eq!(
-            rows,
-            vec![
-                ("d".into(), None, Some(old)),
-                ("o".into(), Some(session_id), None),
-                ("t".into(), None, Some(3 * MIN)),
-            ]
         );
     }
 

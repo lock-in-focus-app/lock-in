@@ -148,14 +148,7 @@ export {
 } from './events';
 export { dayStart, starDays, streaks, type StarDay, type Streaks } from './streaks';
 export { endLock, formatClock, timerStatus, unlockText, type TimerStatus } from './timer';
-export {
-  cleanedSatelliteText,
-  doneTasksShownMs,
-  maxSatelliteLength,
-  withSatelliteAction,
-  withSatelliteLaunched,
-  withSatellitesBack,
-} from './satellites';
+export { maxSatelliteLength } from './satellites';
 export {
   addWeeks,
   formatDuration,

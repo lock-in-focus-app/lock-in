@@ -7,29 +7,17 @@ import {
   siteRecipes,
   timerStatus,
   type Profile,
-  type Satellite,
   type SiteRecipe,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import { computed, onUnmounted, ref } from 'vue';
 import EndEarly from '@/components/EndEarly.vue';
-import SatelliteLaunch from '@/components/SatelliteLaunch.vue';
-import SatellitesBack from '@/components/SatellitesBack.vue';
-import SatellitesView from '@/components/SatellitesView.vue';
 import SiteToggles from '@/components/SiteToggles.vue';
 
 const session = useStorageItem(activeSession);
 const profileList = useStorageItem(profiles);
 const linked = useStorageItem(desktopLinked);
-const satelliteList = useStorageItem(satellites);
 const offeredTour = useStorageItem(tourOffered);
-
-// Satellites the extension keeps itself. Linked to the app, they go to it straight away.
-const byState = (state: Satellite['state']) => (satelliteList.value ?? []).filter((s) => s.state === state);
-const back = computed(() => byState('back'));
-const orbiting = computed(() => byState('orbiting'));
-const tasks = computed(() => byState('task'));
-const done = computed(() => byState('done').sort((a, b) => b.stateAt - a.stateAt));
 
 const activeProfile = computed(() => profileList.value?.find((p) => p.id === session.value?.profileId));
 
@@ -100,14 +88,6 @@ function start(profile: Profile) {
       <p class="elapsed" :class="{ done: elapsed.startsWith('Done') }">{{ elapsed }}</p>
       <EndEarly v-if="endingEarly && lock" :lock="lock" @end="endSession()" @cancel="endingEarly = false" />
       <button v-else class="end" type="button" @click="requestEnd">End session</button>
-      <SatelliteLaunch
-        class="satellites"
-        session-running
-        :in-orbit="orbiting.length"
-        :linked="!!linked"
-        compact
-        autofocus
-      />
     </section>
 
     <!-- Only once storage says there's no session, so a running one doesn't flash this first. -->
@@ -119,7 +99,6 @@ function start(profile: Profile) {
           <button type="button" @click="tourOffered.setValue(true)">No thanks</button>
         </span>
       </div>
-      <SatellitesBack v-if="back.length" :satellites="back" @act="actOnSatellite" />
       <section>
         <p class="label">Start a session</p>
         <ul>
@@ -131,8 +110,6 @@ function start(profile: Profile) {
           </li>
         </ul>
       </section>
-      <SatelliteLaunch class="satellites" :session-running="false" :in-orbit="orbiting.length" :linked="!!linked" />
-      <SatellitesView :orbiting="orbiting" :tasks="tasks" :done="done" @act="actOnSatellite" />
     </template>
 
     <SiteToggles
@@ -265,10 +242,6 @@ ul {
 
 .end:hover {
   background: var(--sky-hover);
-}
-
-.satellites {
-  margin-top: 20px;
 }
 
 .offer {
