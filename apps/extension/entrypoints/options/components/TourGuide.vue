@@ -41,17 +41,22 @@ function measure() {
       rect = found.getBoundingClientRect();
     }
   }
-  spot.value = rect?.width ? rect : undefined;
+  // While a step's part is still to show, the panel waits where it was, so it glides straight on
+  // to the part instead of dropping to the bottom in between. A step with no part goes there.
+  if (rect?.width) spot.value = rect;
+  else if (!waiting || !current.value.target) spot.value = undefined;
   windowHeight.value = innerHeight;
   panelHeight.value = panel.value?.offsetHeight ?? 0;
 }
 let settling = 0;
+let waiting = false;
 function settle() {
   cancelAnimationFrame(settling);
   const until = performance.now() + 1000;
   const frame = () => {
+    waiting = performance.now() < until;
     measure();
-    if (performance.now() < until) settling = requestAnimationFrame(frame);
+    if (waiting) settling = requestAnimationFrame(frame);
   };
   frame();
 }

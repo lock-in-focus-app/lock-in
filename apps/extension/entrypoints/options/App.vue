@@ -96,7 +96,7 @@ const tourSteps: TourStep[] = [
   },
   {
     title: 'Satellites',
-    text: 'When a thought pulls you away mid-session, open the popup, type it and launch it. It waits in orbit and comes back when the session ends, to tick off, keep as a task, or leave for later.',
+    text: 'When a thought pulls you away mid-session, open the popup, type it and launch it. It waits in orbit while you focus, then comes back later to turn into a task or leave for later.',
   },
   {
     title: 'The Lock In app',

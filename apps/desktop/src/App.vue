@@ -392,7 +392,7 @@ const tourSteps = computed<(TourStep & { view: View })[]>(() => {
       view: 'sky',
       target: 'satellites',
       title: 'Satellites',
-      text: `When a thought pulls at you, launch it here${hotkey ? ` (or with ${hotkeyLabel(hotkey, mac)} from any app)` : ''} and get back to it later. It waits in orbit until the session ends, then comes back to tick off, keep as a task, or leave for later.`,
+      text: `When a thought pulls at you, launch it here${hotkey ? ` (or with ${hotkeyLabel(hotkey, mac)} from any app)` : ''} and keep going. It waits in orbit while you focus, then comes back later to turn into a task or leave for later.`,
     },
     {
       view: 'settings',
@@ -480,7 +480,6 @@ async function run(action: () => Promise<void>) {
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
           :satellite-hotkey="snapshot.settings.satelliteHotkey"
-          :launched-satellite="snapshot.launchedSatellite"
           :offer-tour="!snapshot.tourOffered && touring === undefined"
           :star-count="starCount"
           :glance="glance"

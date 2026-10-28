@@ -42,17 +42,22 @@ function measure() {
       rect = found.getBoundingClientRect();
     }
   }
-  spot.value = rect?.width ? rect : undefined;
+  // While the step's page is still coming in, the frame waits where it was, so it glides
+  // straight on to the part once it shows instead of dropping to the bottom in between.
+  if (rect?.width) spot.value = rect;
+  else if (!waiting) spot.value = undefined;
   windowHeight.value = innerHeight;
   cardHeight.value = card.value?.offsetHeight ?? 0;
 }
 let settling = 0;
+let waiting = false;
 function settle() {
   cancelAnimationFrame(settling);
   const until = performance.now() + 1000;
   const frame = () => {
+    waiting = performance.now() < until;
     measure();
-    if (performance.now() < until) settling = requestAnimationFrame(frame);
+    if (waiting) settling = requestAnimationFrame(frame);
   };
   frame();
 }
