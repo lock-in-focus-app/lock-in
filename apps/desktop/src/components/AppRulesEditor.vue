@@ -87,9 +87,15 @@ const setAction = (path: string, action: AppAction) =>
     </template>
     <button v-else class="card add mono" type="button" @click="startPicking">+ Add an app</button>
 
+    <!-- Hide is only offered on macOS, where Close is the app's own Quit. -->
     <p class="help">
-      They close when a session with this profile starts, and again if they're opened during it.
-      <template v-if="canHide">Hide keeps an app running with its windows out of sight.</template>
+      When a session with this profile starts, each app here is {{ canHide ? 'closed or hidden' : 'closed' }}, and again
+      whenever it's opened during the session.
+      <template v-if="canHide">
+        Close quits it, as its own Quit does, so it can ask to save first. Hide leaves it running, with its windows out
+        of sight.
+      </template>
+      <template v-else>Close asks it to quit.</template>
     </p>
   </div>
 </template>

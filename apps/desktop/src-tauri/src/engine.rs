@@ -38,6 +38,8 @@ pub struct Engine {
     /// Satellites in orbit, back or on the task list, and recently ticked-off tasks, oldest
     /// first.
     satellites: Vec<Satellite>,
+    /// Whether a satellite has ever been launched, here or in the browser.
+    launched_satellite: bool,
 }
 
 /// Everything the UI shows, sent whenever it changes.
@@ -57,6 +59,9 @@ pub struct Snapshot {
     /// Satellites in orbit, back or on the task list, and tasks ticked off in the last day,
     /// oldest first.
     pub satellites: Vec<Satellite>,
+    /// Whether a satellite has ever been launched, here or in the browser. Until one is, the
+    /// launch box says what satellites are (PLAN §4).
+    pub launched_satellite: bool,
 }
 
 /// Everything logged between two times, for the weekly report. The window works the report
@@ -145,6 +150,7 @@ impl Engine {
         let browsers = store.load(BROWSERS)?.map(|s| s.value).unwrap_or_default();
         let broken_session = store.load(BROKEN_SESSION)?.and_then(|s| s.value);
         let satellites = store.shown_satellites(now - DONE_TASKS_SHOWN_MS)?;
+        let launched_satellite = store.any_satellites()?;
         Ok(Self {
             store,
             profiles,
@@ -154,6 +160,7 @@ impl Engine {
             browsers,
             broken_session,
             satellites,
+            launched_satellite,
         })
     }
 
@@ -225,6 +232,7 @@ impl Engine {
                 .filter(|s| s.state != SatelliteState::Done || s.state_at >= now - DONE_TASKS_SHOWN_MS)
                 .cloned()
                 .collect(),
+            launched_satellite: self.launched_satellite,
         }
     }
 
@@ -556,6 +564,7 @@ impl Engine {
         let session_id = self.session().map(|s| s.id.as_str());
         self.store.save_satellite(&satellite, session_id)?;
         self.satellites.push(satellite);
+        self.launched_satellite = true;
         Ok(true)
     }
 
@@ -578,6 +587,7 @@ impl Engine {
         if !self.store.save_satellite(&satellite, session_id)? {
             return Ok(false);
         }
+        self.launched_satellite = true;
         if satellite.state != SatelliteState::Done || satellite.state_at >= now - DONE_TASKS_SHOWN_MS {
             self.satellites.push(satellite);
             self.satellites.sort_by_key(|s| s.launched_at);
@@ -1554,6 +1564,21 @@ mod tests {
                 ("t".into(), None, Some(3 * MIN)),
             ]
         );
+    }
+
+    #[test]
+    fn remembers_a_satellite_was_launched_even_once_it_is_deleted() {
+        let mut engine = engine();
+        assert!(!engine.snapshot(0).launched_satellite);
+        engine.launch_satellite("  ", 0).unwrap();
+        assert!(!engine.snapshot(0).launched_satellite);
+        engine.launch_satellite("once", 0).unwrap();
+        assert!(engine.snapshot(0).launched_satellite);
+
+        let id = satellite_id(&engine, "once");
+        engine.act_on_satellite(&id, SatelliteAction::Delete, MIN).unwrap();
+        let store = std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap());
+        assert!(Engine::load(store, MIN).unwrap().snapshot(MIN).launched_satellite);
     }
 
     #[test]
