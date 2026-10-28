@@ -65,10 +65,14 @@ export interface TestBrowser {
 
 /**
  * Starts Chrome with the extension. `nativeHost` is an executable to use as the desktop
- * app's Native Messaging host; without one, the extension runs on its own.
+ * app's Native Messaging host; without one, the extension runs on its own. `reach` lists
+ * sites the extension may reach from the start, as if the user had said yes when it asked.
  */
-export async function launch({ nativeHost }: { nativeHost?: string } = {}): Promise<TestBrowser> {
-  const extensionDir = await copyBuildForTests();
+export async function launch({
+  nativeHost,
+  reach = [],
+}: { nativeHost?: string; reach?: string[] } = {}): Promise<TestBrowser> {
+  const extensionDir = await copyBuildForTests(reach);
   const server = await serveFixtures();
   const { port } = server.address() as AddressInfo;
 
@@ -240,9 +244,14 @@ export async function until(waitingFor: string, check: () => Promise<boolean>): 
  */
 export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function copyBuildForTests(): Promise<string> {
+async function copyBuildForTests(reach: string[]): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'lock-in-e2e-'));
   await cp(buildDir, dir, { recursive: true });
+
+  const manifestPath = join(dir, 'manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { host_permissions: string[] };
+  manifest.host_permissions.push(...reach);
+  await writeFile(manifestPath, JSON.stringify(manifest));
 
   const files = await readdir(dir, { recursive: true });
   for (const file of files.filter((f) => /\.(js|json|html)$/.test(f))) {

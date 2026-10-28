@@ -16,6 +16,7 @@ mod samples;
 mod satellites;
 mod session;
 mod settings;
+mod sites;
 mod store;
 mod timer;
 mod tray;
@@ -514,6 +515,7 @@ pub fn run() {
             commands::pause_satellite_hotkey,
             commands::forget_browser,
             commands::set_profile_apps,
+            commands::set_profile_sites,
             commands::installed_apps,
             commands::launch_satellite,
             commands::act_on_satellite,

@@ -46,6 +46,8 @@ Each site has one of four levels, set per session profile:
 ### Site Recipes (JSON) + live visual editor
 A **recipe** defines what "tamed" means for one site: a list of toggles, each mapped to CSS selectors and effects. Built-in recipes cover Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. Users can edit them or create their own, and the community can contribute fixes when sites change their HTML.
 
+Any other site can be added to a profile by its address ("site:example.com"), from the extension's settings, its popup or the app's Profiles › Sites. With no recipe there's nothing to hide, so an added site is allowed, redirected or restricted. The extension asks the browser for each added site as it's added (an optional host permission for that site alone), so it never asks to read every site; one added in the app shows "Let Lock In reach it" in the extension until the browser says yes. During a session the popup offers to keep the site you're on away (Redirect it, Restrict it), which is saved to the profile. While a Hard session runs, sites can only get stricter, in the app and the extension alike.
+
 ```json
 {
   "id": "x",
@@ -247,7 +249,7 @@ The desktop window opens on the Sky. Its pages are **Sky · Your week · Profile
 - **The stardust total** sits in the top corner. Later it opens the observing spot's drawer for decorating and companions, so rewards don't need a page of their own.
 
 ### Profiles page
-Only for setting up profiles. Each one is a frame with a port in its star color, its summary and how many stars it has; it opens in place (one at a time) onto Timer, Apps, Sites and Star panels, with instrument-style controls: steppers for numbers, segmented switches for choices (each option saying what it does, with a line above that changes with the pick, so nothing depends on hovering), small toggles. A timer's length (up to 6 hours) is also a ruler under a fixed marker, dragged or clicked like a tuning dial, always showing two hours' worth. Sites points to the extension's settings, where they're set. Panels unfold rather than pop open. It doesn't start sessions, which keeps its purpose clear.
+Only for setting up profiles. Each one is a frame with a port in its star color, its summary and how many stars it has; it opens in place (one at a time) onto Timer, Apps, Sites and Star panels, with instrument-style controls: steppers for numbers, segmented switches for choices (each option saying what it does, with a line above that changes with the pick, so nothing depends on hovering), small toggles. A timer's length (up to 6 hours) is also a ruler under a fixed marker, dragged or clicked like a tuning dial, always showing two hours' worth. Sites lists each built-in site and any added by address with a segmented switch for its level, and a box to add a site; what Tamed hides and page rules stay in the extension's settings. Sites sync both ways, newest change winning. Panels unfold rather than pop open. It doesn't start sessions, which keeps its purpose clear.
 
 ### Stardust
 - Focus earns stardust: 1 per focused minute, with overtime minutes worth 1.5× (unannounced). The idle tail isn't counted (§2).
@@ -438,6 +440,7 @@ Built in slices, one PR each:
 - ✅ The satellites' dreamy orbiting look (§4): the thoughts in orbit circle the thoughts frame on the Sky as tiny satellites, as they do the Alt+P box, and a launched thought lifts out of the launch box and joins them with a glint. The launch box is marked by a tiny satellite circling a star, with the hotkey beside Launch; the tour explains satellites (it replaced a first-use line). Along with it, clearer help text for app rules (what Close and Hide do, and that rules apply when a session starts and again whenever the app is opened during it).
 - Richer report charts if the plain lines and bars stop being enough, e.g. focus across many weeks or a day-by-hour heatmap. A chart library such as [vue-data-ui](https://vue-data-ui.graphieros.com/docs) could do these; weigh its size against the performance budget (§8) first.
 - ✅ A short tour for new users, in the app and the extension. The app's Sky offers it once in a one-line strip (Take the tour, No thanks), and the extension's popup does the same. It walks the real pages, five short steps each, with the part a step is about framed and the page switching as it goes: the app's covers the sky, starting a session, profiles, satellites (and Alt+P) and the browser; the extension's covers profiles, site levels, the redirect page, satellites in the popup and linking the app. Every step has Back, Next and Skip tour (and Esc ends it). It can be taken again from the app's Settings › Tour and from the top of the extension's settings page.
+- ✅ Sites editable from either side: the app's Profiles › Sites sets each site's level and adds or removes sites by address, and the extension's settings and popup can add any site too (the popup offers "Keep it away from now on" during a session).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.

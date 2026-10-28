@@ -7,14 +7,16 @@ import {
   pickLink,
   redirectSettingsFor,
   siteAccess,
+  siteRecipes,
   waitSecondsFor,
   type RedirectDestination,
   type RedirectSettings,
   type SavedLink,
+  type SiteRecipe,
   type WhyReason,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, shallowRef, watch } from 'vue';
 import BlockedCard from './components/BlockedCard.vue';
 import IntentionGate from './components/IntentionGate.vue';
 import LinkCard from './components/LinkCard.vue';
@@ -25,8 +27,10 @@ import WhyTap from './components/WhyTap.vue';
 
 // The URL the user was heading to comes after the #. "?expired" means the tab was sent
 // back here because its pass ran out, rather than the user trying to visit again.
+// Which site it is comes from the profiles too, for sites people added themselves.
 const target = parseHttpUrl(location.hash.slice(1));
-const recipe = target ? findRecipe(recipes, target) : undefined;
+const recipe = shallowRef<SiteRecipe>();
+const looked = ref(false);
 const expired = new URLSearchParams(location.search).has('expired');
 
 const ready = ref(false);
@@ -41,7 +45,7 @@ const linked = useStorageItem(desktopLinked);
 const satelliteList = useStorageItem(satellites);
 const inOrbit = computed(() => satelliteList.value?.filter((s) => s.state === 'orbiting').length ?? 0);
 
-const siteName = computed(() => recipe?.name ?? '');
+const siteName = computed(() => recipe.value?.name ?? '');
 const destinationText = computed(() => (target ? `${target.hostname.replace(/^www\./, '')}${target.pathname}` : ''));
 const badge = computed(() => {
   if (expired) return `Your pass for ${siteName.value} ran out`;
@@ -55,14 +59,18 @@ const waitSeconds = computed(() =>
 );
 
 onMounted(async () => {
-  if (!target || !recipe) return;
+  if (!target) return;
 
   const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
+  const site = findRecipe(siteRecipes(recipes, profileList), target);
+  recipe.value = site;
+  looked.value = true;
+  if (!site) return;
   const profile = profileList.find((p) => p.id === session?.profileId);
   const access = siteAccess({
     session,
     profiles: profileList,
-    recipeId: recipe.id,
+    recipeId: site.id,
     path: target.pathname,
     now: Date.now(),
   });
@@ -80,13 +88,13 @@ onMounted(async () => {
 
   if (access === 'restricted') {
     destination.value = 'blocked';
-    visitId.value = await recordGateVisit(recipe.id, 'blocked');
+    visitId.value = await recordGateVisit(site.id, 'blocked');
   } else if (!expired) {
     destination.value = pickDestination(settings.value);
     link.value = destination.value === 'link' ? pickLink(settings.value.links) : undefined;
-    visitId.value = await recordGateVisit(recipe.id, destination.value);
+    visitId.value = await recordGateVisit(site.id, destination.value);
   }
-  attempts.value = attemptsToday(await gateVisits.getValue(), recipe.id, Date.now());
+  attempts.value = attemptsToday(await gateVisits.getValue(), site.id, Date.now());
   ready.value = true;
 });
 
@@ -95,9 +103,10 @@ watch(why, (value) => {
 });
 
 async function proceed(intention: string) {
-  if (!target || !recipe) return;
-  const id = visitId.value || (await recordGateVisit(recipe.id, 'gate'));
-  await continueToSite(id, recipe.id, intention);
+  const site = recipe.value;
+  if (!target || !site) return;
+  const id = visitId.value || (await recordGateVisit(site.id, 'gate'));
+  await continueToSite(id, site.id, intention);
   location.replace(target.href);
 }
 
@@ -171,7 +180,7 @@ function ordinal(n: number): string {
       </footer>
     </template>
 
-    <template v-else-if="!target || !recipe">
+    <template v-else-if="!target || (looked && !recipe)">
       <h1>Nothing to open here</h1>
       <button type="button" class="primary" @click="backToFocus">Back to focus</button>
     </template>

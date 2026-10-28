@@ -106,11 +106,14 @@ describe('popup toggles', () => {
     });
   });
 
-  it('has no site section on unrelated sites', async () => {
+  it('offers to keep any other site away', async () => {
     await popup.close();
     const other = await t.browser.newPage();
     await other.goto(urls.other);
     popup = await openPopup(t, other);
-    expect(await text(popup)).not.toContain('On this site');
+    await popup.waitForSelector('main > .site');
+    const shown = await text(popup);
+    expect(shown).toContain('On this site · other.test');
+    expect(shown).toContain('Keep it away from now on');
   });
 });

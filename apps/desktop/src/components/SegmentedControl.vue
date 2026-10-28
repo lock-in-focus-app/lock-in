@@ -1,7 +1,10 @@
 <script setup lang="ts" generic="T extends string">
 // A segmented switch, like an instrument's: one of a few options, the picked one lit, each with
-// an optional second line saying what it does.
-defineProps<{ options: { id: T; label: string; detail?: string; title?: string }[]; label: string }>();
+// an optional second line saying what it does. One that doesn't apply can be turned off.
+defineProps<{
+  options: { id: T; label: string; detail?: string; title?: string; disabled?: boolean }[];
+  label: string;
+}>();
 const value = defineModel<T>({ required: true });
 </script>
 
@@ -13,6 +16,7 @@ const value = defineModel<T>({ required: true });
       type="button"
       :title="option.title"
       :aria-pressed="value === option.id"
+      :disabled="option.disabled"
       @click="value = option.id"
     >
       {{ option.label }}
@@ -43,8 +47,13 @@ button {
     box-shadow 300ms;
 }
 
-button:hover {
+button:not(:disabled):hover {
   color: var(--dim);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.35;
 }
 
 .detail {

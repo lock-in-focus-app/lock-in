@@ -3,6 +3,8 @@ import {
   endLock,
   findRecipe,
   formatClock,
+  siteFor,
+  siteRecipes,
   timerStatus,
   type Profile,
   type Satellite,
@@ -31,14 +33,17 @@ const done = computed(() => byState('done').sort((a, b) => b.stateAt - a.stateAt
 
 const activeProfile = computed(() => profileList.value?.find((p) => p.id === session.value?.profileId));
 
-// activeTab lets the popup read the current tab's URL when the user opens it.
-const siteRecipe = ref<SiteRecipe>();
-const sitePath = ref('/');
-void browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-  if (!tab?.url) return;
-  siteRecipe.value = findRecipe(recipes, tab.url);
-  sitePath.value = new URL(tab.url).pathname;
+// activeTab lets the popup read the current tab's URL when the user opens it. Any site on the
+// web can be set here: a built-in one, one already added to a profile, or one to add.
+const tab = ref<{ id?: number; url: string }>();
+void browser.tabs.query({ active: true, currentWindow: true }).then(([current]) => {
+  if (current?.url) tab.value = { id: current.id, url: current.url };
 });
+const siteRecipe = computed<SiteRecipe | undefined>(() => {
+  if (!tab.value || !profileList.value) return undefined;
+  return findRecipe(siteRecipes(recipes, profileList.value), tab.value.url) ?? siteFor(recipes, tab.value.url);
+});
+const sitePath = computed(() => (tab.value ? new URL(tab.value.url).pathname : '/'));
 
 // Ticks once a second, only while the popup is open.
 const now = ref(Date.now());
@@ -134,6 +139,7 @@ function start(profile: Profile) {
       v-if="siteRecipe && profileList && session !== undefined"
       :recipe="siteRecipe"
       :path="sitePath"
+      :tab-id="tab?.id"
       :profiles="profileList"
       :session="session"
     />

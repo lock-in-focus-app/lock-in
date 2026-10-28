@@ -8,6 +8,7 @@ import type {
   SatelliteAction,
   SessionRecord,
   Settings,
+  SiteRule,
   SkyState,
   Snapshot,
   TimerSettings,
@@ -56,6 +57,9 @@ export const setProfileTimer = (profileId: string, timer: TimerSettings) =>
 
 export const setProfileApps = (profileId: string, apps: AppRule[]) =>
   invoke<void>('set_profile_apps', { profileId, apps });
+
+export const setProfileSites = (profileId: string, sites: SiteRule[]) =>
+  invoke<void>('set_profile_sites', { profileId, sites });
 
 export const setProfileStarColor = (profileId: string, color: string) =>
   invoke<void>('set_profile_star_color', { profileId, color });

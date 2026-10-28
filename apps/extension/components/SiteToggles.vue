@@ -1,5 +1,15 @@
 <script lang="ts" setup>
-import { findPathRule, findRule, resolveToggles, type Profile, type Session, type SiteRecipe } from '@lock-in/core';
+import {
+  findPathRule,
+  findRule,
+  isLooser,
+  ownSiteDomain,
+  resolveToggles,
+  type Profile,
+  type Session,
+  type SiteLevel,
+  type SiteRecipe,
+} from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
 import LevelPicker from './LevelPicker.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
@@ -10,6 +20,8 @@ const props = defineProps<{
   session: Session | null;
   /** The current tab's path, for page rules. */
   path: string;
+  /** The current tab, reloaded once it's kept away so the change shows straight away. */
+  tabId?: number;
 }>();
 
 // Outside a session there's no "current" profile, so let the user pick which one to edit.
@@ -38,6 +50,33 @@ const passMinutesLeft = computed(() => {
 });
 const hasSessionChanges = computed(() => Object.keys(props.session?.overrides?.[props.recipe.id] ?? {}).length > 0);
 
+// A site someone added needs the browser's OK before Lock In can reach it. The browser only
+// asks straight from a click, so asking comes before anything else in one.
+const own = computed(() => !!ownSiteDomain(props.recipe.id));
+const reach = useReachable(() => (own.value ? [props.recipe.name] : []));
+const needsReach = computed(() => own.value && !!reach.value && !reach.value.has(props.recipe.name));
+function askIfNeeded(level: SiteLevel) {
+  if (level !== 'allowed' && needsReach.value) void askToReach([props.recipe.name]);
+}
+
+function setLevel(level: SiteLevel) {
+  if (!profile.value) return;
+  askIfNeeded(level);
+  void setSiteLevel(profile.value.id, props.recipe.id, level);
+}
+
+// During a session, a site that's open can be kept away for the rest of it, and later ones.
+const isOpen = computed(() => !isLooser('tamed', rule.value?.level ?? 'allowed'));
+const canKeepAway = computed(() => !!props.session && !!profile.value && !pageRule.value && isOpen.value);
+async function keepAway(level: 'redirected' | 'restricted') {
+  if (!profile.value) return;
+  askIfNeeded(level);
+  await setSiteLevel(profile.value.id, props.recipe.id, level);
+  await syncRedirectsNow();
+  if (props.tabId !== undefined) await browser.tabs.reload(props.tabId);
+  window.close();
+}
+
 function set(toggleId: string, value: boolean) {
   if (props.session) {
     void setSessionToggle(props.recipe, toggleId, value);
@@ -65,7 +104,7 @@ function set(toggleId: string, value: boolean) {
       :site-name="recipe.name"
       :can-tame="recipe.toggles.length > 0"
       :model-value="rule?.level ?? 'allowed'"
-      @update:model-value="setSiteLevel(profile.id, recipe.id, $event)"
+      @update:model-value="setLevel"
     />
 
     <p v-if="pageRule" class="note">
@@ -82,9 +121,20 @@ function set(toggleId: string, value: boolean) {
         ends.
       </p>
       <p v-else-if="rule?.level !== 'tamed'" class="note">
-        {{ recipe.name }} isn't tamed in {{ profile?.name ?? 'this profile' }}.
+        {{ recipe.name }} {{ own ? 'is left alone' : "isn't tamed" }} in {{ profile?.name ?? 'this profile' }}.
       </p>
     </template>
+
+    <div v-if="canKeepAway" class="keep-away">
+      <span>Keep it away from now on</span>
+      <button type="button" @click="keepAway('redirected')">Redirect it</button>
+      <button type="button" @click="keepAway('restricted')">Restrict it</button>
+    </div>
+
+    <p v-if="needsReach && (rule?.level ?? 'allowed') !== 'allowed'" class="reach">
+      <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
+      <button type="button" class="save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+    </p>
 
     <ToggleSwitch
       v-for="toggle in showsToggles ? recipe.toggles : []"
@@ -100,6 +150,9 @@ function set(toggleId: string, value: boolean) {
     </p>
     <p v-else-if="!session" class="footer">
       <span>Applies whenever {{ profile?.name }} is running</span>
+    </p>
+    <p v-else-if="canKeepAway" class="footer">
+      <span>Either one is saved to {{ profile?.name }}, for later sessions too</span>
     </p>
   </section>
 </template>
@@ -166,5 +219,44 @@ select {
 
 .save:hover {
   background: var(--sky-hover);
+}
+
+/* Spelled out, two buttons side by side, during a session on a site that's open. */
+.keep-away {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.keep-away span {
+  flex-basis: 100%;
+}
+
+.keep-away button {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--sky-raised);
+  color: var(--starlight);
+  font-size: 12px;
+}
+
+.keep-away button:hover {
+  background: var(--sky-hover);
+}
+
+.reach {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  margin: 8px 0 0;
+  color: var(--glow);
+  font-size: 12px;
 }
 </style>

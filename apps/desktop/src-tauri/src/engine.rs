@@ -9,6 +9,7 @@ use crate::session::{
     EndReason, GateVisit, Profile, Session, SessionRecord, is_star_color, starter_profiles, truncate,
 };
 use crate::settings::Settings;
+use crate::sites::{self, SiteRule};
 use crate::store::{Store, Synced};
 use crate::timer::{Strictness, TimerSettings};
 
@@ -88,6 +89,8 @@ pub struct ProfileSummary {
     pub name: String,
     pub timer: TimerSettings,
     pub apps: Vec<AppRule>,
+    /// How it treats each site, set here or in the extension.
+    pub sites: Vec<SiteRule>,
     /// The color of its stars, if it was given one.
     pub star_color: Option<String>,
 }
@@ -212,6 +215,7 @@ impl Engine {
                     name: p.name.clone(),
                     timer: p.timer(),
                     apps: p.apps(),
+                    sites: p.sites(),
                     star_color: p.star_color(),
                 })
                 .collect(),
@@ -412,6 +416,30 @@ impl Engine {
             return Err(Error::Locked);
         }
         profile.set_apps(&apps);
+        let synced = Synced {
+            value: profiles,
+            updated_at: now,
+        };
+        self.store.save(PROFILES, &synced)?;
+        self.profiles = synced;
+        Ok(())
+    }
+
+    /// Changes how a profile treats sites. While one of its Hard sessions is running, they can
+    /// only get stricter.
+    pub fn set_profile_sites(&mut self, profile_id: &str, sites: Vec<SiteRule>, now: i64) -> Result<()> {
+        let sites = sites::tidy(sites);
+        let mut profiles = self.profiles.value.clone();
+        let profile = profiles
+            .iter_mut()
+            .find(|p| p.id == profile_id)
+            .ok_or(Error::UnknownProfile)?;
+        let running = self.session().filter(|s| s.profile_id == profile_id);
+        let hard = running.and_then(|s| s.lock(now)) == Some(Strictness::Hard);
+        if hard && sites::looser(&profile.sites(), &sites) {
+            return Err(Error::Locked);
+        }
+        profile.set_sites(&sites);
         let synced = Synced {
             value: profiles,
             updated_at: now,

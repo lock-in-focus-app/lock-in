@@ -7,6 +7,7 @@ import type {
   SatelliteState,
   SessionRecord,
   Settings,
+  SiteRule,
   SkyState,
   TimerSettings,
 } from '@lock-in/core';
@@ -51,6 +52,7 @@ import {
   removeSampleData,
   sessionLog,
   setProfileApps,
+  setProfileSites,
   setProfileStarColor,
   setProfileTimer,
   setSettings,
@@ -509,6 +511,7 @@ async function run(action: () => Promise<void>) {
           :star-counts="profileStars"
           @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
           @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
+          @set-sites="(id: string, sites: SiteRule[]) => run(() => setProfileSites(id, sites))"
           @set-star-color="(id: string, color: string) => run(() => setProfileStarColor(id, color))"
         />
         <WeekReport
