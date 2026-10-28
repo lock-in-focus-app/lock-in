@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import type { Satellite, SatelliteAction } from '@lock-in/core';
+import { reactive } from 'vue';
+import ListMotion from './ListMotion.vue';
 import SatelliteItem from './SatelliteItem.vue';
 
 defineProps<{ satellites: Satellite[] }>();
 const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
+
+// What was done with each one, so it leaves the list its own way (ListMotion.vue).
+const leaving = reactive(new Map<string, SatelliteAction>());
+function act(id: string, action: SatelliteAction) {
+  leaving.set(id, action);
+  emit('act', id, action);
+}
 </script>
 
 <template>
@@ -11,15 +20,16 @@ const emit = defineEmits<{ act: [id: string, action: SatelliteAction] }>();
     <p id="came-back" class="mono head" title="Thoughts you parked during your last session">
       <span class="dot" aria-hidden="true" />Came back · <b>{{ String(satellites.length).padStart(2, '0') }}</b>
     </p>
-    <ul>
+    <ListMotion>
       <SatelliteItem
         v-for="satellite in satellites"
         :key="satellite.id"
         :satellite="satellite"
         :actions="['done', 'snooze', 'task', 'delete']"
-        @act="emit('act', satellite.id, $event)"
+        :data-leave="leaving.get(satellite.id)"
+        @act="act(satellite.id, $event)"
       />
-    </ul>
+    </ListMotion>
   </section>
 </template>
 
