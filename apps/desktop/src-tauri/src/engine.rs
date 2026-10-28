@@ -316,7 +316,8 @@ impl Engine {
         let mut settings = settings.clamped();
         let hard = self.session().and_then(|s| s.lock(now)) == Some(Strictness::Hard);
         let looser = settings.passes_per_week > self.settings.passes_per_week
-            || (self.settings.close_browsers && !settings.close_browsers);
+            || (self.settings.close_browsers && !settings.close_browsers)
+            || (self.settings.block_without_extension && !settings.block_without_extension);
         if hard && looser {
             return Err(Error::Locked);
         }
@@ -1215,6 +1216,23 @@ mod tests {
         ));
         engine.set_settings(Settings::default(), 60 * MIN).unwrap();
         assert!(!engine.settings().close_browsers);
+    }
+
+    #[test]
+    fn blocking_without_the_extension_stays_on_until_a_hard_timer_is_done() {
+        let mut engine = hard_engine();
+        let on = Settings {
+            block_without_extension: true,
+            ..Settings::default()
+        };
+        engine.start_session("deep-work", 0).unwrap();
+        engine.set_settings(on, MIN).unwrap();
+        assert!(matches!(
+            engine.set_settings(Settings::default(), 2 * MIN),
+            Err(Error::Locked)
+        ));
+        engine.set_settings(Settings::default(), 60 * MIN).unwrap();
+        assert!(!engine.settings().block_without_extension);
     }
 
     #[test]
