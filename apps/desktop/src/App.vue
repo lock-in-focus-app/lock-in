@@ -75,6 +75,8 @@ const view = ref<View>('sky');
 // Explore clears everything off the Sky page, so the sky is on its own.
 const exploring = ref(false);
 const nightSky = ref<InstanceType<typeof NightSky>>();
+// What Explore's readouts show: how far in it's zoomed and the constellation in the crosshair.
+const skyView = ref<{ zoom: number; aimed?: string }>({ zoom: 1 });
 watch(view, (to) => to !== 'sky' && (exploring.value = false));
 // The week the report is showing, so the sky can line its constellations up behind it.
 const reportWeek = ref<number>();
@@ -280,6 +282,7 @@ const skyPlanets = computed<SkyPlanet[]>(() => {
     tint: starColorFor(planet.topProfileId, colors.get(planet.topProfileId)),
   }));
 });
+const aimedConstellation = computed(() => skyConstellations.value.find((c) => c.id === skyView.value.aimed));
 const starCount = computed(() => skyConstellations.value.reduce((count, c) => count + c.stars.length, 0));
 const reportConstellation = computed(() => skyConstellations.value.find((c) => c.weekStart === reportWeek.value));
 // Streaks by the end of the week the report shows. Only this week's has one running.
@@ -354,9 +357,11 @@ async function run(action: () => Promise<void>) {
     :satellite-text="view === 'sky' && exploring && !snapshot?.session"
     :battery-saver="snapshot?.settings.batterySaver"
     :play="playNow"
+    @view="(seen: { zoom: number; aimed?: string }) => (skyView = seen)"
   />
   <main>
-    <header>
+    <!-- Explore clears the header away too, so the sky is on its own. -->
+    <header :class="{ away: exploring }" :inert="exploring">
       <div class="row">
         <h1 class="mono"><span aria-hidden="true">✦ </span>Lock In</h1>
         <span class="mono" title="Each session adds a star, and every focused minute earns stardust">
@@ -391,6 +396,12 @@ async function run(action: () => Promise<void>) {
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
           :star-count="starCount"
+          :stardust="totalStardust"
+          :week-count="skyConstellations.length"
+          :planet-count="skyPlanets.length"
+          :zoom="skyView.zoom"
+          :aimed="aimedConstellation"
+          :this-week="thisWeek"
           :months="skyMonths"
           :month="skyMonth"
           @month="(month: number | undefined) => (steppedMonth = month)"
@@ -400,6 +411,8 @@ async function run(action: () => Promise<void>) {
           @launch="launch"
           @act="act"
           @zoom="(factor: number) => nightSky?.zoom(factor)"
+          @recenter="nightSky?.recenter()"
+          @rename="rename"
         />
         <ProfileList
           v-else-if="view === 'profiles'"
@@ -455,6 +468,14 @@ main {
 
 header {
   margin-bottom: 10px;
+  transition:
+    opacity 700ms,
+    filter 700ms;
+}
+
+header.away {
+  opacity: 0;
+  filter: blur(6px);
 }
 
 .row {
@@ -558,6 +579,10 @@ h1 {
 
   .here {
     transition: none;
+  }
+
+  header.away {
+    filter: none;
   }
 }
 

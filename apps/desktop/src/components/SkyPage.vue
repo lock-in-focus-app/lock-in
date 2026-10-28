@@ -2,6 +2,7 @@
 import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
 import { starColorFor } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
+import ExploreView from './ExploreView.vue';
 import LaunchDock from './LaunchDock.vue';
 import SatelliteLaunch from './SatelliteLaunch.vue';
 import SatellitesBack from './SatellitesBack.vue';
@@ -19,6 +20,14 @@ const props = defineProps<{
   passesLeft: number;
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   starCount: number;
+  stardust: number;
+  /** For Explore's readouts: how many weeks and planets there are, how far in it's zoomed, and the
+   * constellation in the crosshair. */
+  weekCount: number;
+  planetCount: number;
+  zoom: number;
+  aimed?: { id: string; name: string; named: boolean; weekStart: number };
+  thisWeek: number;
   /** The months with constellations, oldest first, and the one the Sky shows if stepped back (else the latest). */
   months: number[];
   month?: number;
@@ -32,6 +41,9 @@ const emit = defineEmits<{
   act: [id: string, action: SatelliteAction];
   /** Zoom the sky in (above 1) or out, while exploring. */
   zoom: [factor: number];
+  /** Glide back to where exploring starts, around the latest weeks. */
+  recenter: [];
+  rename: [id: string, name: string];
   /** Show an earlier month's constellations on the Sky, or the latest (undefined). */
   month: [month: number | undefined];
 }>();
@@ -147,13 +159,20 @@ watch(
     </Transition>
 
     <Transition name="fade">
-      <div v-if="exploring" class="explore">
-        <span class="zoom">
-          <button class="card tool" type="button" title="Zoom in" @click="emit('zoom', 1.6)">+</button>
-          <button class="card tool" type="button" title="Zoom out" @click="emit('zoom', 1 / 1.6)">−</button>
-        </span>
-        <button class="card exit mono" type="button" @click="exploring = false">Esc · Done exploring</button>
-      </div>
+      <ExploreView
+        v-if="exploring"
+        :star-count="starCount"
+        :stardust="stardust"
+        :week-count="weekCount"
+        :planet-count="planetCount"
+        :zoom="zoom"
+        :aimed="aimed"
+        :this-week="thisWeek"
+        @zoom="emit('zoom', $event)"
+        @recenter="emit('recenter')"
+        @rename="(id, name) => emit('rename', id, name)"
+        @done="exploring = false"
+      />
     </Transition>
   </div>
 </template>
@@ -243,50 +262,6 @@ watch(
   max-height: 46vh;
   overflow-y: auto;
   scrollbar-width: none;
-}
-
-.explore {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.explore button {
-  pointer-events: auto;
-}
-
-.zoom {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  translate: 0 -50%;
-  display: grid;
-  gap: 6px;
-}
-
-.tool {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  background: none;
-  color: var(--dim);
-  font: 13px var(--mono);
-}
-
-.exit {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  translate: -50% 0;
-  padding: 6px 11px;
-  background: none;
-  color: var(--dim);
-}
-
-.tool:hover,
-.exit:hover {
-  color: var(--starlight);
 }
 
 .puff-enter-active,
