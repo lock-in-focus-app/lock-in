@@ -25,6 +25,12 @@ const outlinePoints = 72;
 const moonSpeed = 6;
 /** How often an electric ring's lightning jumps to new places while exploring. */
 const lightningMs = 140;
+/**
+ * While exploring, how far (in pixels) anything on a planet moves before its image is drawn
+ * again, and how often one with an aurora or lightning is drawn again for those.
+ */
+const livelyStepPixels = 0.5;
+const shimmerMs = 70;
 /** How far out from a planet's middle anything of it reaches (moons, rings, dust), in its radii. */
 const planetReach = 3.8;
 /** How many shards of rock circle a shattered planet. */
@@ -75,20 +81,33 @@ const cache = new Map<string, { canvas: HTMLCanvasElement; key: string }>();
 
 /**
  * Draws a planet, reusing an image of it from the last time when nothing about it has changed.
- * Anything moving (exploring, hovered, a different size mid-glide) is drawn fresh.
+ * Anything changing quickly (hovered, its event playing, a different size mid-glide) is drawn fresh.
+ *
+ * While exploring, a planet turns and its moons go round slowly, so its image is only drawn again
+ * once they've moved about half a pixel (moons, the quickest, go round 12 of its radii for every
+ * turn), and as its lightning jumps or its aurora shimmers: from a few to about 20 times a second
+ * instead of every frame. Where it sits in the sky still moves every frame.
  */
 export function stampPlanet(c: CanvasRenderingContext2D, planet: Planet, view: PlanetView) {
-  if (view.lively || view.glow > 0.001 || view.event !== undefined) {
+  if (view.glow > 0.001 || view.event !== undefined) {
     drawPlanet(c, planet, view);
     return;
   }
   const radius = Math.round(view.radius * 2) / 2;
+  let { turn, time } = view;
+  if (view.lively) {
+    const step = livelyStepPixels / (moonSpeed * 2 * Math.max(1, radius));
+    turn = Math.round(turn / step) * step;
+    time = shimmers(planet) ? Math.floor(time / shimmerMs) * shimmerMs : 0;
+  }
   const key = [
     planet.kind,
     planet.focusMs,
     planet.moons.length,
     radius,
-    view.turn.toFixed(4),
+    turn.toFixed(6),
+    view.lively,
+    time,
     view.tint,
     planet.event?.kind,
     planet.best,
@@ -104,7 +123,7 @@ export function stampPlanet(c: CanvasRenderingContext2D, planet: Planet, view: P
     offscreen.setTransform(1, 0, 0, 1, 0, 0);
     offscreen.clearRect(0, 0, canvas.width, canvas.height);
     const middle = canvas.width / 2;
-    drawPlanet(offscreen, planet, { ...view, x: middle, y: middle, radius, alpha: 1 });
+    drawPlanet(offscreen, planet, { ...view, x: middle, y: middle, radius, turn, time, alpha: 1 });
     entry = { canvas, key };
     cache.set(planet.id, entry);
   }
@@ -112,6 +131,11 @@ export function stampPlanet(c: CanvasRenderingContext2D, planet: Planet, view: P
   c.globalAlpha = view.alpha;
   c.drawImage(entry.canvas, view.x - middle, view.y - middle);
 }
+
+/** Whether a planet has anything that flickers or shimmers while exploring: an aurora, or lightning on a ring. */
+const shimmers = (planet: Planet) =>
+  (planet.aurora > 0 && planet.shape !== 'linked' && planet.shape !== 'donut') ||
+  planet.rings.some((ring) => ring.style === 'electric');
 
 /** Forgets the images of planets that are no longer in the sky. */
 export function forgetPlanets(ids: ReadonlySet<string>) {

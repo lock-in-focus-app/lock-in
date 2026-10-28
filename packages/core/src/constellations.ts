@@ -32,8 +32,16 @@ export interface Constellation {
 /**
  * The constellations a sky's stars make, oldest first: one for every week with stars, weeks
  * starting on `firstDay` (0 being Sunday). A week with gaps is still one constellation.
+ *
+ * Given the constellations it made last time (`before`), it hands back the same ones for weeks
+ * whose stars haven't changed, so working out the sky again as a session goes on only redoes its
+ * week, and what's drawn from the rest can be kept.
  */
-export function constellations(sky: readonly Star[], firstDay = 1): Constellation[] {
+export function constellations(
+  sky: readonly Star[],
+  firstDay = 1,
+  before: readonly Constellation[] = [],
+): Constellation[] {
   const weeks = new Map<number, Star[]>();
   for (const star of [...sky].sort((a, b) => a.startedAt - b.startedAt)) {
     const start = weekStart(star.startedAt, firstDay);
@@ -41,10 +49,32 @@ export function constellations(sky: readonly Star[], firstDay = 1): Constellatio
     if (week) week.push(star);
     else weeks.set(start, [star]);
   }
+  const kept = new Map(before.map((constellation) => [constellation.weekStart, constellation]));
   return [...weeks].map(([start, stars]) => {
+    const old = kept.get(start);
+    if (old && sameStars(old.stars, stars)) return old;
     const points = shape(stars, start);
     return { id: stars[0]!.id, weekStart: start, stars, points, lines: joined(points) };
   });
+}
+
+/** Whether two weeks' stars are the same, down to how long each was focused for. */
+function sameStars(a: readonly Star[], b: readonly Star[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((star, i) => {
+      const other = b[i]!;
+      return (
+        star.id === other.id &&
+        star.profileId === other.profileId &&
+        star.startedAt === other.startedAt &&
+        star.endedAt === other.endedAt &&
+        star.focusedMs === other.focusedMs &&
+        star.overtimeMs === other.overtimeMs &&
+        star.sessionIds.length === other.sessionIds.length
+      );
+    })
+  );
 }
 
 /**
@@ -92,6 +122,15 @@ function joined(points: readonly { x: number; y: number }[]): [number, number][]
     }
   }
   return lines;
+}
+
+/**
+ * The month a week belongs to (its start, local midnight on the 1st): the one its middle falls in,
+ * so every week belongs to exactly one month. The Sky shows a month's weeks at a time.
+ */
+export function weekMonth(weekStart: number): number {
+  const middle = new Date(weekStart + (addWeeks(weekStart, 1) - weekStart) / 2);
+  return new Date(middle.getFullYear(), middle.getMonth(), 1).getTime();
 }
 
 /**

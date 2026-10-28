@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { seeded, skyPlaces, type Comet, type Planet, type RareEvent, type RareEventKind } from '@lock-in/core';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { drawMilkyWay } from '../milkyWay';
 import { forgetPlanets, stampPlanet } from '../planet';
 import { drawSatellite, leaveMs } from '../satellite';
 import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 
 // The night sky behind the window (PLAN §5): one canvas, drawn by code. The constellations come
 // from the reward engine (packages/core/src/constellations.ts); this only draws them, with light
-// pollution washing them out as `clarity` falls. It redraws about 20 times a second while stars
-// twinkle or the haze is moving, every frame while something moves, and only when something
-// changes under reduced motion.
+// pollution washing them out as `clarity` falls. It redraws 60 times a second while stars twinkle
+// or the haze is moving (20 while the window is behind others), every frame the screen shows while
+// something moves, only when something changes under reduced motion, and not at all while hidden.
 //
 // It has two layouts, and constellations glide from one to the other. On the Sky (`sky`), they
 // gather close together, the newest in the middle, like one starry collection. Exploring spreads
@@ -17,7 +18,15 @@ import { drawComet, drawPassing, drawSupernova, playMs } from '../skyEvents';
 // order, with the week being looked at large and soft behind the page's header.
 //
 // With `drift` on (exploring the Sky page), the sky leans and zooms gently toward the pointer, like
-// nudging a telescope, with brighter (nearer) stars moving a little more for depth.
+// nudging a telescope, with brighter (nearer) stars moving a little more for depth. It can also be
+// dragged around and zoomed (the wheel, a pinch, the keyboard or `zoom`), out as far as the oldest
+// constellation.
+//
+// To stay smooth after years of focus (PLAN §5, performance at scale), the Sky shows a month's
+// constellations at a time, the latest unless `month` steps back, and the rest fold away into the
+// Milky Way, which fills in behind everything as total focus grows. Exploring starts on the latest
+// weeks, and zooming out finds the rest; far away, a constellation's stars fold into a soft glow. Only what's on screen is drawn,
+// and still things are drawn once and reused.
 //
 // Planets (one a month) sit nearer than the stars, around the edge of the constellations, the
 // newest largest. On the Sky, the last few months' are still; exploring shows them all, slowly
@@ -49,6 +58,8 @@ export interface SkyConstellation {
   name: string;
   /** When its week starts (epoch ms). */
   weekStart: number;
+  /** The month its week belongs to (its start, epoch ms), which the Sky shows a month at a time. */
+  month: number;
   stars: SkyStar[];
   /** Lines joining its stars, as pairs of indexes into `stars`. */
   lines: [number, number][];
@@ -73,8 +84,12 @@ export interface SkySatellite {
 const props = defineProps<{
   /** Oldest first. */
   constellations: SkyConstellation[];
+  /** On the Sky, the month whose weeks it shows (its start, epoch ms). The latest if not given. */
+  month?: number;
   /** Oldest first. */
   planets?: SkyPlanet[];
+  /** How filled in the Milky Way is, from 0 to 1. */
+  milkyWay?: number;
   /** How clear the sky should be, from 0 (hazy) to 1 (clear). The haze drifts there slowly. */
   clarity: number;
   /** Whether the sky drifts toward the pointer. */
@@ -99,7 +114,12 @@ const canvas = ref<HTMLCanvasElement>();
 const still = window.matchMedia('(prefers-reduced-motion: reduce)');
 /** How long the haze takes to drift most of the way to a new clarity. */
 const hazeDriftMs = 2500;
-const frameMs = 50;
+/**
+ * How often to redraw while only twinkling: 60 times a second with the window in front, and 20
+ * behind other windows (e.g. while you work in another app during a session), to save battery. A
+ * little under the time between frames, so a 120 Hz screen draws every other one.
+ */
+const frameMs = { front: 1000 / 60 - 2, behind: 50 };
 /** How far the view pans toward the pointer, as a share of the sky, and how much it zooms in. */
 const driftPan = 0.04;
 const driftZoom = 0.06;
@@ -127,9 +147,27 @@ const satelliteLapSpreadMs = 3 * 60_000;
 const satelliteFadeMs = 1500;
 /** The widest a satellite's text is shown, in pixels before the screen's scale. */
 const satelliteTextWidth = 260;
+/** How many of the latest weeks exploring starts on. Zooming out finds the rest. */
+const exploreWeeks = 12;
+/** How far in exploring can zoom, and how long the view takes to catch up when zoomed or let go. */
+const mostZoom = 4;
+const viewMs = 500;
+/**
+ * When a constellation's unit is this many pixels or fewer (before the screen's scale), its stars
+ * start folding into a soft glow, and by `foldTo` they're all glow.
+ */
+const foldFrom = 13;
+const foldTo = 8;
+/** Below this many pixels per unit, a constellation is too small to see twinkle, so it's drawn once and reused. */
+const twinkleFrom = 17;
 
 let context: CanvasRenderingContext2D | null = null;
 let frame = 0;
+/**
+ * While only twinkling (and planets circling), the loop sleeps until its next frame is due rather
+ * than waking for every one the screen shows (120 a second on some screens). `frame` is -1 then.
+ */
+let nap: ReturnType<typeof setTimeout> | undefined;
 let lastDrawn = 0;
 let lastTime = 0;
 let shownClarity = props.clarity;
@@ -138,6 +176,22 @@ let font = 'system-ui, sans-serif';
 // where the view has got to on its way there.
 let aim = { x: 0, y: 0, zoom: 0 };
 const lens = { x: 0, y: 0, zoom: 0 };
+/**
+ * Where exploring has panned and zoomed to: the middle of the view (as shares of the sky) and how
+ * far in. `view` is where it's headed and `seen` where it has got to.
+ */
+interface View {
+  x: number;
+  y: number;
+  zoom: number;
+}
+const home: View = { x: 0.5, y: 0.5, zoom: 1 };
+let view = { ...home };
+const seen = { ...home };
+/** What there is to explore, as shares of the sky at the first zoom, so the view stays over it. */
+let world = { left: 0, right: 1, top: 0, bottom: 1 };
+/** A drag panning the sky: where it started, and how fast it was going, for a soft stop. */
+let dragging: { id: number; x: number; y: number; from: View; speed: { x: number; y: number }; at: number } | undefined;
 const sprites = new Map<string, HTMLCanvasElement>();
 /** How far planets have gone round while exploring, in radians. Planets spin and moons go round with it. */
 let orbit = 0;
@@ -305,19 +359,40 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
     // Satellites stay out of the report.
     return { places, ring: { ...(ring ?? { x: 0.5, y: 0.35, across: 0.44, down: 0.22 }), alpha: 0 } };
   }
-  // Packed close, so the Sky reads as one starry collection, fitted between the header and the
-  // cards at the bottom. Exploring clears the cards away, and they spread out into separate
-  // constellations to admire one at a time.
-  const gather = props.drift ? 1 : skyGather;
-  const spots = skyPlaces(list.length).map((s) => ({ x: s.x * gather, y: s.y * gather }));
-  const xs = spots.map((s) => s.x);
-  const ys = spots.map((s) => s.y);
-  const box = {
-    left: Math.min(...xs) - reach.x,
-    right: Math.max(...xs) + reach.x,
-    top: Math.min(...ys) - reach.up,
-    bottom: Math.max(...ys) + reach.down,
+  // On the Sky, a month's weeks at a time (the latest month, or `month`), packed close so they read
+  // as one starry collection, fitted between the header and the cards at the bottom. Every other
+  // month sits in the same spots unseen, so stepping from one month to another fades between them.
+  // Exploring clears the cards away, and they all spread out into separate constellations to
+  // admire one at a time, starting on the latest weeks, with older ones further out.
+  const shownMonth = props.month ?? list[list.length - 1]?.month;
+  let spots: { x: number; y: number }[];
+  let fitted: { x: number; y: number }[];
+  if (props.drift) {
+    spots = skyPlaces(list.length);
+    fitted = spots.slice(-exploreWeeks);
+  } else {
+    // Each month's weeks spiral out from its newest.
+    const months = new Map<number, number[]>();
+    list.forEach((constellation, i) =>
+      months.set(constellation.month, [...(months.get(constellation.month) ?? []), i]),
+    );
+    spots = [];
+    for (const indexes of months.values()) {
+      const near = skyPlaces(indexes.length);
+      indexes.forEach((index, j) => (spots[index] = { x: near[j]!.x * skyGather, y: near[j]!.y * skyGather }));
+    }
+    fitted = (shownMonth === undefined ? [] : (months.get(shownMonth) ?? [])).map((index) => spots[index]!);
+  }
+  const bounds = (some: readonly { x: number; y: number }[]) => {
+    if (!some.length) some = [{ x: 0, y: 0 }];
+    return {
+      left: Math.min(...some.map((s) => s.x)) - reach.x,
+      right: Math.max(...some.map((s) => s.x)) + reach.x,
+      top: Math.min(...some.map((s) => s.y)) - reach.up,
+      bottom: Math.max(...some.map((s) => s.y)) + reach.down,
+    };
   };
+  const box = bounds(fitted);
   const area = {
     left: 0.06 * width,
     right: 0.94 * width,
@@ -333,16 +408,24 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
   const spreadY = props.drift ? Math.min(fitY, unit * 1.6) : unit;
   const middle = { x: (area.left + area.right) / 2, y: (area.top + area.bottom) / 2 };
   const boxMiddle = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
+  const spread = (spot: { x: number; y: number }) => ({
+    x: (middle.x + (spot.x - boxMiddle.x) * spreadX) / width,
+    y: (middle.y + (spot.y - boxMiddle.y) * spreadY) / height,
+  });
   list.forEach((constellation, i) => {
     places.set(constellation.id, {
-      x: (middle.x + (spots[i]!.x - boxMiddle.x) * spreadX) / width,
-      y: (middle.y + (spots[i]!.y - boxMiddle.y) * spreadY) / height,
+      ...spread(spots[i]!),
       unit: unit / width,
-      alpha: 1,
+      alpha: props.drift || constellation.month === shownMonth ? 1 : 0,
       label: props.names ? 1 : 0,
       lift: 0,
     });
   });
+  if (list.length) {
+    const all = bounds(spots);
+    const [topLeft, bottomRight] = [spread({ x: all.left, y: all.top }), spread({ x: all.right, y: all.bottom })];
+    world = { left: topLeft.x, right: bottomRight.x, top: topLeft.y, bottom: bottomRight.y };
+  } else world = { left: 0, right: 1, top: 0, bottom: 1 };
   // Planets around the edge of the constellations, the newest up to the right and older ones
   // further round, smaller and fainter, as if further away. A little in from the area's edge on
   // the bottom, so they don't sit under the cards.
@@ -350,15 +433,31 @@ function targets(width: number, height: number): { places: Map<string, Place>; r
   const across = ((area.right - area.left) / 2) * 0.92;
   const down = ((area.bottom - area.top) / 2) * 0.95;
   const base = Math.min(width, height) * (props.drift ? 0.065 : 0.055);
+  // On the Sky, the shown month's planet is the newest, with the few months before it.
+  let newest = planets.length - 1;
+  if (!props.drift && shownMonth !== undefined) {
+    while (newest >= 0 && planets[newest]!.monthStart > shownMonth) newest--;
+  }
   planets.forEach((planet, i) => {
-    const age = planets.length - 1 - i;
+    const age = newest - i;
     const angle = -0.3 * Math.PI + age * goldenAngle + orbit;
-    const radius = (base * (0.45 + 0.55 * planet.size)) / (1 + 0.25 * age);
+    const radius = (base * (0.45 + 0.55 * planet.size)) / (1 + 0.25 * Math.min(Math.max(age, 0), 8));
     // Room for its rings and moons, so it isn't cut off at the window's edges.
     const room = radius * 2.8;
-    const x = Math.min(width - room, Math.max(room, middle.x + Math.cos(angle) * across));
-    const y = Math.max(room, middle.y + Math.sin(angle) * down * (Math.sin(angle) > 0 ? 0.8 : 1));
-    const shownHere = props.drift || age < skyPlanets;
+    // While exploring, older ones sit further out, among their months' constellations.
+    const out = props.drift ? Math.sqrt(Math.max(1, (age + 1) / skyPlanets)) : 1;
+    let x = middle.x + Math.cos(angle) * across * out;
+    let y = middle.y + Math.sin(angle) * down * out * (Math.sin(angle) > 0 ? 0.8 : 1);
+    if (out === 1) {
+      x = Math.min(width - room, Math.max(room, x));
+      y = Math.max(room, y);
+    } else {
+      world.left = Math.min(world.left, (x - room) / width);
+      world.right = Math.max(world.right, (x + room) / width);
+      world.top = Math.min(world.top, (y - room) / height);
+      world.bottom = Math.max(world.bottom, (y + room) / height);
+    }
+    const shownHere = props.drift || (age >= 0 && age < skyPlanets);
     places.set(planetKey(planet), {
       x: x / width,
       y: y / height,
@@ -412,6 +511,7 @@ function glide(elapsed: number, width: number, height: number): boolean {
     if (!goals.has(id)) {
       shown.delete(id);
       shine.delete(id);
+      stills.delete(id);
     }
   }
   const brighten = still.matches ? 1 : 1 - Math.exp(-elapsed / (shineMs / 3));
@@ -449,8 +549,13 @@ function resize() {
   draw(performance.now());
 }
 
-/** Where a point (as shares of the sky) ends up with the telescope drift, as shares too. */
+/**
+ * Where a point (as shares of the sky) ends up where exploring has panned and zoomed to, and with
+ * the telescope drift, as shares too, with how much the drift zooms in.
+ */
 function drifted(x: number, y: number, depth: number) {
+  x = 0.5 + (x - seen.x) * seen.zoom;
+  y = 0.5 + (y - seen.y) * seen.zoom;
   const zoom = 1 + driftZoom * lens.zoom * depth;
   const centerX = 0.5 + lens.x / 2;
   const centerY = 0.5 + lens.y / 2;
@@ -459,6 +564,133 @@ function drifted(x: number, y: number, depth: number) {
     y: centerY + (y - centerY) * zoom - lens.y * driftPan * depth,
     zoom,
   };
+}
+
+/** How far a constellation with a unit of `unit` canvas pixels has folded into a soft glow, from 0 to 1. */
+function folded(unit: number): number {
+  const pixels = unit / (window.devicePixelRatio || 1);
+  return Math.min(1, Math.max(0, (foldFrom - pixels) / (foldFrom - foldTo)));
+}
+
+/** Whether a spot (in canvas pixels) is on a `width` by `height` canvas, or within `room` of it. */
+const onScreen = (x: number, y: number, room: number, width: number, height: number) =>
+  x + room >= 0 && x - room <= width && y + room >= 0 && y - room <= height;
+
+/** A soft glow with no bright core, for a constellation folded away. */
+function smudge(color: string): HTMLCanvasElement {
+  const key = `smudge:${color}`;
+  let glow = sprites.get(key);
+  if (glow) return glow;
+  glow = document.createElement('canvas');
+  glow.width = glow.height = 64;
+  const g = glow.getContext('2d')!;
+  const gradient = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gradient.addColorStop(0, `${color}66`);
+  gradient.addColorStop(0.4, `${color}26`);
+  gradient.addColorStop(1, `${color}00`);
+  g.fillStyle = gradient;
+  g.fillRect(0, 0, 64, 64);
+  sprites.set(key, glow);
+  return glow;
+}
+
+/**
+ * A constellation's glow from far away: the color of its stars together, and how bright it is,
+ * from how many there are and how bright. Kept for each week's stars, which stay the same.
+ */
+const glows = new WeakMap<readonly SkyStar[], { color: string; light: number }>();
+function farGlow(stars: readonly SkyStar[]) {
+  let glow = glows.get(stars);
+  if (glow) return glow;
+  const sum = [0, 0, 0];
+  let weight = 0;
+  for (const star of stars) {
+    const w = 0.3 + star.magnitude;
+    for (let i = 0; i < 3; i++) sum[i]! += parseInt(star.color.slice(1 + i * 2, 3 + i * 2), 16) * w;
+    weight += w;
+  }
+  const hex = sum
+    .map((v) =>
+      Math.round(v / (weight || 1))
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('');
+  glow = {
+    color: `#${hex}`,
+    light: Math.min(1, 0.3 + 0.12 * Math.sqrt(stars.reduce((total, star) => total + star.magnitude, 0))),
+  };
+  glows.set(stars, glow);
+  return glow;
+}
+
+/**
+ * Images of constellations far enough away to be folding into a glow, where twinkling wouldn't
+ * show, kept by id: drawn at about the size they're shown, and reused while it stays about the same.
+ */
+const stills = new Map<
+  string,
+  { canvas: HTMLCanvasElement; stars: readonly SkyStar[]; key: string; middle: { x: number; y: number } }
+>();
+/** How much a constellation's size can change before its image is drawn again. */
+const stillStep = Math.log(1.15);
+
+/**
+ * Draws a constellation from its image, its middle at `x`, `y` and its unit `unit` canvas pixels,
+ * `unzoomed` before exploring zoomed it.
+ */
+function drawStill(
+  c: CanvasRenderingContext2D,
+  constellation: SkyConstellation,
+  x: number,
+  y: number,
+  unit: number,
+  unzoomed: number,
+) {
+  const scale = window.devicePixelRatio || 1;
+  const size = Math.exp(Math.round(Math.log(unit) / stillStep) * stillStep);
+  const key = `${size.toFixed(2)}:${unzoomed.toFixed(1)}`;
+  let image = stills.get(constellation.id);
+  // Its stars are new whenever the week changes, e.g. as a session goes on.
+  if (!image || image.key !== key || image.stars !== constellation.stars) {
+    // Stars grow more slowly than the sky as you zoom in, so their size follows the square root.
+    const starScale = scale * Math.sqrt(size / unzoomed);
+    const pad = 18 * starScale;
+    const canvas = image?.canvas ?? document.createElement('canvas');
+    canvas.width = Math.ceil(2 * reach.x * size + pad * 2);
+    canvas.height = Math.ceil(size + pad * 2);
+    const g = canvas.getContext('2d')!;
+    const middle = { x: canvas.width / 2, y: canvas.height / 2 };
+    const at = (star: SkyStar) => ({ x: middle.x + star.x * size, y: middle.y + star.y * size });
+    g.lineWidth = scale;
+    g.strokeStyle = 'rgb(205 215 255)';
+    g.globalAlpha = 0.14;
+    g.beginPath();
+    for (const [from, to] of constellation.lines) {
+      const a = constellation.stars[from];
+      const b = constellation.stars[to];
+      if (!a || !b) continue;
+      g.moveTo(at(a).x, at(a).y);
+      g.lineTo(at(b).x, at(b).y);
+    }
+    g.stroke();
+    for (const star of constellation.stars) {
+      const { x: starX, y: starY } = at(star);
+      const starSize = (10 + star.magnitude * 26) * starScale;
+      g.globalAlpha = (0.35 + 0.65 * star.magnitude) * 0.85;
+      g.drawImage(sprite(star.color), starX - starSize / 2, starY - starSize / 2, starSize, starSize);
+    }
+    image = { canvas, stars: constellation.stars, key, middle };
+    stills.set(constellation.id, image);
+  }
+  const shrink = unit / size;
+  c.drawImage(
+    image.canvas,
+    x - image.middle.x * shrink,
+    y - image.middle.y * shrink,
+    image.canvas.width * shrink,
+    image.canvas.height * shrink,
+  );
 }
 
 function draw(time: number) {
@@ -476,21 +708,30 @@ function draw(time: number) {
   c.globalAlpha = 1;
   c.fillStyle = night;
   c.fillRect(0, 0, width, height);
+  // Light pollution washes the Milky Way out first.
+  drawMilkyWay(c, { fill: props.milkyWay ?? 0, alpha: 1 - 0.85 * haze, ...seen });
 
   // Nebulae from supernovae and comets, beside their week's constellation and behind its stars.
   for (const event of props.events ?? []) {
     if (event.kind !== 'supernova' || !event.constellationId) continue;
     const progress = played(`event:${event.id}`, time);
     const spot = markSpot(event.constellationId, (event.x * 2 - 1) * 0.9, (event.y - 0.5) * 0.8, width, height, haze);
-    if (spot && (progress === undefined || progress >= 0)) {
+    if (spot && onScreen(spot.x, spot.y, spot.unit * 2, width, height) && (progress === undefined || progress >= 0)) {
       drawSupernova(c, event, spot.x, spot.y, spot.unit, spot.alpha, progress);
     }
   }
   for (const comet of props.comets ?? []) {
     const progress = played(`comet:${comet.id}`, time);
     const spot = markSpot(comet.constellationId, comet.x, comet.y, width, height, haze);
-    if (spot && (progress === undefined || progress >= 0)) {
-      drawComet(c, comet, spot.x, spot.y, spot.unit, spot.alpha * 0.85, progress);
+    // Far away, a comet folds away with its constellation's stars.
+    const near = spot ? 1 - (exploringSky() ? folded(spot.unit) : 0) : 0;
+    if (
+      spot &&
+      near > 0.01 &&
+      onScreen(spot.x, spot.y, spot.unit * 4, width, height) &&
+      (progress === undefined || progress >= 0)
+    ) {
+      drawComet(c, comet, spot.x, spot.y, spot.unit, spot.alpha * 0.85 * near, progress);
     }
   }
   c.globalAlpha = 1;
@@ -507,50 +748,80 @@ function draw(time: number) {
     const unit = place.unit * width;
     const middleX = place.x * width;
     const middleY = place.y * height;
-    if (middleX + reach.x * unit < -width * 0.2 || middleX - reach.x * unit > width * 1.2) continue;
+    const center = drifted(place.x, place.y, 1);
+    const seenUnit = unit * seen.zoom;
+    // Only what's on screen, with room for its stars' glow.
+    if (!onScreen(center.x * width, center.y * height, reach.x * seenUnit + 40 * scale, width, height)) continue;
     const glow = Math.max(shine.get(constellation.id) ?? 0, place.lift);
     // The week the report shows cuts through the haze a little, so it reads behind the header.
     const dimmed = haze * (1 - 0.5 * place.lift);
-    const positions = constellation.stars.map((star) => {
-      const depth = 0.5 + star.magnitude;
-      const at = drifted((middleX + star.x * unit) / width, (middleY + star.y * unit) / height, depth);
-      return { x: at.x * width, y: at.y * height, zoom: at.zoom };
-    });
-
-    // Faint lines first, so the stars sit on top of them.
-    c.globalAlpha = (0.14 + 0.26 * glow) * place.alpha * (1 - 0.6 * dimmed);
-    c.beginPath();
-    for (const [from, to] of constellation.lines) {
-      const a = positions[from];
-      const b = positions[to];
-      if (!a || !b) continue;
-      c.moveTo(a.x, a.y);
-      c.lineTo(b.x, b.y);
-    }
-    c.stroke();
-
-    constellation.stars.forEach((star, i) => {
-      const at = positions[i]!;
-      const size = (10 + star.magnitude * 26) * scale * (1 + (at.zoom - 1) / 2) * (1 + 0.2 * glow);
-      let alpha = (0.35 + 0.65 * star.magnitude) * (1 - 0.7 * dimmed) * (0.85 + 0.15 * glow);
-      if (!still.matches) {
-        // Each star twinkles at its own pace, from where it sits.
-        const wave = Math.sin((time / 1000) * (0.5 + (star.y + 0.5) * 0.9) + star.x * 100);
-        alpha *= 0.82 + 0.18 * wave + star.sparkle * 0.25 * Math.max(0, wave);
-      }
-      c.globalAlpha = Math.min(1, Math.max(0, alpha * place.alpha));
-      c.drawImage(sprite(star.color), at.x - size / 2, at.y - size / 2, size, size);
-    });
-
-    const xs = positions.map((p) => p.x);
-    const ys = positions.map((p) => p.y);
+    // Far away while exploring, its stars fold into a soft glow. The Sky always twinkles.
+    const exploring = exploringSky();
+    const fold = exploring ? folded(seenUnit) : 0;
     const box = {
       id: constellation.id,
-      left: Math.min(...xs) - 12 * scale,
-      right: Math.max(...xs) + 12 * scale,
-      top: Math.min(...ys) - 12 * scale,
-      bottom: Math.max(...ys) + 28 * scale,
+      left: center.x * width - reach.x * seenUnit,
+      right: center.x * width + reach.x * seenUnit,
+      top: center.y * height - 0.5 * seenUnit,
+      bottom: center.y * height + 0.5 * seenUnit + 16 * scale,
     };
+    let below = box.bottom - 4 * scale;
+    if (fold > 0) {
+      const far = farGlow(constellation.stars);
+      const across = 2 * reach.x * seenUnit + 24 * scale;
+      const down = seenUnit + 24 * scale;
+      c.globalAlpha = fold * far.light * (0.7 + 0.3 * glow) * place.alpha * (1 - 0.7 * dimmed);
+      c.drawImage(smudge(far.color), center.x * width - across / 2, center.y * height - down / 2, across, down);
+    }
+    if (exploring && seenUnit < twinkleFrom * scale) {
+      // Too small to see twinkle: drawn once and reused, fading as it folds into a glow.
+      if (fold < 1) {
+        c.globalAlpha = (1 - fold) * (0.85 + 0.15 * glow) * place.alpha * (1 - 0.7 * dimmed);
+        drawStill(c, constellation, center.x * width, center.y * height, seenUnit, unit);
+      }
+    } else {
+      const positions = constellation.stars.map((star) => {
+        const depth = 0.5 + star.magnitude;
+        const at = drifted((middleX + star.x * unit) / width, (middleY + star.y * unit) / height, depth);
+        return { x: at.x * width, y: at.y * height, zoom: at.zoom };
+      });
+
+      // Faint lines first, so the stars sit on top of them.
+      c.globalAlpha = (0.14 + 0.26 * glow) * place.alpha * (1 - 0.6 * dimmed);
+      c.beginPath();
+      for (const [from, to] of constellation.lines) {
+        const a = positions[from];
+        const b = positions[to];
+        if (!a || !b) continue;
+        c.moveTo(a.x, a.y);
+        c.lineTo(b.x, b.y);
+      }
+      c.stroke();
+
+      const grow = Math.sqrt(seen.zoom);
+      constellation.stars.forEach((star, i) => {
+        const at = positions[i]!;
+        const size = (10 + star.magnitude * 26) * scale * (1 + (at.zoom - 1) / 2) * (1 + 0.2 * glow) * grow;
+        let alpha = (0.35 + 0.65 * star.magnitude) * (1 - 0.7 * dimmed) * (0.85 + 0.15 * glow);
+        if (!still.matches) {
+          // Each star twinkles at its own pace, from where it sits.
+          const wave = Math.sin((time / 1000) * (0.5 + (star.y + 0.5) * 0.9) + star.x * 100);
+          alpha *= 0.82 + 0.18 * wave + star.sparkle * 0.25 * Math.max(0, wave);
+        }
+        c.globalAlpha = Math.min(1, Math.max(0, alpha * place.alpha));
+        c.drawImage(sprite(star.color), at.x - size / 2, at.y - size / 2, size, size);
+      });
+
+      if (positions.length) {
+        const xs = positions.map((p) => p.x);
+        const ys = positions.map((p) => p.y);
+        box.left = Math.min(...xs) - 12 * scale;
+        box.right = Math.max(...xs) + 12 * scale;
+        box.top = Math.min(...ys) - 12 * scale;
+        box.bottom = Math.max(...ys) + 28 * scale;
+        below = Math.max(...ys) + 12 * scale;
+      }
+    }
     boxes.push(box);
     if (place.label * glow > 0.01) {
       // Its name, beneath it while it's hovered.
@@ -559,7 +830,7 @@ function draw(time: number) {
       // Kept inside the window, so a name near the edge isn't cut off.
       const half = c.measureText(constellation.name).width / 2 + 6 * scale;
       const x = Math.min(width - half, Math.max(half, (box.left + box.right) / 2));
-      c.fillText(constellation.name, x, Math.max(...ys) + 12 * scale);
+      c.fillText(constellation.name, x, below);
     }
   }
   drawnBoxes = boxes;
@@ -574,8 +845,10 @@ function draw(time: number) {
     const glow = shine.get(key) ?? 0;
     const x = at.x * width;
     const y = at.y * height;
-    const radius = place.unit * width * (1 + (at.zoom - 1) / 2) * (1 + 0.06 * glow);
-    if (x + radius * 3 < 0 || x - radius * 3 > width) continue;
+    const radius = place.unit * width * (1 + (at.zoom - 1) / 2) * (1 + 0.06 * glow) * seen.zoom ** 0.8;
+    if (!onScreen(x, y, radius * 3, width, height)) continue;
+    // Too small to see turning, far away while exploring, it's drawn once and reused.
+    const lively = circling() && radius > 6 * scale;
     // Like the week's constellation, the week's month's planet cuts through the haze a little.
     const alpha = place.alpha * (1 - 0.6 * haze * (1 - 0.5 * place.lift)) * (0.9 + 0.1 * glow);
     const happening = planet.event && played(`event:${planet.event.id}`, time);
@@ -586,9 +859,9 @@ function draw(time: number) {
       alpha,
       glow,
       tint: planet.tint,
-      turn: orbit,
+      turn: lively ? orbit : 0,
       time,
-      lively: circling(),
+      lively,
       event: happening === undefined ? undefined : Math.max(0, happening),
     });
     planetSpots.push({ key, x, y, radius });
@@ -660,9 +933,10 @@ function drawSatellites(c: CanvasRenderingContext2D, time: number, width: number
     const alpha =
       shownAlpha * ring.alpha * (1 - 0.5 * haze) * (0.7 + 0.3 * near) * (1 - away) ** 1.5 * (0.9 + 0.1 * glow);
     const spot = { key, x: at.x * width, y: at.y * height };
+    if (!onScreen(spot.x, spot.y, 40 * scale, width, height)) continue;
     drawSatellite(c, {
       ...spot,
-      size: 2.2 * scale * (0.85 + 0.15 * near) * (1 + (at.zoom - 1) / 2) * (1 + 0.15 * glow),
+      size: 2.2 * scale * (0.85 + 0.15 * near) * (1 + (at.zoom - 1) / 2) * (1 + 0.15 * glow) * Math.sqrt(seen.zoom),
       angle: orbit.tilt + orbit.angle,
       alpha,
       blink: orbit.blink,
@@ -706,7 +980,7 @@ function markSpot(id: string, x: number, y: number, width: number, height: numbe
   return {
     x: at.x * width,
     y: at.y * height,
-    unit: unit * (1 + (at.zoom - 1) / 2),
+    unit: unit * seen.zoom * (1 + (at.zoom - 1) / 2),
     alpha: place.alpha * (1 - 0.6 * haze * (1 - 0.5 * place.lift)),
   };
 }
@@ -755,26 +1029,188 @@ function tick(time: number) {
     lens.y += (aim.y - lens.y) * follow;
     lens.zoom += (aim.zoom - lens.zoom) * follow;
   }
+  // Exploring's pan and zoom: straight there while dragging, otherwise easing in, zooming evenly.
+  if (!exploringSky()) view = { ...home };
+  else if (!dragging) view = kept(view);
+  const viewing =
+    Math.abs(view.x - seen.x) + Math.abs(view.y - seen.y) + Math.abs(Math.log(view.zoom / seen.zoom)) > 0.0005;
+  if (viewing && !dragging && !still.matches) {
+    const toward = 1 - Math.exp(-elapsed / (viewMs / 3));
+    seen.x += (view.x - seen.x) * toward;
+    seen.y += (view.y - seen.y) * toward;
+    seen.zoom *= (view.zoom / seen.zoom) ** toward;
+  } else Object.assign(seen, view);
   for (const [key, playing] of plays) if (time - playing.start > playLength(playing.kind)) plays.delete(key);
   const sky = canvas.value;
   // Places are shares of the sky's size, so they're only worked out while it has one.
   const sized = !!sky && sky.width > 0 && sky.height > 0;
-  const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || turning || plays.size > 0;
+  // Gliding and playing things draw every frame the screen does. Planets circling are too slow
+  // to need that, so like twinkling they draw 60 times a second (or 20, behind other windows).
+  const gliding = (sized ? glide(elapsed, sky.width, sky.height) : false) || plays.size > 0;
   // Under reduced motion nothing twinkles, so the loop stops once everything has settled.
   const moving = !still.matches || hazing;
-  if (!moving || panning || gliding || time - lastDrawn >= frameMs) draw(time);
-  frame = moving || panning || gliding ? requestAnimationFrame(tick) : 0;
+  const every = document.hasFocus() ? frameMs.front : frameMs.behind;
+  if (!moving || panning || viewing || gliding || time - lastDrawn >= every) draw(time);
+  // Nothing is drawn while the window is hidden; showing it again wakes the sky.
+  const going = (moving || panning || viewing || gliding || turning) && document.visibilityState !== 'hidden';
+  if (!going) frame = 0;
+  else if (panning || viewing || gliding) frame = requestAnimationFrame(tick);
+  else {
+    frame = -1;
+    nap = setTimeout(
+      () => {
+        nap = undefined;
+        frame = requestAnimationFrame(tick);
+      },
+      Math.max(0, lastDrawn + every - performance.now() - 4),
+    );
+  }
 }
 
 function wake() {
   if (still.matches) shownClarity = props.clarity;
+  // Something changed, so no more sleeping until the next frame.
+  if (nap !== undefined) {
+    clearTimeout(nap);
+    nap = undefined;
+    frame = requestAnimationFrame(tick);
+    return;
+  }
   if (!frame) {
     lastTime = 0;
     frame = requestAnimationFrame(tick);
   }
 }
 
+const exploringSky = () => !!props.drift && props.week === undefined;
+/** Whether the pointer is on a card or button, rather than the sky. */
+const onPage = (target: EventTarget | null) =>
+  target instanceof Element && !!target.closest('button, a, input, textarea, select, nav, .card');
+
+/** The furthest out exploring can zoom: far enough to see everything. */
+function leastZoom(): number {
+  const across = world.right - world.left;
+  const down = world.bottom - world.top;
+  return Math.max(0.1, Math.min(1, 0.92 / across, 0.85 / down));
+}
+
+/**
+ * `to`, kept zoomed between the least and most, and over what there is to see: its edge can come
+ * in a little way from the window's, but no further.
+ */
+function kept(to: View): View {
+  const zoom = Math.min(mostZoom, Math.max(leastZoom(), to.zoom));
+  const inside = 0.35 / zoom;
+  const between = (value: number, low: number, high: number) => {
+    // Where it starts is always allowed, so going in and out of Explore doesn't jump.
+    [low, high] = low + inside <= high - inside ? [low + inside, high - inside] : [(low + high) / 2, (low + high) / 2];
+    return Math.min(Math.max(high, 0.5), Math.max(Math.min(low, 0.5), value));
+  };
+  return { x: between(to.x, world.left, world.right), y: between(to.y, world.top, world.bottom), zoom };
+}
+
+/** Zooms by `factor` (above 1 is in) toward a spot on the sky (as shares of it), which stays put. */
+function zoomAt(x: number, y: number, factor: number) {
+  if (!exploringSky()) return;
+  const zoom = Math.min(mostZoom, Math.max(leastZoom(), view.zoom * factor));
+  const spot = { x: view.x + (x - 0.5) / view.zoom, y: view.y + (y - 0.5) / view.zoom };
+  view = kept({ x: spot.x - (x - 0.5) / zoom, y: spot.y - (y - 0.5) / zoom, zoom });
+  wake();
+}
+
+/** Starts dragging the sky around, while exploring. */
+function grab(event: PointerEvent) {
+  if (!exploringSky() || event.button !== 0 || onPage(event.target)) return;
+  // Not selecting the page's text while dragging.
+  event.preventDefault();
+  dragging = {
+    id: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    from: { ...seen },
+    speed: { x: 0, y: 0 },
+    at: event.timeStamp,
+  };
+  view = { ...seen };
+  document.documentElement.style.cursor = 'grabbing';
+}
+
+function drag(event: PointerEvent) {
+  if (!dragging) return;
+  const to = kept({
+    x: dragging.from.x - (event.clientX - dragging.x) / window.innerWidth / dragging.from.zoom,
+    y: dragging.from.y - (event.clientY - dragging.y) / window.innerHeight / dragging.from.zoom,
+    zoom: dragging.from.zoom,
+  });
+  // How fast it's going, smoothed, for a soft stop when let go.
+  const since = Math.max(1, event.timeStamp - dragging.at);
+  dragging.speed.x = 0.7 * dragging.speed.x + (0.3 * (to.x - view.x)) / since;
+  dragging.speed.y = 0.7 * dragging.speed.y + (0.3 * (to.y - view.y)) / since;
+  dragging.at = event.timeStamp;
+  view = to;
+  wake();
+}
+
+/** Lets go of the sky, which drifts on a little and comes to a stop (except under reduced motion). */
+function letGo(event: PointerEvent) {
+  if (!dragging || event.pointerId !== dragging.id) return;
+  const coast = still.matches || event.timeStamp - dragging.at > 80 ? 0 : 250;
+  // Even a quick flick only drifts on a little way.
+  const most = 0.2 / view.zoom;
+  const on = (speed: number) => Math.min(most, Math.max(-most, speed * coast));
+  view = kept({ x: view.x + on(dragging.speed.x), y: view.y + on(dragging.speed.y), zoom: view.zoom });
+  dragging = undefined;
+  document.documentElement.style.cursor = '';
+  wake();
+}
+
+function wheel(event: WheelEvent) {
+  if (!exploringSky() || onPage(event.target)) return;
+  event.preventDefault();
+  const lines = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+  // A pinch on a trackpad comes as the wheel with ctrl held, in smaller steps.
+  const factor = Math.exp(-event.deltaY * lines * (event.ctrlKey ? 0.01 : 0.002));
+  zoomAt(event.clientX / window.innerWidth, event.clientY / window.innerHeight, factor);
+}
+
+/** Zooms with + and -, pans with the arrow keys, and goes back to the start with 0. */
+function press(event: KeyboardEvent) {
+  if (!exploringSky() || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.target instanceof Element && event.target.closest('input, textarea, select')) return;
+  const step = 0.15 / view.zoom;
+  const pan = (x: number, y: number) => {
+    view = kept({ x: view.x + x, y: view.y + y, zoom: view.zoom });
+    wake();
+  };
+  const keys: Record<string, () => void> = {
+    '+': () => zoomAt(0.5, 0.5, 1.4),
+    '=': () => zoomAt(0.5, 0.5, 1.4),
+    '-': () => zoomAt(0.5, 0.5, 1 / 1.4),
+    '0': () => {
+      view = kept(home);
+      wake();
+    },
+    ArrowLeft: () => pan(-step, 0),
+    ArrowRight: () => pan(step, 0),
+    ArrowUp: () => pan(0, -step),
+    ArrowDown: () => pan(0, step),
+  };
+  const action = keys[event.key];
+  if (!action) return;
+  event.preventDefault();
+  action();
+}
+
+defineExpose({
+  /** Zooms in (`factor` above 1) or out toward the middle, while exploring. */
+  zoom: (factor: number) => zoomAt(0.5, 0.5, factor),
+});
+
 function point(event: PointerEvent) {
+  if (dragging) {
+    if (event.pointerId === dragging.id) drag(event);
+    return;
+  }
   hover(event);
   if (!props.drift || still.matches || event.pointerType !== 'mouse') return;
   aim = { x: (event.clientX / window.innerWidth) * 2 - 1, y: (event.clientY / window.innerHeight) * 2 - 1, zoom: 1 };
@@ -784,9 +1220,7 @@ function point(event: PointerEvent) {
 /** Brightens the constellation under the pointer, unless the pointer is on a card or button. */
 function hover(event: PointerEvent) {
   let found: string | undefined;
-  const target = event.target instanceof Element ? event.target : null;
-  const onPage = target?.closest('button, a, input, textarea, select, nav, .card');
-  if (props.names && props.week === undefined && !onPage) {
+  if (props.names && props.week === undefined && !onPage(event.target)) {
     const scale = window.devicePixelRatio || 1;
     const x = event.clientX * scale;
     const y = event.clientY * scale;
@@ -811,6 +1245,14 @@ function settle() {
   wake();
 }
 
+/** Leaving Explore lets go of the sky, which glides back to where it was, and forgets far-away images. */
+function stopExploring() {
+  dragging = undefined;
+  stills.clear();
+  document.documentElement.style.cursor = '';
+  settle();
+}
+
 watch(
   () => [
     props.constellations,
@@ -818,6 +1260,7 @@ watch(
     props.clarity,
     props.names,
     props.week,
+    props.month,
     props.drift,
     props.comets,
     props.events,
@@ -841,7 +1284,7 @@ watch(
 );
 watch(
   () => props.drift,
-  (drift) => !drift && settle(),
+  (drift) => !drift && stopExploring(),
 );
 watch(
   () => props.names,
@@ -855,15 +1298,28 @@ onMounted(() => {
   observer.observe(canvas.value!);
   still.addEventListener('change', wake);
   window.addEventListener('pointermove', point);
+  window.addEventListener('pointerdown', grab);
+  window.addEventListener('pointerup', letGo);
+  window.addEventListener('pointercancel', letGo);
+  window.addEventListener('wheel', wheel, { passive: false });
+  window.addEventListener('keydown', press);
+  document.addEventListener('visibilitychange', wake);
   document.documentElement.addEventListener('pointerleave', settle);
   wake();
 });
 
 onUnmounted(() => {
   cancelAnimationFrame(frame);
+  clearTimeout(nap);
   observer.disconnect();
   still.removeEventListener('change', wake);
   window.removeEventListener('pointermove', point);
+  window.removeEventListener('pointerdown', grab);
+  window.removeEventListener('pointerup', letGo);
+  window.removeEventListener('pointercancel', letGo);
+  window.removeEventListener('wheel', wheel);
+  window.removeEventListener('keydown', press);
+  document.removeEventListener('visibilitychange', wake);
   document.documentElement.removeEventListener('pointerleave', settle);
 });
 </script>
