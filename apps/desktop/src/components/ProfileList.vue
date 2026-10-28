@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { AppRule, ProfileSummary, Strictness, TimerSettings } from '@lock-in/core';
+import type { AppRule, ProfileSummary, SiteRule, Strictness, TimerSettings } from '@lock-in/core';
 import { starColorFor } from '@lock-in/core';
 import { ref } from 'vue';
 import AppRulesEditor from './AppRulesEditor.vue';
+import SitesEditor from './SitesEditor.vue';
 import StarColorPicker from './StarColorPicker.vue';
 import TimerEditor from './TimerEditor.vue';
 import Unfold from './Unfold.vue';
@@ -19,6 +20,7 @@ defineProps<{
 const emit = defineEmits<{
   'set-timer': [profileId: string, timer: TimerSettings];
   'set-apps': [profileId: string, apps: AppRule[]];
+  'set-sites': [profileId: string, sites: SiteRule[]];
   'set-star-color': [profileId: string, color: string];
 }>();
 
@@ -39,9 +41,11 @@ const strictness: Record<Strictness, string> = { gentle: 'Gentle', medium: 'Medi
 function summary(profile: ProfileSummary): string {
   const { minutes } = profile.timer;
   const apps = profile.apps.length;
+  const sites = profile.sites.filter((site) => site.level !== 'allowed').length;
   return [
     minutes > 0 ? `${minutes} min · ${strictness[profile.timer.strictness]}` : 'No timer',
     apps > 0 && `${apps} ${apps === 1 ? 'app' : 'apps'}`,
+    sites > 0 && `${sites} ${sites === 1 ? 'site' : 'sites'}`,
   ]
     .filter((part) => typeof part === 'string')
     .join(' · ');
@@ -99,10 +103,11 @@ function summary(profile: ProfileSummary): string {
                 :can-hide="canHideApps"
                 @update:apps="emit('set-apps', profile.id, $event)"
               />
-              <p v-else-if="open.panel === 'sites'" class="help">
-                Which sites this profile tames or redirects, and how, is set in the Lock In browser extension's
-                settings.
-              </p>
+              <SitesEditor
+                v-else-if="open.panel === 'sites'"
+                :sites="profile.sites"
+                @update:sites="emit('set-sites', profile.id, $event)"
+              />
               <div v-else class="star">
                 <StarColorPicker
                   :color="starColorFor(profile.id, profile.starColor)"
@@ -116,7 +121,7 @@ function summary(profile: ProfileSummary): string {
         </Unfold>
       </div>
     </div>
-    <p class="help foot">Sites for each profile are set in the browser extension's settings, and apps here.</p>
+    <p class="help foot">Sites are kept in step with the browser extension, so they can be changed in either.</p>
   </section>
 </template>
 

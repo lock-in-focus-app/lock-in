@@ -4,11 +4,14 @@ import {
   findRecipe,
   pagePathAttribute,
   siteAccess,
+  siteRecipes,
   type Profile,
   type Session,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 
+// Listed here for the built-in sites. The background adds sites people add themselves, once
+// they've let Lock In reach them (ownSites.ts).
 export default defineContentScript({
   matches: recipes.flatMap((recipe) => recipe.matches),
   runAt: 'document_start',
@@ -23,6 +26,7 @@ export default defineContentScript({
     // between pages doesn't read storage.
     let session: Session | null = null;
     let profileList: Profile[] = [];
+    let known = recipes;
     let url = new URL(location.href);
 
     let removeOverlay: (() => void) | undefined;
@@ -30,7 +34,7 @@ export default defineContentScript({
     let recheck: number | undefined;
 
     const apply = (navigated = false) => {
-      style.textContent = cssForPage({ url, session, profiles: profileList, recipes });
+      style.textContent = cssForPage({ url, session, profiles: profileList, recipes: known });
 
       // Recipes can hide things on some pages only by matching the path kept on <html>.
       // It's only there while the page is tamed.
@@ -40,7 +44,7 @@ export default defineContentScript({
       // Single-page apps change pages without loading one, so the browser's redirect rules
       // never see it. Moving onto a redirected or restricted page is caught here instead.
       if (navigated) {
-        const recipe = findRecipe(recipes, url);
+        const recipe = findRecipe(known, url);
         const access = recipe
           ? siteAccess({ session, profiles: profileList, recipeId: recipe.id, path: url.pathname, now: Date.now() })
           : 'open';
@@ -53,7 +57,7 @@ export default defineContentScript({
       }
 
       // Redirected and restricted pages only get this far if the tab was already open.
-      const check = checkOpenPage({ url, session, profiles: profileList, recipes, now: Date.now() });
+      const check = checkOpenPage({ url, session, profiles: profileList, recipes: known, now: Date.now() });
       clearTimeout(recheck);
 
       if (check.action === 'none') {
@@ -85,6 +89,7 @@ export default defineContentScript({
     void Promise.all([activeSession.getValue(), profiles.getValue()]).then(([s, p]) => {
       session = s;
       profileList = p;
+      known = siteRecipes(recipes, p);
       apply();
     });
     const unwatchSession = activeSession.watch((value) => {
@@ -93,6 +98,7 @@ export default defineContentScript({
     });
     const unwatchProfiles = profiles.watch((value) => {
       profileList = value;
+      known = siteRecipes(recipes, value);
       apply();
     });
     // Fired as single-page apps navigate, before the new page shows.

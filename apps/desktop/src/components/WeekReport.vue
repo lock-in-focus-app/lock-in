@@ -5,6 +5,7 @@ import {
   formatHour,
   formatHourRange,
   maxConstellationNameLength,
+  siteName as nameOfSite,
   starColorFor,
   weeklyReport,
   weekStart,
@@ -58,7 +59,7 @@ const picking = ref(false);
 const slide = ref<'week-forward' | 'week-back'>('week-forward');
 watch(start, (to, from) => (slide.value = to > from ? 'week-forward' : 'week-back'));
 
-const siteName = (recipeId: string) => recipes.find((r) => r.id === recipeId)?.name ?? recipeId;
+const siteName = (recipeId: string) => nameOfSite(recipes, recipeId);
 
 watch(start, (week) => emit('week', week), { immediate: true });
 

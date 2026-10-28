@@ -106,13 +106,13 @@ describe('settings page', () => {
 
   it('adds links, assuming https', async () => {
     await page.type('input[aria-label="Link address"]', 'javascript:alert(1)');
-    await page.click('form.add button[type=submit]');
-    expect(await page.$eval('.error', (el) => el.textContent)).toContain('Enter a web address');
+    await page.click('form.add:has(input[aria-label="Link address"]) button[type=submit]');
+    expect(await page.$eval('.error[role=alert]', (el) => el.textContent)).toContain('Enter a web address');
 
     await page.type('input[aria-label="Link name"]', 'Draft');
     await page.click('input[aria-label="Link address"]', { count: 3 });
     await page.type('input[aria-label="Link address"]', 'docs.example.com/draft');
-    await page.click('form.add button[type=submit]');
+    await page.click('form.add:has(input[aria-label="Link address"]) button[type=submit]');
     await expect
       .poll(async () => (await deepWork()).links)
       .toMatchObject([{ title: 'Draft', url: 'https://docs.example.com/draft' }]);
@@ -121,7 +121,7 @@ describe('settings page', () => {
   it('adds and removes your own quotes', async () => {
     await page.type('input[aria-label="Quote"]', 'Ship it.');
     await page.type('input[aria-label="Author"]', 'Me');
-    await page.$$eval('form.add', (forms) => forms[1]!.requestSubmit());
+    await page.$eval('form.add:has(input[aria-label="Quote"])', (form) => (form as HTMLFormElement).requestSubmit());
     await expect.poll(async () => (await stored(page)).ownQuotes).toMatchObject([{ text: 'Ship it.', author: 'Me' }]);
 
     await (await page.waitForSelector('button[aria-label="Remove quote"]'))!.click();

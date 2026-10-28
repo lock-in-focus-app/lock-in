@@ -1,11 +1,12 @@
 import type { AppRule } from './generated/AppRule';
+import type { PathRule } from './generated/PathRule';
+import type { SiteLevel } from './generated/SiteLevel';
+import type { SiteRule } from './generated/SiteRule';
 import type { TimerSettings } from './generated/TimerSettings';
 
-/**
- * How a site behaves during a session: left alone, tamed with its recipe, redirected
- * to a page you can get through with a pass, or restricted with no way through.
- */
-export type SiteLevel = 'allowed' | 'tamed' | 'redirected' | 'restricted';
+// How a profile treats each site is shared with the desktop app, so it's generated from its Rust
+// code (sites.rs).
+export type { PathRule, SiteLevel, SiteRule };
 
 /** A single on/off switch in a site recipe, e.g. "Hide home feed". */
 export interface RecipeToggle {
@@ -40,29 +41,6 @@ export interface SiteRecipe {
 export interface SuggestedPages {
   label: string;
   paths: string[];
-}
-
-/**
- * A different level for some pages of a site, e.g. redirecting YouTube's /shorts while
- * the rest of YouTube is tamed.
- */
-export interface PathRule {
-  /**
-   * "/" is the home page only. Any other path also covers everything under it, and `*`
-   * matches within one part of the path. Matching ignores case.
-   */
-  path: string;
-  level: SiteLevel;
-}
-
-/** How one site is treated by a profile. */
-export interface SiteRule {
-  recipeId: string;
-  level: SiteLevel;
-  /** Overrides for the recipe's toggle defaults, keyed by toggle id. */
-  toggles?: Record<string, boolean>;
-  /** Pages that don't follow the site's level. The most specific match wins. */
-  paths?: PathRule[];
 }
 
 /** A reusable session setup, e.g. "Writing" or "Wind Down". */

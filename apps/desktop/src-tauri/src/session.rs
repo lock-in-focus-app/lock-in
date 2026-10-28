@@ -3,6 +3,7 @@ use serde_json::{Map, Value};
 use ts_rs::TS;
 
 use crate::apps::AppRule;
+use crate::sites::SiteRule;
 use crate::timer::{Strictness, TimerSettings};
 
 /// A profile, as the extension saves it. The app only reads a few fields; everything else
@@ -39,6 +40,21 @@ impl Profile {
     pub fn set_apps(&mut self, apps: &[AppRule]) {
         let value = serde_json::to_value(apps).expect("app rules serialize");
         self.rest.insert("apps".into(), value);
+    }
+
+    /// How the profile treats each site. Ones that can't be read are skipped.
+    pub fn sites(&self) -> Vec<SiteRule> {
+        let saved = self.rest.get("sites").and_then(Value::as_array);
+        saved
+            .into_iter()
+            .flatten()
+            .filter_map(|rule| SiteRule::deserialize(rule).ok())
+            .collect()
+    }
+
+    pub fn set_sites(&mut self, sites: &[SiteRule]) {
+        let value = serde_json::to_value(sites).expect("site rules serialize");
+        self.rest.insert("sites".into(), value);
     }
 
     /// The color of the profile's stars, if it was given one. The window picks a default

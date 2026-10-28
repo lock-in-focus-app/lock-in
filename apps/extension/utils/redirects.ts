@@ -1,4 +1,4 @@
-import { nextPassExpiry, redirectRules } from '@lock-in/core';
+import { nextPassExpiry, redirectRules, siteRecipes } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 
 // Redirects are declarativeNetRequest rules: the browser matches them itself, so no
@@ -22,7 +22,12 @@ export async function syncRedirects(): Promise<void> {
   const [session, profileList] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
   const now = Date.now();
 
-  const addRules = redirectRules({ session, profiles: profileList, recipes, now }).map((rule, index) => ({
+  const addRules = redirectRules({
+    session,
+    profiles: profileList,
+    recipes: siteRecipes(recipes, profileList),
+    now,
+  }).map((rule, index) => ({
     id: index + 1,
     priority: rule.priority,
     action:

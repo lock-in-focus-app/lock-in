@@ -1,4 +1,4 @@
-import type { Profile } from '@lock-in/core';
+import { siteName, type Profile } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 
 /** A one-line summary of what a profile does, e.g. "Reddit tamed · grayscale, X redirected". */
@@ -6,8 +6,7 @@ export function profileSummary(profile: Profile): string {
   return (
     profile.sites
       .map((site) => {
-        const recipe = recipes.find((r) => r.id === site.recipeId);
-        const name = recipe?.name ?? site.recipeId;
+        const name = siteName(recipes, site.recipeId);
         const pages = site.paths?.length
           ? ` · ${site.paths.length} page rule${site.paths.length === 1 ? '' : 's'}`
           : '';

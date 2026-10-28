@@ -1,6 +1,8 @@
 import {
   endLock,
   findRule,
+  hasRoomForOwnSite,
+  ownSiteDomain,
   redirectSettingsFor,
   starterProfiles,
   withNewProfile,
@@ -19,10 +21,12 @@ import {
   withGateVisitWhy,
   withPass,
   withProfileToggle,
+  withSiteRemoved,
   withRedirectSettings,
   withSatelliteAction,
   withSatelliteLaunched,
   withSatellitesBack,
+  sitesLooser,
   withSessionOverridesSaved,
   withSessionToggle,
   type Profile,
@@ -49,6 +53,22 @@ function inTurn<T>(edit: () => Promise<T>): Promise<T> {
 
 function editProfiles(edit: (list: Profile[]) => Profile[]): Promise<void> {
   return inTurn(async () => profiles.setValue(edit(await profiles.getValue())));
+}
+
+/**
+ * Changes a profile's sites. While one of its Hard sessions is running they can only get
+ * stricter, as in the desktop app; anything looser is left as it was. Resolves to whether it saved.
+ */
+function editSites(profileId: string, edit: (list: Profile[]) => Profile[]): Promise<boolean> {
+  return inTurn(async () => {
+    const [session, list] = await Promise.all([activeSession.getValue(), profiles.getValue()]);
+    const edited = edit(list);
+    const sitesOf = (from: Profile[]) => from.find((p) => p.id === profileId)?.sites ?? [];
+    const hard = session?.profileId === profileId && endLock(session, Date.now()) === 'hard';
+    if (hard && sitesLooser(sitesOf(list), sitesOf(edited))) return false;
+    await profiles.setValue(edited);
+    return true;
+  });
 }
 
 export async function startSession(profileId: string): Promise<void> {
@@ -145,9 +165,22 @@ export async function moveProfile(profileId: string, offset: number): Promise<vo
   await editProfiles((list) => withProfileMoved(list, profileId, offset));
 }
 
-/** Sets whether a profile allows, tames, redirects or restricts a site. */
-export async function setSiteLevel(profileId: string, recipeId: string, level: SiteLevel): Promise<void> {
-  await editProfiles((list) => withSiteLevel(list, profileId, recipeId, level));
+/**
+ * Sets whether a profile allows, tames, redirects or restricts a site. A site someone added
+ * themselves joins the profile this way, as long as it has room for another.
+ */
+export function setSiteLevel(profileId: string, recipeId: string, level: SiteLevel): Promise<boolean> {
+  return editSites(profileId, (list) => {
+    const profile = list.find((p) => p.id === profileId);
+    const isNew = !findRule(profile, recipeId);
+    if (isNew && ownSiteDomain(recipeId) && (level === 'allowed' || !hasRoomForOwnSite(profile))) return list;
+    return withSiteLevel(list, profileId, recipeId, level);
+  });
+}
+
+/** Takes a site someone added off a profile. */
+export function removeSite(profileId: string, recipeId: string): Promise<boolean> {
+  return editSites(profileId, (list) => withSiteRemoved(list, profileId, recipeId));
 }
 
 /** Adds page rules to a site, or changes the level of ones it has. Invalid paths are skipped. */
@@ -157,12 +190,12 @@ export async function setPageLevel(
   paths: string[],
   level: SiteLevel,
 ): Promise<void> {
-  await editProfiles((list) => withPathRules(list, profileId, recipeId, paths, level));
+  await editSites(profileId, (list) => withPathRules(list, profileId, recipeId, paths, level));
 }
 
 /** Removes a page rule, so the page follows its site's level again. */
 export async function removePageRule(profileId: string, recipeId: string, path: string): Promise<void> {
-  await editProfiles((list) => withPathRuleRemoved(list, profileId, recipeId, path));
+  await editSites(profileId, (list) => withPathRuleRemoved(list, profileId, recipeId, path));
 }
 
 /** Restores the starter profiles to how they shipped. The user's own profiles are kept. */

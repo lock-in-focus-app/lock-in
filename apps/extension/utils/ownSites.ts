@@ -1,0 +1,65 @@
+import { ownSiteDomain, ownSitePattern, type Profile } from '@lock-in/core';
+import { onUnmounted, ref, watchEffect, type Ref } from 'vue';
+
+// Sites people add themselves (packages/core/src/sites.ts) need their OK before Lock In can
+// redirect them or cover their tabs, one site at a time, so it never asks to read every site.
+// The built-in sites are allowed when Lock In is installed. The browser only asks straight from a
+// click, so `askToReach` has to come before anything in the click that waits.
+
+const scriptId = 'lock-in-own-sites';
+
+/** The addresses of every site the profiles have added, once each. */
+export function ownDomains(list: readonly Profile[]): string[] {
+  const domains = list.flatMap((profile) => profile.sites.flatMap((site) => ownSiteDomain(site.recipeId) ?? []));
+  return [...new Set(domains)];
+}
+
+/** Asks the browser to let Lock In reach these sites. Resolves to whether it may. */
+export function askToReach(domains: string[]): Promise<boolean> {
+  return browser.permissions.request({ origins: domains.map(ownSitePattern) });
+}
+
+/** Which of these sites Lock In may reach. */
+export async function reachable(domains: readonly string[]): Promise<Set<string>> {
+  const allowed = await Promise.all(
+    domains.map((domain) => browser.permissions.contains({ origins: [ownSitePattern(domain)] })),
+  );
+  return new Set(domains.filter((_, i) => allowed[i]));
+}
+
+/** The sites Lock In may reach, kept current as the browser's permissions change. */
+export function useReachable(domains: () => string[]): Ref<Set<string> | undefined> {
+  const result = ref<Set<string>>();
+  let checked = 0;
+  const check = () => {
+    const turn = ++checked;
+    void reachable(domains()).then((set) => {
+      if (turn === checked) result.value = set;
+    });
+  };
+  watchEffect(check);
+  browser.permissions.onAdded.addListener(check);
+  browser.permissions.onRemoved.addListener(check);
+  onUnmounted(() => {
+    browser.permissions.onAdded.removeListener(check);
+    browser.permissions.onRemoved.removeListener(check);
+  });
+  return result;
+}
+
+/**
+ * Runs the content script on the added sites Lock In may reach, as the manifest does on the
+ * built-in ones, so their tabs are covered like any other. Called whenever the profiles or the
+ * permissions change, and when the browser starts.
+ */
+export async function syncOwnSiteScripts(): Promise<void> {
+  const allowed = await reachable(ownDomains(await profiles.getValue()));
+  const matches = [...allowed].map(ownSitePattern);
+
+  const registered = await browser.scripting.getRegisteredContentScripts({ ids: [scriptId] });
+  if (registered.length) await browser.scripting.unregisterContentScripts({ ids: [scriptId] });
+  if (matches.length === 0) return;
+  await browser.scripting.registerContentScripts([
+    { id: scriptId, matches, js: ['content-scripts/content.js'], runAt: 'document_start' },
+  ]);
+}
