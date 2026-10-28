@@ -18,6 +18,8 @@ pub enum Error {
     UnknownConstellation,
     DevelopmentOnly,
     Hotkey(crate::hotkey::Problem),
+    /// Installing, removing or reaching the blocker's helper went wrong.
+    Blocker(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -39,6 +41,7 @@ impl fmt::Display for Error {
             Error::UnknownConstellation => f.write_str("that constellation doesn't exist"),
             Error::DevelopmentOnly => f.write_str("that's only in development builds"),
             Error::Hotkey(problem) => write!(f, "{problem}"),
+            Error::Blocker(problem) => f.write_str(problem),
         }
     }
 }

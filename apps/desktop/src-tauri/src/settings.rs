@@ -29,6 +29,10 @@ pub struct Settings {
     /// Empty turns it off. It only changes once the new one is registered, through its own
     /// command (`set_satellite_hotkey`).
     pub satellite_hotkey: String,
+    /// Whether sessions also block their restricted sites for every browser and app, without
+    /// the extension, through the hosts file (blocker.rs). macOS only for now. Turning it on
+    /// installs a small helper, which asks for an administrator's password once.
+    pub block_without_extension: bool,
 }
 
 pub const MAX_PASSES_PER_WEEK: u32 = 14;
@@ -44,6 +48,7 @@ impl Default for Settings {
             battery_saver: false,
             glow: DEFAULT_GLOW.into(),
             satellite_hotkey: hotkey::DEFAULT_HOTKEY.into(),
+            block_without_extension: false,
         }
     }
 }
@@ -85,6 +90,7 @@ mod tests {
                 battery_saver: false,
                 glow: DEFAULT_GLOW.into(),
                 satellite_hotkey: hotkey::DEFAULT_HOTKEY.into(),
+                block_without_extension: false,
             }
         );
     }

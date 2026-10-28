@@ -5,6 +5,7 @@ export type * from './generated/ActiveSession';
 export type * from './generated/Activity';
 export type * from './generated/AppAction';
 export type * from './generated/AppRule';
+export type * from './generated/BlockerStatus';
 export type * from './generated/ConstellationName';
 export type * from './generated/EndReason';
 export type * from './generated/GateVisitRecord';

@@ -35,4 +35,10 @@ glow: string,
  * Empty turns it off. It only changes once the new one is registered, through its own
  * command (`set_satellite_hotkey`).
  */
-satelliteHotkey: string, };
+satelliteHotkey: string, 
+/**
+ * Whether sessions also block their restricted sites for every browser and app, without
+ * the extension, through the hosts file (blocker.rs). macOS only for now. Turning it on
+ * installs a small helper, which asks for an administrator's password once.
+ */
+blockWithoutExtension: boolean, };

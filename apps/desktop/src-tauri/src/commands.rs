@@ -4,13 +4,14 @@
 use tauri::{AppHandle, Manager};
 
 use crate::apps::{AppRule, InstalledApp};
+use crate::blocker::BlockerStatus;
 use crate::engine::{Activity, ConstellationName, SkyState, Snapshot};
 use crate::error::{Error, Result};
 use crate::satellites::SatelliteAction;
 use crate::session::{EndReason, GateVisit, SessionRecord};
 use crate::settings::Settings;
 use crate::sites::SiteRule;
-use crate::timer::TimerSettings;
+use crate::timer::{Strictness, TimerSettings};
 
 #[tauri::command]
 pub fn snapshot(app: AppHandle) -> Snapshot {
@@ -96,6 +97,70 @@ pub fn set_profile_apps(app: AppHandle, profile_id: String, apps: Vec<AppRule>) 
 #[tauri::command]
 pub fn set_profile_sites(app: AppHandle, profile_id: String, sites: Vec<SiteRule>) -> Result<()> {
     crate::engine(&app).set_profile_sites(&profile_id, sites, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
+/// Whether the blocker's helper is installed and running, for Settings.
+#[tauri::command]
+pub async fn blocker_status() -> BlockerStatus {
+    let status = tauri::async_runtime::spawn_blocking(crate::blocker::status).await;
+    status.unwrap_or(BlockerStatus {
+        supported: false,
+        installed: false,
+        running: false,
+        up_to_date: false,
+    })
+}
+
+/// Installs or updates the blocker's helper. macOS asks for an administrator's password in its
+/// own dialog; Lock In never sees it.
+#[tauri::command]
+pub async fn install_blocker(app: AppHandle) -> Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        let installed = tauri::async_runtime::spawn_blocking(crate::blocker::install).await;
+        installed
+            .map_err(|error| Error::Blocker(error.to_string()))?
+            .map_err(Error::Blocker)?;
+        // The helper takes a moment to start, and the app checks in again within a minute anyway.
+        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+        crate::resync_blocker(&app);
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Err(Error::Blocker(
+            "blocking without the extension is macOS only for now".into(),
+        ))
+    }
+}
+
+/// Removes the blocker's helper and turns the setting off. Not while a Hard session is relying
+/// on it.
+#[tauri::command]
+pub async fn remove_blocker(app: AppHandle) -> Result<()> {
+    {
+        let engine = crate::engine(&app);
+        let hard = engine.session().and_then(|s| s.lock(crate::now_ms())) == Some(Strictness::Hard);
+        if hard && engine.settings().block_without_extension {
+            return Err(Error::Locked);
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let removed = tauri::async_runtime::spawn_blocking(crate::blocker::remove).await;
+        removed
+            .map_err(|error| Error::Blocker(error.to_string()))?
+            .map_err(Error::Blocker)?;
+    }
+    let settings = Settings {
+        block_without_extension: false,
+        ..crate::engine(&app).settings().clone()
+    };
+    crate::engine(&app).set_settings(settings, crate::now_ms())?;
+    crate::resync_blocker(&app);
     crate::changed(&app);
     Ok(())
 }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { KnownBrowser, Settings } from '@lock-in/core';
+import type { BlockerStatus, KnownBrowser, Settings } from '@lock-in/core';
 import { glowFor, nextGlow, unlockedGlows } from '@lock-in/core';
-import { computed } from 'vue';
-import { mac } from '../app';
+import { computed, onMounted, ref } from 'vue';
+import { blockerStatus, installBlocker, mac, removeBlocker } from '../app';
 import GlowPicker from './GlowPicker.vue';
 import HotkeyField from './HotkeyField.vue';
 import NumberField from './NumberField.vue';
@@ -28,8 +28,50 @@ const emit = defineEmits<{
 const development = import.meta.env.DEV;
 
 // The sections are numbered in order, like the weekly report's.
-const sections = ['sessions', 'satellites', 'browsers', 'sky', 'glow', 'tour', ...(development ? ['sample'] : [])];
-const numbered = (section: string) => String(sections.indexOf(section) + 1).padStart(2, '0');
+const blocker = ref<BlockerStatus>();
+const sections = computed(() => [
+  'sessions',
+  'satellites',
+  'browsers',
+  ...(blocker.value?.supported ? ['blocking'] : []),
+  'sky',
+  'glow',
+  'tour',
+  ...(development ? ['sample'] : []),
+]);
+const numbered = (section: string) => String(sections.value.indexOf(section) + 1).padStart(2, '0');
+
+// Blocking without the extension needs a small helper, installed only when it's turned on. macOS
+// asks for an administrator's password then, in its own dialog.
+const blockerBusy = ref(false);
+const blockerProblem = ref('');
+const checkBlocker = async () => (blocker.value = await blockerStatus());
+onMounted(() => void checkBlocker());
+
+async function withBlocker(action: () => Promise<void>) {
+  blockerBusy.value = true;
+  blockerProblem.value = '';
+  try {
+    await action();
+  } catch (reason) {
+    const message = String(reason);
+    blockerProblem.value = message.includes('canceled')
+      ? 'Nothing changed: the password prompt was canceled.'
+      : `That didn't work: ${message}`;
+  } finally {
+    blockerBusy.value = false;
+    await checkBlocker();
+  }
+}
+
+function setBlocking(on: boolean) {
+  if (!on) return save({ blockWithoutExtension: false });
+  void withBlocker(async () => {
+    const status = blocker.value;
+    if (!status?.installed || !status.upToDate || !status.running) await installBlocker();
+    save({ blockWithoutExtension: true });
+  });
+}
 
 function save(patch: Partial<Settings>) {
   emit('update:settings', { ...props.settings, ...patch });
@@ -142,6 +184,51 @@ const glowHelp = computed(() => {
           broken. During a Hard session this can't be turned off.
         </p>
       </div>
+    </section>
+
+    <section v-if="blocker?.supported" class="read" aria-labelledby="blocking">
+      <h2 id="blocking" class="mono">{{ numbered('blocking') }} — Blocking without the extension</h2>
+      <div class="field">
+        <ToggleSwitch
+          label="Block restricted sites in every browser and app"
+          :disabled="blockerBusy"
+          :model-value="settings.blockWithoutExtension"
+          @update:model-value="setBlocking"
+        />
+        <p class="help">
+          For when you just want sites shut, with or without the extension. During a session, the profile's Restricted
+          sites can't be reached from any browser or app, Safari included. Whole sites only: Tamed and Redirected sites,
+          page rules and Lock In's own pages still need the extension. Tabs already open can keep working for a minute.
+        </p>
+        <p class="help">
+          Turning it on installs a small helper, so macOS asks for your password once. It only edits Lock In's own lines
+          in the system's list of sites, and if Lock In stops checking in for five minutes, it unblocks everything by
+          itself.<template v-if="settings.blockWithoutExtension">
+            During a Hard session this can't be turned off.</template
+          >
+        </p>
+      </div>
+      <p v-if="blocker.installed" class="mono status-line">
+        <span class="dot" :class="{ off: !blocker.running }" aria-hidden="true" />
+        Helper
+        {{ blocker.running ? (blocker.upToDate ? 'running' : 'running an older version') : 'installed, not running' }}
+      </p>
+      <div v-if="blocker.installed" class="keys">
+        <button
+          v-if="!blocker.upToDate || !blocker.running"
+          class="key"
+          type="button"
+          :disabled="blockerBusy"
+          @click="withBlocker(installBlocker)"
+        >
+          {{ blocker.running ? 'Update the helper' : 'Reinstall the helper' }}
+        </button>
+        <button class="key" type="button" :disabled="blockerBusy" @click="withBlocker(removeBlocker)">
+          Remove the helper
+        </button>
+      </div>
+      <p v-if="blockerBusy" class="help">Waiting for macOS…</p>
+      <p v-if="blockerProblem" class="help problem" role="alert">{{ blockerProblem }}</p>
     </section>
 
     <section class="read" aria-labelledby="sky">
@@ -278,6 +365,30 @@ h2 {
 .key:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* The blocker's helper: whether it's running, and keys to update or remove it. */
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 8px;
+}
+
+.dot.off {
+  --c: var(--faint);
+}
+
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.problem {
+  margin-bottom: 10px;
+  color: var(--glint);
 }
 
 .none {

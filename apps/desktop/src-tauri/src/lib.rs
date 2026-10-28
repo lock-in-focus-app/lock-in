@@ -1,4 +1,5 @@
 mod apps;
+pub mod blocker;
 pub mod bridge;
 mod browsers;
 mod calendar;
@@ -99,12 +100,88 @@ pub(crate) fn changed(app: &AppHandle) {
     );
     watch_session(app, session.as_ref().map(|s| s.id.clone()));
     wake_watch(app);
+    sync_blocker(app);
     schedule_timer(app, session, snapshot.session.map(|s| s.profile_name));
 }
 
 /// The running session's check on its browsers and apps, and the session it's for.
 #[derive(Default)]
 struct WatchTask(Mutex<Option<(String, JoinHandle<()>)>>);
+
+/// What the blocker's helper was last asked to block, and the task that keeps asking while it
+/// blocks anything, so it knows the app is still there (blocker.rs).
+#[derive(Default)]
+struct BlockerTask(Mutex<Blocking>);
+
+#[derive(Default)]
+struct Blocking {
+    sent: Option<Vec<String>>,
+    task: Option<JoinHandle<()>>,
+}
+
+/// Has the blocker's helper block the running session's restricted sites, if blocking without
+/// the extension is on, and unblock them once it ends or the setting is turned off. Nothing is
+/// sent to a helper that was never needed.
+pub(crate) fn sync_blocker(app: &AppHandle) {
+    let (on, wanted) = {
+        let engine = engine(app);
+        let on = engine.settings().block_without_extension;
+        let profile = engine
+            .session()
+            .and_then(|s| engine.synced().0.value.iter().find(|p| p.id == s.profile_id));
+        let domains = profile
+            .filter(|_| on)
+            .map(blocker::restricted_domains)
+            .unwrap_or_default();
+        (on, blocker::hostnames_for(&domains))
+    };
+    let state = app.state::<BlockerTask>();
+    let mut blocking = state.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if blocking.sent.as_ref() == Some(&wanted) {
+        return;
+    }
+    let was_blocking = blocking.sent.as_ref().is_some_and(|names| !names.is_empty());
+    blocking.sent = Some(wanted.clone());
+    if let Some(previous) = blocking.task.take() {
+        previous.abort();
+    }
+    if !on && !was_blocking {
+        return;
+    }
+    blocking.task = Some(tauri::async_runtime::spawn(async move {
+        let request = blocker::Request::Block { hostnames: wanted };
+        let request = Arc::new(request);
+        loop {
+            let sending = Arc::clone(&request);
+            let sent = tauri::async_runtime::spawn_blocking(move || blocker::send(&sending)).await;
+            match sent {
+                Ok(Ok(response)) if !response.ok => {
+                    eprintln!(
+                        "Lock In: the blocker couldn't update: {}",
+                        response.error.unwrap_or_default()
+                    );
+                }
+                Ok(Err(error)) => eprintln!("Lock In: couldn't reach the blocker: {error}"),
+                _ => {}
+            }
+            let blocking = matches!(&*request, blocker::Request::Block { hostnames } if !hostnames.is_empty());
+            if !blocking {
+                return;
+            }
+            tokio::time::sleep(Duration::from_secs(blocker::CHECK_IN_SECS)).await;
+        }
+    }));
+}
+
+/// Asks the helper again, e.g. once it's been installed.
+pub(crate) fn resync_blocker(app: &AppHandle) {
+    app.state::<BlockerTask>()
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .sent = None;
+    sync_blocker(app);
+}
 
 /// Wakes the session's check on browsers and apps. Wake-ups that come while it's busy aren't
 /// lost: the next wait returns straight away.
@@ -448,6 +525,7 @@ pub fn run() {
             app.manage(TimerTask::default());
             app.manage(IdleTask::default());
             app.manage(WatchTask::default());
+            app.manage(BlockerTask::default());
             let wake = WatchWake::default();
             launches::listen(Arc::clone(&wake.0));
             app.manage(wake);
@@ -464,6 +542,7 @@ pub fn run() {
             );
             watch_session(app.handle(), session.as_ref().map(|s| s.id.clone()));
             schedule_timer(app.handle(), session, snapshot.session.map(|s| s.profile_name));
+            sync_blocker(app.handle());
             tauri::async_runtime::spawn(link::serve(app.handle().clone()));
             match std::env::current_exe() {
                 Ok(executable) => {
@@ -516,6 +595,9 @@ pub fn run() {
             commands::forget_browser,
             commands::set_profile_apps,
             commands::set_profile_sites,
+            commands::blocker_status,
+            commands::install_blocker,
+            commands::remove_blocker,
             commands::installed_apps,
             commands::launch_satellite,
             commands::act_on_satellite,

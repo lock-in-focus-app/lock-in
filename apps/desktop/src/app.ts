@@ -1,6 +1,7 @@
 import type {
   Activity,
   AppRule,
+  BlockerStatus,
   ConstellationName,
   GateVisitRecord,
   GlowColor,
@@ -57,6 +58,12 @@ export const setProfileTimer = (profileId: string, timer: TimerSettings) =>
 
 export const setProfileApps = (profileId: string, apps: AppRule[]) =>
   invoke<void>('set_profile_apps', { profileId, apps });
+
+// Blocking without the extension (blocker.rs). Installing and removing ask for an
+// administrator's password in macOS's own dialog.
+export const blockerStatus = () => invoke<BlockerStatus>('blocker_status');
+export const installBlocker = () => invoke<void>('install_blocker');
+export const removeBlocker = () => invoke<void>('remove_blocker');
 
 export const setProfileSites = (profileId: string, sites: SiteRule[]) =>
   invoke<void>('set_profile_sites', { profileId, sites });

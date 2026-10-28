@@ -323,6 +323,7 @@ Insights are all computed locally.
 - **Shared:** `packages/core` holds the TS types and JSON schemas for Profile, Recipe, Session, RewardEvent and Satellite, plus shared logic. The Rust side mirrors the types; generate them from Rust with `ts-rs`/`specta` so the two never drift.
 - **Storage:** local SQLite in the desktop app; `storage.local` in the extension, mirrored from the app.
 - **Link between the two:** browser **Native Messaging**. The desktop app is the source of truth for the active session; the extension applies it and reports events back. **The extension is also a first-class standalone product**: it runs sessions, profiles, recipes and redirects entirely on its own, so people can install just the extension. The desktop app adds app blocking, stronger enforcement, Satellites hotkey, and the sky.
+- **Blocking without the extension** (macOS first; `blocker.rs`): an opt-in setting in the app (Settings › Blocking without the extension) that keeps a running session's **Restricted** sites from loading in every browser and app, Safari included, for people who just want sites shut. It writes a marked "Lock In" section of `/etc/hosts` (each site, `www.` and `m.`), so it's whole sites only: taming, page rules, Redirected sites and Lock In's own pages still need the extension. It runs alongside a linked extension too. Editing that file needs root, so a tiny helper does it: the app's own executable, copied to `/Library/PrivilegedHelperTools` and run by launchd with `--blocker --uid <installer>`. It's installed only when the setting is first turned on (macOS asks for an administrator's password in its own dialog, via `osascript … with administrator privileges`), and Settings can update or remove it. It only accepts requests over its socket from the person who installed it (checked with `getpeereid`), checks every name itself, writes the file atomically and flushes macOS's DNS cache. The app checks in every minute while blocking; after five quiet minutes (it quit, crashed or was deleted) the helper unblocks everything, and it starts each run unblocked. During a Hard session the setting can't be turned off or the helper removed. Later: once builds are signed, install through `SMAppService` so the system checks the helper's signature (today the copy comes from wherever the app sits); Windows and Linux helpers.
 
 ### Performance & battery budget (a hard requirement)
 - **Menu-bar resident:** closing the window *destroys* the webview, so only the small Rust core stays running. The UI reopens on demand.
@@ -445,6 +446,7 @@ Built in slices, one PR each:
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - Optional daily quote fetch.
 - Export/import.
+- ✅ Blocking without the extension, macOS first (§8). Windows and Linux later.
 - Signed builds: macOS notarization requires a paid Apple account, while unsigned builds work with a Gatekeeper warning. Also publish to the Chrome Web Store and Firefox Add-ons.
 
 **Phase 6: Website, community sky & sync**
