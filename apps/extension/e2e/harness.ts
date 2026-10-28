@@ -137,6 +137,7 @@ export interface Stored {
   ownQuotes?: OwnQuote[];
   satellites?: Satellite[];
   syncedAt?: { profiles: number; activeSession: number };
+  tourOffered?: boolean;
 }
 
 /** Everything in the extension's local storage, read from one of its pages. */

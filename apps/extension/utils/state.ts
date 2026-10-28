@@ -43,6 +43,11 @@ export const syncedAt = storage.defineItem<{ profiles: number; activeSession: nu
   fallback: { profiles: 0, activeSession: 0 },
 });
 
+/** Whether the tour for new users has been offered (taken or turned down), so the popup offers it once. */
+export const tourOffered = storage.defineItem<boolean>('local:tourOffered', {
+  fallback: false,
+});
+
 /** Whether the desktop app is linked right now. Kept in session storage, so it starts off false. */
 export const desktopLinked = storage.defineItem<boolean>('session:desktopLinked', {
   fallback: false,

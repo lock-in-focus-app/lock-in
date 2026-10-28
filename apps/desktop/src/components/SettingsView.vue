@@ -20,13 +20,15 @@ const emit = defineEmits<{
   'update:settings': [settings: Settings];
   'forget-browser': [path: string];
   'sample-data': [action: 'add' | 'remove'];
+  /** Take the tour for new users again. */
+  tour: [];
   close: [];
 }>();
 // Sample data is for trying the app while developing it, so release builds don't offer it.
 const development = import.meta.env.DEV;
 
 // The sections are numbered in order, like the weekly report's.
-const sections = ['sessions', 'satellites', 'browsers', 'sky', 'glow', ...(development ? ['sample'] : [])];
+const sections = ['sessions', 'satellites', 'browsers', 'sky', 'glow', 'tour', ...(development ? ['sample'] : [])];
 const numbered = (section: string) => String(sections.indexOf(section) + 1).padStart(2, '0');
 
 function save(patch: Partial<Settings>) {
@@ -103,7 +105,7 @@ const glowHelp = computed(() => {
       </div>
     </section>
 
-    <section class="read" aria-labelledby="browsers">
+    <section class="read" aria-labelledby="browsers" data-tour="browsers">
       <h2 id="browsers" class="mono">{{ numbered('browsers') }} — Browsers</h2>
       <ul v-if="browsers.length" class="browsers">
         <li v-for="browser in browsers" :key="browser.path">
@@ -168,6 +170,17 @@ const glowHelp = computed(() => {
           <GlowPicker :glows="glows" :picked="glow.id" @pick="save({ glow: $event })" />
         </div>
         <p class="help">{{ glowHelp }}</p>
+      </div>
+    </section>
+
+    <section class="read" aria-labelledby="tour">
+      <h2 id="tour" class="mono">{{ numbered('tour') }} — Tour</h2>
+      <div class="field">
+        <div class="line">
+          A quick look around
+          <button class="key" type="button" @click="emit('tour')">Take the tour</button>
+        </div>
+        <p class="help">Five short steps: the sky, starting a session, profiles, satellites and your browser.</p>
       </div>
     </section>
 

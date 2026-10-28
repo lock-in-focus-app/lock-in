@@ -99,6 +99,9 @@ export const skyState = () => invoke<SkyState>('sky_state');
 /** Notes that the Sky has shown everything up to `at` (epoch ms), so each plays once. */
 export const skySeen = (at: number) => invoke<void>('sky_seen', { at });
 
+/** Notes that the tour for new users has been offered, so the Sky doesn't offer it again. */
+export const markTourOffered = () => invoke<void>('tour_offered');
+
 /** Trips to redirected sites that went back to focus, oldest first, for comets. */
 export const turnedBack = () => invoke<GateVisitRecord[]>('turned_back');
 

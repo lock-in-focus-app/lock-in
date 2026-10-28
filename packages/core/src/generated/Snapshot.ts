@@ -27,7 +27,7 @@ canHideApps: boolean,
  */
 satellites: Array<Satellite>, 
 /**
- * Whether a satellite has ever been launched, here or in the browser. Until one is, the
- * launch box says what satellites are (PLAN §4).
+ * Whether the tour for new users has been offered. Until it has, the Sky offers it once;
+ * after that it's only in Settings.
  */
-launchedSatellite: boolean, };
+tourOffered: boolean, };

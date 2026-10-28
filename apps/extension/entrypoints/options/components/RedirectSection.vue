@@ -98,7 +98,7 @@ function removeLink(id: string) {
     When {{ profile.name }} redirects a site, you land on a Lock In page instead. Pick which pages can show up; one is
     chosen at random each visit. Every page has a "Still need it?" link to the intention gate below.
   </p>
-  <ul class="list destinations">
+  <ul class="list destinations" data-tour="redirect">
     <li v-for="d in pages" :key="d.id">
       <label>
         <input

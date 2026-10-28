@@ -19,6 +19,7 @@ import {
   seeded,
   formatDuration,
   glowFor,
+  hotkeyLabel,
   lifetimeFocusMs,
   milkyWay,
   planets,
@@ -44,6 +45,8 @@ import {
   firstDayOfWeek,
   forgetBrowser,
   launchSatellite,
+  mac,
+  markTourOffered,
   nameConstellation,
   removeSampleData,
   sessionLog,
@@ -71,6 +74,7 @@ import NightSky, {
 import ProfileList from './components/ProfileList.vue';
 import SettingsView from './components/SettingsView.vue';
 import SkyPage from './components/SkyPage.vue';
+import TourGuide, { type TourStep } from './components/TourGuide.vue';
 import WeekReport from './components/WeekReport.vue';
 
 const snapshot = useSnapshot();
@@ -359,6 +363,54 @@ const satellites = computed(() => ({
   done: inState('done').sort((a, b) => b.stateAt - a.stateAt),
 }));
 const launch = (text: string) => run(async () => void (await launchSatellite(text)));
+
+// The tour for new users (PLAN Phase 5): the Sky offers it once, and Settings has it after that.
+// Each step goes to the page it's about.
+const touring = ref<number>();
+const tourSteps = computed<(TourStep & { view: View })[]>(() => {
+  const hotkey = snapshot.value?.settings.satelliteHotkey;
+  return [
+    {
+      view: 'sky',
+      target: 'sky',
+      title: 'The Sky',
+      text: "This is home. Each focus session adds a star to your sky, a week's stars join up into a constellation, and every focused minute earns stardust.",
+    },
+    {
+      view: 'sky',
+      target: 'start',
+      title: 'Start a session',
+      text: 'Pick a profile to lock in. Its timer floats here while it runs, and your first star comes after 5 minutes of focus.',
+    },
+    {
+      view: 'profiles',
+      target: 'profiles',
+      title: 'Profiles',
+      text: 'Each profile has its own timer, how strict it is (Gentle, Medium or Hard), apps to close or hide, and a star color. The sites it quiets are set in the browser extension: each one Allowed, Tamed, Redirected or Restricted.',
+    },
+    {
+      view: 'sky',
+      target: 'satellites',
+      title: 'Satellites',
+      text: `When a thought pulls at you, launch it here${hotkey ? ` (or with ${hotkeyLabel(hotkey, mac)} from any app)` : ''} and keep going. It waits in orbit while you focus, then comes back later to turn into a task or leave for later.`,
+    },
+    {
+      view: 'settings',
+      target: 'browsers',
+      title: 'Your browser',
+      text: 'Add the Lock In extension to your browser and it links to this app by itself, showing up here. Redirected sites then show a calm Lock In page instead, with a few minutes through if you need them. The tour is in Settings whenever you want it again.',
+    },
+  ];
+});
+watch(touring, (at) => {
+  if (at === undefined) return;
+  exploring.value = false;
+  view.value = tourSteps.value[at]!.view;
+});
+function takeTour(take = true) {
+  if (take) touring.value = 0;
+  if (!snapshot.value?.tourOffered) void run(markTourOffered);
+}
 const act = (id: string, action: SatelliteAction) => run(() => actOnSatellite(id, action));
 
 async function run(action: () => Promise<void>) {
@@ -396,7 +448,7 @@ async function run(action: () => Promise<void>) {
     <header :class="{ away: exploring }" :inert="exploring">
       <div class="row">
         <h1 class="mono"><span aria-hidden="true">✦ </span>Lock In</h1>
-        <span class="mono" title="Each session adds a star, and every focused minute earns stardust">
+        <span class="mono" title="Each session adds a star, and every focused minute earns stardust" data-tour="sky">
           Stars <b>{{ String(starCount).padStart(3, '0') }}</b> · Stardust <b>{{ totalStardust.toLocaleString() }}</b>
         </span>
       </div>
@@ -428,7 +480,7 @@ async function run(action: () => Promise<void>) {
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
           :satellite-hotkey="snapshot.settings.satelliteHotkey"
-          :launched-satellite="snapshot.launchedSatellite"
+          :offer-tour="!snapshot.tourOffered && touring === undefined"
           :star-count="starCount"
           :glance="glance"
           :stardust="totalStardust"
@@ -448,6 +500,7 @@ async function run(action: () => Promise<void>) {
           @zoom="(factor: number) => nightSky?.zoom(factor)"
           @recenter="nightSky?.recenter()"
           @rename="rename"
+          @tour="takeTour"
         />
         <ProfileList
           v-else-if="view === 'profiles'"
@@ -479,6 +532,7 @@ async function run(action: () => Promise<void>) {
           @update:settings="(settings: Settings) => run(() => setSettings(settings))"
           @forget-browser="(path: string) => run(() => forgetBrowser(path))"
           @sample-data="sampleData"
+          @tour="takeTour()"
           @close="view = 'sky'"
         />
       </div>
@@ -486,6 +540,7 @@ async function run(action: () => Promise<void>) {
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
   </main>
+  <TourGuide v-if="touring !== undefined" v-model:step="touring" :steps="tourSteps" @end="touring = undefined" />
 </template>
 
 <style scoped>

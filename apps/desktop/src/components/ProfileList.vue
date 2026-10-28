@@ -51,7 +51,7 @@ function summary(profile: ProfileSummary): string {
 <template>
   <section class="profiles" aria-labelledby="profiles-intro">
     <p id="profiles-intro" class="intro mono">How each session works · Sessions start from the Sky</p>
-    <div class="channels">
+    <div class="channels" data-tour="profiles">
       <div
         v-for="profile in profiles"
         :key="profile.id"

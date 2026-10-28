@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
-import { formatDuration, hotkeyLabel, starColorFor } from '@lock-in/core';
+import { formatDuration, starColorFor } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
-import { mac } from '../app';
 import ExploreView from './ExploreView.vue';
 import LaunchDock from './LaunchDock.vue';
 import SatelliteLaunch from './SatelliteLaunch.vue';
@@ -23,8 +22,8 @@ const props = defineProps<{
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   /** The satellite box's hotkey, for the launch box's hint. */
   satelliteHotkey: string;
-  /** Whether a satellite has ever been launched. Until one is, the launch box says what they are. */
-  launchedSatellite: boolean;
+  /** Whether to offer the tour for new users, which the Sky does once. */
+  offerTour: boolean;
   starCount: number;
   /** What the top of the page shows: the date, a quote for the day, time locked in today, and the streak running now. */
   glance: { date: string; quote?: { text: string; author?: string }; lockedInMs: number; streak: number };
@@ -54,6 +53,8 @@ const emit = defineEmits<{
   rename: [id: string, name: string];
   /** Show an earlier month's constellations on the Sky, or the latest (undefined). */
   month: [month: number | undefined];
+  /** The answer to the tour's offer: take it, or not. */
+  tour: [take: boolean];
 }>();
 
 // Stepping through the months, a month's constellations at a time.
@@ -120,6 +121,16 @@ watch(
               · Streak <b>{{ glance.streak }} days</b></span
             >
           </p>
+          <!-- Offered once, the first time the Sky shows, and in Settings after that. -->
+          <Unfold>
+            <div v-if="offerTour && !session" class="card offer">
+              <span class="mono">✦ New here? · <b>1-min tour</b></span>
+              <span class="keys">
+                <button class="key next" type="button" @click="emit('tour', true)">Take the tour</button>
+                <button class="key" type="button" @click="emit('tour', false)">No thanks</button>
+              </span>
+            </div>
+          </Unfold>
         </header>
 
         <div class="middle">
@@ -137,7 +148,7 @@ watch(
 
         <!-- Thoughts for later, together: what came back after the last session, the task list
              (opened from Tasks below), and the launch box. -->
-        <div class="card thoughts">
+        <div class="card thoughts" data-tour="satellites">
           <!-- The thoughts in orbit circle the frame. The orbits only just reach past it, to stay
                in the window and clear of the profiles above. -->
           <SatelliteOrbits
@@ -162,22 +173,6 @@ watch(
                 @act="(id, action) => emit('act', id, action)"
               />
             </div>
-          </Unfold>
-          <!-- Until the first satellite, a quiet line on what they are, with one circling the
-               timer. It folds away once one is launched. -->
-          <Unfold>
-            <p v-if="!launchedSatellite" class="part first">
-              <span class="emblem" aria-hidden="true"
-                ><span><span /></span
-              ></span>
-              <span>
-                <b class="mono">Satellites · thoughts for later</b><br />
-                Launch a passing thought here and it waits in orbit until your session ends.
-                <template v-if="satelliteHotkey"
-                  >{{ hotkeyLabel(satelliteHotkey, mac) }} launches one from anywhere.</template
-                >
-              </span>
-            </p>
           </Unfold>
           <SatelliteLaunch :session-running="!!session" :hotkey="satelliteHotkey" @launch="emit('launch', $event)" />
         </div>
@@ -320,81 +315,31 @@ figcaption::before {
   border-bottom: 1px solid var(--line);
 }
 
-.first {
-  display: flex;
-  gap: 10px;
-  margin: 0;
-  color: var(--dim);
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-
-.first .mono {
-  font-weight: 400;
-}
-
-/* A tiny satellite circling a dot for the timer, on a flat orbit. */
-.emblem {
-  position: relative;
-  flex: none;
-  width: 22px;
-  height: 22px;
-  margin-top: 4px;
-}
-
-.emblem::before {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  border-radius: 50%;
-  background: var(--glint);
-  box-shadow: 0 0 6px var(--glint);
-}
-
-.emblem span {
-  position: absolute;
-  inset: 0;
-}
-
-/* Turning a circle and squashing it makes the orbit. */
-.emblem > span {
-  scale: 1 0.45;
-}
-
-.emblem span span {
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  animation: circle 9s linear infinite;
-}
-
-.emblem span span::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: calc(50% - 2px);
-  width: 4px;
-  height: 4px;
-  border-radius: 1px;
-  background: linear-gradient(#f6ead0, #bfa874);
-  box-shadow: 0 0 5px rgb(225 230 255 / 0.4);
-}
-
-/* It rests while the window isn't focused, to save battery (app.ts). */
-:root.resting .emblem span span {
-  animation-play-state: paused;
-}
-
-@keyframes circle {
-  to {
-    rotate: 1turn;
-  }
-}
-
 .middle {
   flex: 1;
   min-height: 0;
   display: grid;
   place-items: center;
+}
+
+.offer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 6px 8px 6px 11px;
+  white-space: nowrap;
+}
+
+.offer .keys {
+  display: flex;
+  gap: 6px;
+}
+
+.offer .next {
+  color: var(--starlight);
+  border-color: var(--tick);
 }
 
 /* Explore on the left, the month in the middle and the tasks on the right. */
@@ -501,10 +446,6 @@ figcaption::before {
 
   .caret {
     transition: none;
-  }
-
-  .emblem span span {
-    animation: none;
   }
 }
 </style>

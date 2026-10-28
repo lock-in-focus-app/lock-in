@@ -11,7 +11,7 @@ const strictness: Record<Strictness, string> = { gentle: 'Gentle', medium: 'Medi
 </script>
 
 <template>
-  <section class="dock" aria-labelledby="start-a-session">
+  <section class="dock" aria-labelledby="start-a-session" data-tour="start">
     <div class="label">
       <span id="start-a-session" class="mono">▶ Start a session</span>
       <span class="mono">{{ firstStar ? 'First star after 5 min of focus' : 'Pick a profile' }}</span>

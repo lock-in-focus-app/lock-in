@@ -524,6 +524,7 @@ pub fn run() {
             commands::name_constellation,
             commands::sky_state,
             commands::sky_seen,
+            commands::tour_offered,
             commands::turned_back,
             commands::add_sample_data,
             commands::remove_sample_data,
