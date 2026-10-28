@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>B · Bento drift</title>
+    <style>
+      :root {
+        --starlight: #f5f3ec;
+        --dim: #aab2cc;
+        --faint: #7a83a3;
+        --tile: rgb(38 46 82 / 0.42);
+        --tile-hi: rgb(50 60 104 / 0.5);
+        --edge: rgb(255 255 255 / 0.11);
+        --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #060914;
+        color: var(--starlight);
+        font:
+          13px/1.4 system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      #sky {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Frosted tiles: lighter glass, big radii and soft, wide shadows. */
+      .tile {
+        position: relative;
+        border-radius: 22px;
+        border: 1px solid var(--edge);
+        background: linear-gradient(170deg, var(--tile-hi), var(--tile));
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.09),
+          0 30px 60px -30px rgb(0 0 0 / 0.85),
+          0 8px 20px -14px rgb(0 0 0 / 0.6);
+        -webkit-backdrop-filter: blur(22px) saturate(1.5);
+        backdrop-filter: blur(22px) saturate(1.5);
+        padding: 14px 15px;
+        transition:
+          translate 600ms var(--ease),
+          border-color 400ms;
+      }
+      button.tile {
+        text-align: left;
+      }
+      button.tile:hover {
+        translate: 0 -3px;
+        border-color: rgb(255 255 255 / 0.2);
+      }
+      /* One accent tile in a star color, like the floating boxes' green card. */
+      .accent {
+        --c: #cfe0ff;
+        background:
+          radial-gradient(140% 100% at 100% 0%, color-mix(in srgb, var(--c) 30%, transparent), transparent 60%),
+          linear-gradient(160deg, color-mix(in srgb, var(--c) 34%, #121a38), color-mix(in srgb, var(--c) 10%, #0b1022));
+        border-color: color-mix(in srgb, var(--c) 30%, transparent);
+      }
+      .eyebrow {
+        margin: 0;
+        color: var(--dim);
+        font-size: 11px;
+        letter-spacing: 0.01em;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 9px;
+        border-radius: 99px;
+        border: 1px solid var(--edge);
+        background: rgb(255 255 255 / 0.07);
+        color: var(--dim);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .chip.up {
+        color: #9fe3c9;
+        border-color: rgb(159 227 201 / 0.25);
+        background: rgb(159 227 201 / 0.1);
+      }
+
+      .app {
+        position: fixed;
+        inset: 0;
+      }
+      .top {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px 0;
+        transition:
+          opacity 700ms,
+          filter 700ms;
+      }
+      .date small {
+        display: block;
+        color: var(--dim);
+        font-size: 11px;
+      }
+      .date b {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .tabs {
+        position: relative;
+        display: flex;
+        padding: 3px;
+        border-radius: 99px;
+        border: 1px solid var(--edge);
+        background: rgb(30 36 66 / 0.5);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+      }
+      .pill {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: 0;
+        border-radius: 99px;
+        background: rgb(245 243 236 / 0.95);
+        box-shadow: 0 4px 14px -4px rgb(245 243 236 / 0.5);
+        transition:
+          translate 500ms var(--ease),
+          width 500ms var(--ease);
+      }
+      .tab {
+        position: relative;
+        padding: 5px 10px;
+        border-radius: 99px;
+        color: var(--dim);
+        font-size: 11.5px;
+        transition: color 400ms;
+      }
+      .tab[aria-current='page'] {
+        color: #0c1020;
+        font-weight: 600;
+      }
+      .tab:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
+      .view {
+        position: absolute;
+        top: 64px;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        padding: 0 16px 16px;
+        visibility: hidden;
+        transition: visibility 0s 700ms;
+      }
+      .app[data-state='home'] .home,
+      .app[data-state='session'] .session,
+      .app[data-state='week'] .week,
+      .app[data-state='explore'] .explore {
+        visibility: visible;
+        transition-delay: 0s;
+      }
+      /* Each tile floats up into place a little after the one before. */
+      .float {
+        opacity: 0;
+        translate: 0 22px;
+        scale: 0.98;
+        transition:
+          opacity 500ms ease,
+          translate 800ms var(--ease),
+          scale 800ms var(--ease);
+      }
+      .app[data-state='home'] .home .float,
+      .app[data-state='session'] .session .float,
+      .app[data-state='week'] .week .float,
+      .app[data-state='explore'] .explore .float {
+        opacity: 1;
+        translate: 0 0;
+        scale: 1;
+        transition-delay: calc(var(--i, 0) * 70ms + 150ms);
+      }
+
+      /* Sky home */
+      .home,
+      .session {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .skyband {
+        flex: 1;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding: 0 2px 2px;
+      }
+      .bento {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 10px;
+      }
+      .start {
+        grid-row: span 2;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 128px;
+      }
+      .start h2 {
+        margin: 2px 0 0;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .start .meta {
+        color: var(--dim);
+        font-size: 11.5px;
+      }
+      .go {
+        align-self: flex-end;
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        margin-top: -30px;
+        border-radius: 50%;
+        background: var(--starlight);
+        color: #0c1020;
+        box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--c) 80%, transparent);
+      }
+      .small-profile {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 11px 11px 11px 12px;
+      }
+      .small-profile .star {
+        width: 26px;
+        height: 26px;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        background: color-mix(in srgb, var(--c) 18%, transparent);
+        color: var(--c);
+        text-shadow: 0 0 8px var(--c);
+        font-size: 12px;
+      }
+      .small-profile b {
+        display: block;
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+      .small-profile small {
+        color: var(--dim);
+        font-size: 11px;
+      }
+      .back {
+        grid-column: span 2;
+        padding: 12px 14px;
+      }
+      .back header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .back ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .back li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        font-size: 12.5px;
+      }
+      .back li + li {
+        border-top: 1px solid rgb(255 255 255 / 0.06);
+      }
+      .back li span {
+        flex: 1;
+      }
+      .mini {
+        padding: 3px 8px;
+        border-radius: 99px;
+        font-size: 11px;
+        color: var(--dim);
+        background: rgb(255 255 255 / 0.06);
+      }
+      .mini:hover {
+        color: var(--starlight);
+        background: rgb(255 255 255 / 0.12);
+      }
+      .launch {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 6px 6px 14px;
+        border-radius: 99px;
+      }
+      .launch input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: none;
+        font-size: 12.5px;
+      }
+      .launch input::placeholder {
+        color: var(--faint);
+      }
+      .launch button {
+        padding: 7px 13px;
+        border-radius: 99px;
+        background: rgb(255 255 255 / 0.1);
+        font-size: 12px;
+      }
+
+      /* Session */
+      .clock-tile {
+        --c: #cfe0ff;
+        display: grid;
+        gap: 2px;
+        padding: 16px 18px;
+      }
+      .clock-tile .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .clock {
+        font-size: 60px;
+        font-weight: 300;
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+        font-variant-numeric: tabular-nums;
+      }
+      .ring {
+        width: 58px;
+        height: 58px;
+      }
+      .ring circle {
+        fill: none;
+        stroke-width: 4;
+      }
+      .end {
+        justify-self: start;
+        margin-top: 8px;
+        padding: 6px 12px;
+        border-radius: 99px;
+        background: rgb(255 255 255 / 0.08);
+        font-size: 12px;
+        color: var(--dim);
+      }
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .fact {
+        padding: 11px 12px;
+      }
+      .fact b {
+        display: block;
+        font-size: 20px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+      }
+
+      /* Explore */
+      .explore {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        top: 0;
+      }
+      .explore-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 6px 6px 14px;
+        border-radius: 99px;
+      }
+      .app[data-state='explore'] .top {
+        opacity: 0;
+        filter: blur(6px);
+        pointer-events: none;
+      }
+
+      /* Weekly report */
+      .week {
+        overflow-y: auto;
+        scrollbar-width: none;
+        padding-bottom: 20px;
+        -webkit-mask-image: linear-gradient(transparent, #000 14px);
+        mask-image: linear-gradient(transparent, #000 14px);
+      }
+      .weekhead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        margin: 4px 0 0;
+      }
+      .arrows {
+        display: flex;
+        gap: 4px;
+      }
+      .arrow {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1px solid var(--edge);
+        background: rgb(30 36 66 / 0.5);
+        color: var(--dim);
+      }
+      .heron {
+        display: flex;
+        justify-content: center;
+        margin: 64px 0 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .span {
+        grid-column: span 2;
+      }
+      .num {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 4px 8px;
+        margin: 4px 0 2px;
+      }
+      .num b {
+        font-size: 34px;
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1;
+      }
+      .num.sm b {
+        font-size: 28px;
+      }
+      .vs {
+        color: var(--dim);
+        font-size: 11px;
+      }
+      .vs strong {
+        display: block;
+        color: var(--starlight);
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .bars {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        align-items: end;
+        gap: 6px;
+        height: 104px;
+        margin-top: 30px;
+      }
+      .bar {
+        position: relative;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+      }
+      .bar .last {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 1px dashed rgb(255 255 255 / 0.18);
+        border-bottom: 0;
+        border-radius: 6px 6px 0 0;
+      }
+      .bar .this {
+        width: 100%;
+        border-radius: 6px 6px 2px 2px;
+        background: repeating-linear-gradient(-45deg, rgb(245 200 107 / 0.55) 0 2px, rgb(245 200 107 / 0.12) 2px 6px);
+        border-top: 2px solid rgb(245 200 107 / 0.8);
+      }
+      .bar.peak .this {
+        background: linear-gradient(180deg, #f5c86b, rgb(245 200 107 / 0.55));
+        box-shadow: 0 0 18px -2px rgb(245 200 107 / 0.55);
+        border: 0;
+      }
+      .bar .tip {
+        position: absolute;
+        bottom: calc(var(--h) + 8px);
+        left: 50%;
+        translate: -50% 0;
+        white-space: nowrap;
+        z-index: 1;
+      }
+      .daylabels {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        margin-top: 6px;
+        color: var(--faint);
+        font-size: 10px;
+        text-align: center;
+      }
+      .legend {
+        display: flex;
+        gap: 12px;
+        margin-top: 10px;
+        color: var(--faint);
+        font-size: 10.5px;
+      }
+      .legend i {
+        display: inline-block;
+        width: 10px;
+        height: 8px;
+        margin-right: 4px;
+        border-radius: 2px;
+        vertical-align: -1px;
+      }
+      .share {
+        display: grid;
+        gap: 12px;
+        margin-top: 6px;
+      }
+      .share .head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12.5px;
+        margin-bottom: 5px;
+      }
+      .share .head span {
+        color: var(--dim);
+        font-size: 11.5px;
+      }
+      .segs {
+        display: grid;
+        grid-template-columns: repeat(40, 1fr);
+        gap: 2px;
+        height: 10px;
+      }
+      .segs i {
+        border-radius: 2px;
+        background: rgb(255 255 255 / 0.07);
+      }
+      .segs i.on {
+        background: var(--c);
+        box-shadow: 0 0 6px -1px var(--c);
+      }
+      .tiny {
+        margin: 8px 0 0;
+        color: var(--dim);
+        font-size: 11.5px;
+      }
+      .insight {
+        --c: #f5c86b;
+        min-height: 120px;
+      }
+      .insight p {
+        margin: 10px 0 0;
+        font-size: 15px;
+        line-height: 1.35;
+        letter-spacing: -0.01em;
+      }
+      .list {
+        list-style: none;
+        margin: 6px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      .list li {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12.5px;
+      }
+      .list li span {
+        color: var(--dim);
+      }
+
+      .section {
+        grid-column: span 2;
+        margin: 2px 2px -2px;
+        color: var(--dim);
+      }
+      .go {
+        width: auto;
+        height: auto;
+        padding: 7px 12px;
+        border-radius: 99px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .go-small {
+        margin-left: auto;
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgb(255 255 255 / 0.08);
+        color: var(--dim);
+        font-size: 9px;
+        transition:
+          background 400ms,
+          color 400ms;
+      }
+      .small-profile:hover .go-small,
+      .small-profile:focus-visible .go-small {
+        background: var(--starlight);
+        color: #0c1020;
+      }
+      .switcher {
+        display: flex;
+        padding: 2px;
+        border-radius: 99px;
+        background: rgb(255 255 255 / 0.05);
+      }
+      .switcher button {
+        padding: 3px 10px;
+        border-radius: 99px;
+        color: var(--dim);
+        font-size: 11px;
+        transition:
+          background 300ms,
+          color 300ms;
+      }
+      .switcher button[aria-selected='true'] {
+        background: rgb(255 255 255 / 0.12);
+        color: var(--starlight);
+      }
+      .back label {
+        flex: 1;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .back input {
+        accent-color: #8fd3f0;
+      }
+      :focus-visible {
+        outline: 2px solid rgb(207 224 255 / 0.7);
+        outline-offset: 2px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0s !important;
+          transition-delay: 0s !important;
+        }
+        .float {
+          translate: none;
+          scale: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <div class="app" data-state="home">
+      <header class="top">
+        <div class="date" id="date"><small>Wednesday</small><b>Oct 28</b></div>
+        <nav class="tabs" aria-label="Pages" id="tabs">
+          <span class="pill" aria-hidden="true"></span>
+          <button class="tab" data-go="home">Sky</button>
+          <button class="tab" data-go="week">Week</button>
+          <button class="tab">Profiles</button>
+          <button class="tab">Settings</button>
+        </nav>
+      </header>
+
+      <section class="view home" aria-label="Sky">
+        <div class="skyband float" style="--i: 0">
+          <span class="chip" title="Every session adds a star; stardust counts focused minutes"
+            >✦ 41 stars · 3,920 stardust</span
+          >
+          <button class="chip" data-go="explore" title="Clear the screen and look around the sky">
+            Explore the sky ↗
+          </button>
+        </div>
+        <div class="bento">
+          <p class="eyebrow section float" style="--i: 1">Start a session · pick a profile</p>
+          <button
+            class="tile accent start float"
+            style="--i: 1; --c: #cfe0ff"
+            data-go="session"
+            title="Start a Deep Work session"
+          >
+            <span>
+              <p class="eyebrow">Most used</p>
+              <h2>Deep Work</h2>
+              <span class="meta">50 min · Medium</span>
+            </span>
+            <span class="go">Start ▶</span>
+          </button>
+          <button
+            class="tile small-profile float"
+            style="--i: 2; --c: #f5c86b"
+            data-go="session"
+            title="Start a Writing session"
+          >
+            <span class="star">✦</span><span><b>Writing</b><small>45 min</small></span
+            ><span class="go-small">▶</span>
+          </button>
+          <button
+            class="tile small-profile float"
+            style="--i: 3; --c: #b9a7f5"
+            data-go="session"
+            title="Start a Wind Down session"
+          >
+            <span class="star">✦</span><span><b>Wind Down</b><small>No timer</small></span
+            ><span class="go-small">▶</span>
+          </button>
+          <div class="tile back float" style="--i: 4">
+            <header>
+              <span class="switcher" role="tablist" aria-label="Satellites">
+                <button role="tab" aria-selected="true" data-list="back">Came back · 2</button>
+                <button role="tab" aria-selected="false" data-list="tasks">Tasks · 3</button>
+              </span>
+            </header>
+            <ul id="back"></ul>
+            <ul id="tasklist" hidden></ul>
+          </div>
+        </div>
+        <form class="tile launch float" style="--i: 5" onsubmit="return false;">
+          <input
+            placeholder="Satellite: a thought for later…"
+            title="Satellites are thoughts parked until after your next session"
+            aria-label="Launch a satellite"
+          />
+          <button type="submit">Launch</button>
+        </form>
+      </section>
+
+      <section class="view session" aria-label="Session">
+        <div class="skyband float" style="--i: 0">
+          <span class="chip">✦ A star is forming</span>
+        </div>
+        <div class="tile accent clock-tile float" style="--i: 1">
+          <p class="eyebrow">Locked in · Deep Work</p>
+          <div class="row">
+            <span class="clock">31:12</span>
+            <svg class="ring" viewBox="0 0 58 58" aria-hidden="true">
+              <circle cx="29" cy="29" r="24" stroke="rgb(255 255 255 / 0.12)" />
+              <circle
+                cx="29"
+                cy="29"
+                r="24"
+                stroke="#cfe0ff"
+                stroke-linecap="round"
+                stroke-dasharray="150.8"
+                stroke-dashoffset="94"
+                transform="rotate(-90 29 29)"
+                style="filter: drop-shadow(0 0 4px #cfe0ff)"
+              />
+            </svg>
+          </div>
+          <p class="eyebrow">left of 50 min</p>
+          <button class="end" data-go="home">End early</button>
+          <p class="eyebrow" style="margin-top: 8px; font-size: 10.5px">
+            Medium: ending before 50 min asks you to type some random text first.
+          </p>
+        </div>
+        <div class="facts">
+          <div class="tile fact float" style="--i: 2" title="Thoughts you parked; they come back after this session">
+            <p class="eyebrow">In orbit</p>
+            <b>2</b>
+          </div>
+          <div class="tile fact float" style="--i: 3">
+            <p class="eyebrow">Started</p>
+            <b>9:40</b>
+          </div>
+          <div class="tile fact float" style="--i: 4" title="Emergency passes end a Hard session early">
+            <p class="eyebrow">Passes</p>
+            <b>1 left</b>
+          </div>
+        </div>
+        <form class="tile launch float" style="--i: 5" onsubmit="return false;">
+          <input placeholder="Launch a thought; it's back after this session" aria-label="Launch a satellite" />
+          <button type="submit">Launch</button>
+        </form>
+      </section>
+
+      <section class="view explore" aria-label="Explore">
+        <div class="tile explore-bar float">
+          <span class="eyebrow">41 stars · 7 weeks · 3 planets</span>
+          <button class="chip" data-go="home">Done exploring · Esc</button>
+        </div>
+      </section>
+
+      <section class="view week" aria-label="Your week">
+        <div class="weekhead float" style="--i: 0">
+          <div class="arrows">
+            <button class="arrow" title="Week before">‹</button><button class="arrow" title="Week after">›</button>
+          </div>
+          <span class="chip">compared to Oct 12 – 18 ▾</span>
+        </div>
+        <div class="heron float" style="--i: 1">
+          <span class="chip" style="color: var(--starlight)"
+            >✦ The Quiet Heron · <span style="color: var(--dim)">Rename</span></span
+          >
+        </div>
+        <div class="grid" id="report"></div>
+      </section>
+    </div>
+
+    <script src="sky.js"></script>
+    <script src="data.js"></script>
+    <script>
+      const D = LockData;
+      const R = D.report;
+      document.getElementById('back').innerHTML = D.back
+        .map(
+          (t) =>
+            `<li><span>${t}</span><button class="mini" title="Mark done">Done</button><button class="mini" title="Snooze until after your next session">Later</button><button class="mini" title="Move to the task list">Task</button><button class="mini" title="Delete">×</button></li>`,
+        )
+        .join('');
+      document.getElementById('tasklist').innerHTML = D.tasks
+        .map(
+          (t) =>
+            `<li><label><input type="checkbox" /> <span>${t}</span></label><button class="mini" title="Delete">×</button></li>`,
+        )
+        .join('');
+      // Came back and Tasks share the tile; a small switch flips between them.
+      for (const tab of document.querySelectorAll('.switcher button'))
+        tab.addEventListener('click', () => {
+          for (const t of document.querySelectorAll('.switcher button')) t.setAttribute('aria-selected', t === tab);
+          document.getElementById('back').hidden = tab.dataset.list !== 'back';
+          document.getElementById('tasklist').hidden = tab.dataset.list !== 'tasks';
+        });
+
+      const most = Math.max(...R.minutes, ...R.lastMinutes);
+      const fmt = (m) => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+      const totalMin = R.byProfile.reduce((a, p) => a + p.minutes, 0);
+      const items = [
+        `<section class="tile span float">
+          <p class="eyebrow">Focus</p>
+          <div class="num"><b>${R.focus}</b><span class="vs">vs last week<strong>+2h 05m</strong></span><span class="chip up" style="margin-left:auto;align-self:center">↑ 17%</span></div>
+          <div class="bars">${R.minutes
+            .map((m, i) => {
+              const h = (m / most) * 100;
+              const l = (R.lastMinutes[i] / most) * 100;
+              const peak = i === 3;
+              return `<div class="bar${peak ? ' peak' : ''}" style="--h:${h}%">
+                <span class="last" style="height:${l}%"></span>
+                <span class="this" style="height:${h}%"></span>
+                ${peak ? `<span class="chip tip" style="color:var(--starlight)">Peak · ${fmt(m)} <span style="color:#9fe3c9">+35m</span></span>` : ''}
+              </div>`;
+            })
+            .join('')}</div>
+          <div class="daylabels">${R.days.map((d) => `<span>${d}</span>`).join('')}</div>
+          <div class="legend"><span><i style="background:repeating-linear-gradient(-45deg,#f5c86b 0 2px,transparent 2px 4px)"></i>Oct 19 – 25</span><span><i style="border:1px dashed rgb(255 255 255 / .35)"></i>Oct 12 – 18</span></div>
+          <p class="tiny">${R.streak} · ${R.sessions}</p>
+        </section>`,
+        `<section class="tile span float">
+          <p class="eyebrow">By profile</p>
+          <div class="share">${R.byProfile
+            .map((p) => {
+              const on = Math.round((p.minutes / totalMin) * 40);
+              return `<div style="--c:${p.color}"><div class="head">${p.name}<span>${p.time} · ${p.sessions} sessions</span></div><div class="segs">${Array.from({ length: 40 }, (_, k) => `<i class="${k < on ? 'on' : ''}"></i>`).join('')}</div></div>`;
+            })
+            .join('')}</div>
+        </section>`,
+        `<section class="tile float">
+          <p class="eyebrow">Distractions</p>
+          <div class="num sm"><b>${R.trips}</b></div>
+          <span class="chip up">${R.tripsTrend} vs last</span>
+          <p class="tiny">Back to focus 15 of 23 times</p>
+        </section>`,
+        `<section class="tile float">
+          <p class="eyebrow">Satellites</p>
+          <div class="num sm"><b>${R.launched}</b></div>
+          <span class="chip">launched</span>
+          <p class="tiny">7 done · 3 on tasks</p>
+        </section>`,
+        `<section class="tile accent insight span float">
+          <span class="chip" style="color:var(--starlight)">✧ This week's pattern</span>
+          <p>${R.suggestions[0]}</p>
+        </section>`,
+        `<section class="tile span float">
+          <p class="eyebrow">In the sky</p>
+          <ul class="list">${R.sky.map((s) => `<li>${s.what}<span>${s.day}</span></li>`).join('')}</ul>
+        </section>`,
+        `<section class="tile span float">
+          <p class="eyebrow">Where the trips went</p>
+          <ul class="list">${R.sites.map((s) => `<li>${s.name}<span>${s.line}</span></li>`).join('')}</ul>
+        </section>`,
+      ];
+      document.getElementById('report').innerHTML = items.join('');
+      document.querySelectorAll('#report .float').forEach((el, i) => el.style.setProperty('--i', i + 2));
+
+      const sky = LockSky(document.getElementById('sky'), {});
+      const skies = {
+        home: {
+          haze: 0.55,
+          nebula: 0.3,
+          cx: 0.5,
+          cy: 0.22,
+          cs: 0.9,
+          older: 1,
+          ox: 0.5,
+          oy: 0.22,
+          orx: 0.42,
+          ory: 0.1,
+          satellites: 3,
+          px: 0.86,
+          py: 0.13,
+          pr: 12,
+          nebulaColors: ['#3b4fb0', '#6d3f99', '#1f6f8b'],
+        },
+        session: {
+          haze: 0,
+          nebula: 0.5,
+          cx: 0.5,
+          cy: 0.24,
+          cs: 1,
+          older: 0.6,
+          ox: 0.5,
+          oy: 0.24,
+          orx: 0.45,
+          ory: 0.12,
+          satellites: 2,
+          px: 0.86,
+          py: 0.11,
+          pr: 11,
+          nebulaColors: ['#5a74d6', '#3b4fb0', '#7fa2e8'],
+        },
+        explore: {
+          haze: 0,
+          nebula: 0.4,
+          cx: 0.5,
+          cy: 0.4,
+          cs: 1.3,
+          older: 1,
+          ox: 0.5,
+          oy: 0.4,
+          orx: 0.48,
+          ory: 0.2,
+          satellites: 3,
+          px: 0.78,
+          py: 0.72,
+          pr: 24,
+          nebulaColors: ['#3b4fb0', '#6d3f99', '#1f6f8b'],
+        },
+        week: {
+          haze: 0.3,
+          nebula: 0.3,
+          cx: 0.5,
+          cy: 0.19,
+          cs: 0.72,
+          older: 0,
+          ox: 0.5,
+          oy: 0.2,
+          orx: 0.4,
+          ory: 0.1,
+          satellites: 0,
+          px: 0.86,
+          py: 0.2,
+          pr: 9,
+          nebulaColors: ['#6b5a2a', '#6d3f99', '#1f6f8b'],
+        },
+      };
+      const app = document.querySelector('.app');
+      const pill = document.querySelector('.pill');
+      function placePill() {
+        const on = document.querySelector('.tab[aria-current="page"]');
+        if (on) Object.assign(pill.style, { translate: `${on.offsetLeft - 3}px 0`, width: `${on.offsetWidth}px` });
+      }
+      let first = true;
+      function go(state) {
+        app.dataset.state = state;
+        sky.set(skies[state], first);
+        first = false;
+        const page = state === 'session' || state === 'explore' ? 'home' : state;
+        for (const tab of document.querySelectorAll('.tab[data-go]')) {
+          if (tab.dataset.go === page) tab.setAttribute('aria-current', 'page');
+          else tab.removeAttribute('aria-current');
+        }
+        // The report waits between sessions.
+        const weekTab = document.querySelector('.tab[data-go="week"]');
+        weekTab.disabled = state === 'session';
+        weekTab.title = state === 'session' ? 'Your week opens again when this session ends' : '';
+        document.getElementById('date').innerHTML =
+          state === 'week'
+            ? `<small>${R.title}</small><b>${R.range}</b>`
+            : `<small>${D.today.weekday}</small><b>${D.today.date}</b>`;
+        requestAnimationFrame(placePill);
+      }
+      document.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-go]');
+        if (target) go(target.dataset.go);
+      });
+      addEventListener('keydown', (e) => e.key === 'Escape' && app.dataset.state === 'explore' && go('home'));
+      go(onPrototypeState(go) || 'home');
+    </script>
+  </body>
+</html>

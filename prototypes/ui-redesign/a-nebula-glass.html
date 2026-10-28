@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A · Nebula glass</title>
+    <style>
+      :root {
+        --starlight: #f3f0e6;
+        --dim: #a3a9bd;
+        --faint: #6f768c;
+        --glass: rgb(16 18 28 / 0.58);
+        --glass-hi: rgb(26 29 42 / 0.66);
+        --edge: rgb(255 255 255 / 0.09);
+        --edge-hi: rgb(255 255 255 / 0.16);
+        --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+        --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #060914;
+        color: var(--starlight);
+        font:
+          13px/1.4 system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      #sky {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Dark smoked glass; a card's color bleeds from behind it (--c) and tints its far corner. */
+      .glass {
+        --c: #8ea2ff;
+        position: relative;
+        border: 1px solid var(--edge);
+        border-radius: 16px;
+        background:
+          radial-gradient(120% 90% at 92% -10%, color-mix(in srgb, var(--c) 16%, transparent), transparent 62%),
+          linear-gradient(180deg, var(--glass-hi), var(--glass));
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.06),
+          0 0 44px -10px color-mix(in srgb, var(--c) 55%, transparent),
+          0 10px 34px -14px color-mix(in srgb, var(--c) 35%, transparent),
+          0 18px 40px -22px rgb(0 0 0 / 0.95);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+        backdrop-filter: blur(16px) saturate(1.4);
+        transition:
+          box-shadow 600ms var(--ease),
+          border-color 600ms,
+          translate 600ms var(--ease);
+      }
+      .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--c, #9fe3c9);
+        box-shadow: 0 0 6px var(--c, #9fe3c9);
+        flex: none;
+      }
+      .label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--dim);
+        font-size: 11px;
+      }
+
+      .app {
+        position: fixed;
+        inset: 0;
+      }
+      .top {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 3;
+        transition: opacity 700ms;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .brand .mark {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: rgb(255 255 255 / 0.06);
+        border: 1px solid var(--edge);
+        color: #f5c86b;
+        text-shadow: 0 0 8px #f5c86b;
+        font-size: 11px;
+      }
+      .hud {
+        font: 10px/1.5 var(--mono);
+        color: var(--faint);
+        text-align: right;
+        letter-spacing: 0.02em;
+      }
+      .hud b {
+        color: var(--dim);
+        font-weight: 500;
+      }
+
+      /* Pages: they drift in softly and blur away. */
+      .view {
+        position: absolute;
+        top: 46px;
+        right: 0;
+        left: 0;
+        bottom: 138px;
+        padding: 6px 16px 10px;
+        opacity: 0;
+        visibility: hidden;
+        translate: 0 10px;
+        filter: blur(4px);
+        transition:
+          opacity 500ms ease,
+          translate 700ms var(--ease),
+          filter 500ms ease,
+          visibility 0s 700ms;
+      }
+      .app[data-state='home'] .home,
+      .app[data-state='session'] .session,
+      .app[data-state='week'] .week,
+      .app[data-state='explore'] .explore {
+        opacity: 1;
+        visibility: visible;
+        translate: 0 0;
+        filter: none;
+        transition-delay: 120ms, 120ms, 120ms, 0s;
+      }
+      .app[data-state='week'] .view {
+        bottom: 64px;
+      }
+
+      /* Home */
+      .home {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .back {
+        --c: #9fe3c9;
+        padding: 11px 12px 6px;
+      }
+      .back ul {
+        list-style: none;
+        margin: 6px 0 0;
+        padding: 0;
+      }
+      .back li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 0;
+        border-top: 1px solid rgb(255 255 255 / 0.05);
+      }
+      .back li span {
+        flex: 1;
+        font-size: 12.5px;
+      }
+      .acts {
+        display: flex;
+        gap: 3px;
+      }
+      .icon {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        color: var(--dim);
+        transition:
+          background 300ms,
+          color 300ms;
+      }
+      .icon:hover {
+        background: rgb(255 255 255 / 0.08);
+        color: var(--starlight);
+      }
+      .icon svg {
+        width: 14px;
+        height: 14px;
+      }
+      .spacer {
+        flex: 1;
+      }
+      .dock {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .profile {
+        display: grid;
+        gap: 2px;
+        padding: 10px 10px 9px;
+        text-align: left;
+        border-radius: 14px;
+      }
+      .profile:hover {
+        translate: 0 -2px;
+        border-color: var(--edge-hi);
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.08),
+          0 0 46px -8px color-mix(in srgb, var(--c) 65%, transparent),
+          0 18px 40px -20px rgb(0 0 0 / 0.95);
+      }
+      .profile .name {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-weight: 600;
+        font-size: 12.5px;
+      }
+      .profile .length {
+        color: var(--dim);
+        font-size: 11px;
+        padding-left: 13px;
+      }
+      .stats-line {
+        display: flex;
+        justify-content: space-between;
+        color: var(--faint);
+        font: 10px var(--mono);
+        padding: 0 2px;
+      }
+
+      /* Session */
+      .session {
+        display: grid;
+        place-items: center;
+      }
+      .run {
+        --c: #cfe0ff;
+        width: 100%;
+        padding: 18px 18px 14px;
+        text-align: center;
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.07),
+          0 0 90px -4px color-mix(in srgb, var(--c) 42%, transparent),
+          0 -20px 60px -30px color-mix(in srgb, var(--c) 70%, transparent),
+          0 20px 50px -24px rgb(0 0 0 / 0.95);
+      }
+      .run .label {
+        justify-content: center;
+      }
+      .run .dot {
+        animation: breathe 4s ease-in-out infinite;
+      }
+      @keyframes breathe {
+        50% {
+          opacity: 0.45;
+          box-shadow: 0 0 2px var(--c);
+        }
+      }
+      .clock {
+        margin: 10px 0 2px;
+        font-size: 58px;
+        font-weight: 200;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        text-shadow: 0 0 30px color-mix(in srgb, var(--c) 40%, transparent);
+      }
+      .bar {
+        height: 3px;
+        margin: 8px 18px 10px;
+        border-radius: 3px;
+        background: rgb(255 255 255 / 0.07);
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        width: 38%;
+        border-radius: inherit;
+        background: var(--c);
+        box-shadow: 0 0 10px var(--c);
+      }
+      .detail {
+        color: var(--dim);
+        font-size: 12px;
+      }
+      .end {
+        margin-top: 14px;
+        padding: 7px 14px;
+        border: 1px solid var(--edge);
+        border-radius: 10px;
+        color: var(--dim);
+        font-size: 12px;
+        transition:
+          background 300ms,
+          color 300ms;
+      }
+      .end:hover {
+        background: rgb(255 255 255 / 0.06);
+        color: var(--starlight);
+      }
+
+      /* The console: the satellite box above a small floating toolbar, as in the reference. */
+      .console {
+        position: absolute;
+        right: 16px;
+        bottom: 14px;
+        left: 16px;
+        z-index: 3;
+        padding: 8px;
+        border-radius: 18px;
+        transition:
+          opacity 700ms ease,
+          translate 900ms var(--ease),
+          filter 700ms ease;
+      }
+      .launch {
+        display: grid;
+        gap: 3px;
+        padding: 6px 8px 8px;
+        border-radius: 12px;
+        background: rgb(255 255 255 / 0.035);
+        border: 1px solid rgb(255 255 255 / 0.05);
+        overflow: hidden;
+        transition:
+          max-height 600ms var(--ease),
+          opacity 400ms,
+          margin 600ms var(--ease),
+          padding 600ms var(--ease);
+        max-height: 70px;
+        margin-bottom: 8px;
+      }
+      .app[data-state='week'] .launch {
+        max-height: 0;
+        opacity: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      .launch .label {
+        justify-content: space-between;
+        font-size: 10px;
+      }
+      .launch .row {
+        display: flex;
+        gap: 6px;
+      }
+      .launch input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: none;
+        font-size: 12.5px;
+      }
+      .launch input::placeholder {
+        color: var(--faint);
+      }
+      .chip {
+        font: 10px var(--mono);
+        color: var(--dim);
+        padding: 1px 6px;
+        border-radius: 99px;
+        background: rgb(255 255 255 / 0.06);
+      }
+      .tools {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+      .tool {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
+        color: var(--dim);
+        transition:
+          background 400ms,
+          color 400ms,
+          box-shadow 400ms;
+      }
+      .tool svg {
+        width: 16px;
+        height: 16px;
+      }
+      .tool:hover {
+        color: var(--starlight);
+        background: rgb(255 255 255 / 0.06);
+      }
+      .tool[aria-current='page'] {
+        background: #f3f0e6;
+        color: #0b0d16;
+        box-shadow: 0 0 18px -4px rgb(243 240 230 / 0.6);
+      }
+      .tool:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
+      .tool .count {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #9fe3c9;
+        box-shadow: 0 0 6px #9fe3c9;
+      }
+      .sep {
+        width: 1px;
+        height: 18px;
+        margin: 0 6px;
+        background: var(--edge);
+      }
+
+      /* Explore: everything puffs toward you and fades; a slim toolbar and corner stats stay. */
+      .app[data-state='explore'] .top,
+      .app[data-state='explore'] .console {
+        opacity: 0;
+        translate: 0 0;
+        filter: blur(6px);
+        pointer-events: none;
+      }
+      .app[data-state='explore'] .console {
+        transform: scale(1.08);
+      }
+      .explore {
+        bottom: 0;
+        top: 0;
+        pointer-events: none;
+      }
+      .explore > * {
+        pointer-events: auto;
+      }
+      .side {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        translate: 0 -50%;
+        display: grid;
+        gap: 4px;
+        padding: 5px;
+        border-radius: 14px;
+      }
+      .corner {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        font: 10px/1.6 var(--mono);
+        color: var(--faint);
+        text-align: right;
+      }
+      .corner b {
+        color: var(--dim);
+        font-weight: 500;
+      }
+      .done-exploring {
+        position: absolute;
+        bottom: 18px;
+        left: 18px;
+        padding: 7px 12px;
+        font-size: 12px;
+        border-radius: 12px;
+      }
+      .tag {
+        position: absolute;
+        left: 50%;
+        top: 41%;
+        translate: -50% 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px;
+        border-radius: 99px;
+        font-size: 11px;
+        color: var(--dim);
+        background: rgb(16 18 28 / 0.5);
+        border: 1px solid var(--edge);
+      }
+
+      /* Weekly report */
+      .week {
+        overflow-y: auto;
+        scrollbar-width: none;
+        padding-top: 2px;
+      }
+      .weeks {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 2px 0 2px;
+      }
+      .weeks h2 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+      }
+      .weeks h2 small {
+        display: block;
+        color: var(--dim);
+        font-size: 11px;
+        font-weight: 400;
+      }
+      .heron {
+        display: flex;
+        justify-content: center;
+        margin: 70px 0 14px;
+      }
+      .heron span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        border: 1px solid var(--edge);
+        background: rgb(16 18 28 / 0.45);
+        color: var(--dim);
+        font-size: 11px;
+      }
+      .heron em {
+        color: #f5c86b;
+        font-style: normal;
+        text-shadow: 0 0 8px #f5c86b;
+      }
+      .cards {
+        display: grid;
+        gap: 12px;
+      }
+      .card {
+        padding: 13px 14px;
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--dim);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .big {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin: 0 0 10px;
+        font-size: 28px;
+        font-weight: 300;
+        letter-spacing: -0.01em;
+      }
+      .big small {
+        font-size: 12px;
+        color: var(--dim);
+      }
+      .trend {
+        margin-left: auto;
+        align-self: center;
+        font: 10.5px var(--mono);
+        padding: 2px 7px;
+        border-radius: 99px;
+        color: #9fe3c9;
+        background: rgb(159 227 201 / 0.1);
+        border: 1px solid rgb(159 227 201 / 0.2);
+      }
+      .peak {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 6px;
+      }
+      .peak span {
+        font-size: 10.5px;
+        padding: 2px 8px;
+        border-radius: 99px;
+        background: rgb(255 255 255 / 0.08);
+        border: 1px solid var(--edge);
+      }
+      .axis {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        color: var(--faint);
+        font: 9.5px var(--mono);
+      }
+      .rows {
+        list-style: none;
+        margin: 10px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 7px;
+      }
+      .rows li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+      }
+      .rows li .v {
+        margin-left: auto;
+        color: var(--dim);
+        font-size: 11.5px;
+      }
+      .note {
+        margin: 10px 0 0;
+        color: var(--dim);
+        font-size: 11.5px;
+      }
+      .tips {
+        margin: 0;
+        padding-left: 16px;
+        display: grid;
+        gap: 6px;
+        font-size: 12.5px;
+      }
+
+      .stats-line .lead {
+        color: var(--dim);
+      }
+      .profile .start {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgb(255 255 255 / 0.06);
+        color: var(--dim);
+        font-size: 11px;
+        font-weight: 500;
+        transition: color 400ms;
+      }
+      .profile:hover .start,
+      .profile:focus-visible .start {
+        color: var(--c);
+        text-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent);
+      }
+      .key {
+        padding: 3px 7px;
+        border-radius: 7px;
+        background: rgb(255 255 255 / 0.06);
+        color: var(--dim);
+        font-size: 11px;
+        transition:
+          background 300ms,
+          color 300ms;
+      }
+      .key:hover {
+        background: rgb(255 255 255 / 0.12);
+        color: var(--starlight);
+      }
+      .tool {
+        width: auto;
+        min-width: 34px;
+        padding: 0 9px;
+        display: flex;
+        gap: 0;
+        transition:
+          background 400ms,
+          color 400ms,
+          box-shadow 400ms,
+          gap 500ms var(--ease);
+      }
+      .tool .name {
+        max-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 600;
+        transition: max-width 500ms var(--ease);
+      }
+      .tool[aria-current='page'] {
+        gap: 6px;
+      }
+      .tool[aria-current='page'] .name {
+        max-width: 80px;
+      }
+      .tool[aria-expanded='true'] {
+        color: var(--starlight);
+        background: rgb(143 211 240 / 0.14);
+      }
+      .drawer {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 600ms var(--ease);
+      }
+      .drawer.open {
+        grid-template-rows: 1fr;
+      }
+      .drawer > div {
+        overflow: hidden;
+        padding: 0 2px;
+      }
+      .tasks-card label {
+        flex: 1;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 12.5px;
+      }
+      .tasks-card input {
+        accent-color: #8fd3f0;
+      }
+      :focus-visible {
+        outline: 2px solid rgb(207 224 255 / 0.7);
+        outline-offset: 2px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0s !important;
+          animation: none !important;
+        }
+        .view {
+          translate: none;
+          filter: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <div class="app" data-state="home">
+      <header class="top">
+        <span class="brand"><span class="mark">✦</span>Lock In</span>
+        <span class="hud" title="Every session adds a star; stardust counts focused minutes"
+          ><b>41</b> stars · <b>3,920</b> stardust<br />Wednesday, Oct 28</span
+        >
+      </header>
+
+      <section class="view home" aria-label="Sky">
+        <div class="glass back">
+          <p class="label" style="margin: 0"><span class="dot"></span>2 satellites came back</p>
+          <ul id="back"></ul>
+        </div>
+        <div class="drawer" id="tasks">
+          <div>
+            <div class="glass back tasks-card" style="--c: #8fd3f0">
+              <p class="label" style="margin: 0"><span class="dot"></span>Tasks · 3</p>
+              <ul id="tasklist"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="stats-line"><span class="lead">▶ Start a session</span><span>pick a profile</span></div>
+        <div class="dock" id="dock"></div>
+      </section>
+
+      <section class="view session" aria-label="Session">
+        <div class="glass run">
+          <p class="label" style="margin: 0"><span class="dot"></span>Locked in · Deep Work · Medium</p>
+          <p class="clock" style="margin-bottom: 0">31:12</p>
+          <div class="bar"><i></i></div>
+          <div class="detail">left of 50 min · started 9:40 am</div>
+          <button class="end" type="button" data-go="home">End early</button>
+          <p class="detail" style="margin: 8px 0 0; font-size: 11px; color: var(--faint)">
+            Medium: ending before 50 min asks you to type some random text first.
+          </p>
+        </div>
+      </section>
+
+      <section class="view explore" aria-label="Explore">
+        <span class="tag"><span class="dot" style="--c: #f5c86b"></span>The Quiet Heron · Oct 19 – 25</span>
+        <div class="glass side" style="--c: #b9a7f5">
+          <button class="tool" title="Zoom in" data-icon="plus"></button>
+          <button class="tool" title="Zoom out" data-icon="minus"></button>
+          <button class="tool" title="Back to this week" data-icon="center"></button>
+          <button class="tool" title="Name this constellation" data-icon="pen"></button>
+        </div>
+        <button class="glass done-exploring" type="button" data-go="home">Done exploring · Esc</button>
+        <div class="corner">
+          <b>41</b> stars · <b>7</b> weeks<br /><b>3</b> planets · <b>3,920</b> dust<br />zoom 1.0×
+        </div>
+      </section>
+
+      <section class="view week" aria-label="Your week">
+        <nav class="weeks">
+          <button class="icon" title="Week before" data-icon="left"></button>
+          <h2>Last week ▾<small>Oct 19 – 25</small></h2>
+          <button class="icon" title="Week after" data-icon="right"></button>
+        </nav>
+        <div class="heron">
+          <span><em>✦</em> The Quiet Heron · Rename</span>
+        </div>
+        <div class="cards" id="report"></div>
+      </section>
+
+      <footer class="glass console" style="--c: #8ea2ff">
+        <div class="launch">
+          <div class="label">
+            <span>Satellite · a thought for later</span><span class="chip" id="orbit">3 tasks</span>
+          </div>
+          <div class="row">
+            <input placeholder="Launch a thought; it comes back after your session" aria-label="Launch a satellite" />
+            <button class="icon" title="Launch (Enter)" data-icon="up"></button>
+          </div>
+        </div>
+        <nav class="tools" aria-label="Pages">
+          <button class="tool" data-go="home" data-icon="sky" title="Sky"><span class="name">Sky</span></button>
+          <button class="tool" data-go="week" data-icon="week" title="Your week">
+            <span class="name">Your week</span>
+          </button>
+          <button class="tool" data-icon="profiles" title="Profiles"><span class="name">Profiles</span></button>
+          <button class="tool" data-icon="settings" title="Settings"><span class="name">Settings</span></button>
+          <span class="sep"></span>
+          <button class="tool" data-go="explore" data-icon="explore" title="Explore the sky"></button>
+          <button
+            class="tool"
+            data-icon="tasks"
+            id="tasks-toggle"
+            title="Tasks · 3"
+            aria-expanded="false"
+            aria-controls="tasks"
+          >
+            <span class="count"></span>
+          </button>
+        </nav>
+      </footer>
+    </div>
+
+    <script src="sky.js"></script>
+    <script src="data.js"></script>
+    <script>
+      const D = LockData;
+      const R = D.report;
+      const icons = {
+        sky: '<path d="M8 1.5l1.6 4.9L14.5 8l-4.9 1.6L8 14.5 6.4 9.6 1.5 8l4.9-1.6z"/>',
+        week: '<path d="M3 13V8M6.3 13V4M9.7 13V6.5M13 13V2.5"/>',
+        profiles: '<circle cx="8" cy="5.5" r="2.6"/><path d="M2.8 13.5c.8-2.6 2.8-3.8 5.2-3.8s4.4 1.2 5.2 3.8"/>',
+        settings:
+          '<path d="M2.5 4.5h7M12.5 4.5h1M2.5 11.5h1M6.5 11.5h7"/><circle cx="11" cy="4.5" r="1.5"/><circle cx="5" cy="11.5" r="1.5"/>',
+        explore: '<circle cx="8" cy="8" r="2"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-25 8 8)"/>',
+        tasks:
+          '<path d="M6 4.5h7.5M6 8h7.5M6 11.5h7.5"/><circle cx="3" cy="4.5" r=".6"/><circle cx="3" cy="8" r=".6"/><circle cx="3" cy="11.5" r=".6"/>',
+        plus: '<path d="M8 3v10M3 8h10"/>',
+        minus: '<path d="M3 8h10"/>',
+        center: '<circle cx="8" cy="8" r="4.5"/><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3"/>',
+        pen: '<path d="M10.5 2.5l3 3-8 8H2.5v-3z"/>',
+        check: '<path d="M3 8.5l3 3 7-7"/>',
+        snooze: '<circle cx="8" cy="8.5" r="5"/><path d="M8 6v2.5l1.8 1.2"/>',
+        task: '<path d="M5.5 4.5h8M5.5 8h8M5.5 11.5h5"/><path d="M2 4.5h1M2 8h1M2 11.5h1"/>',
+        x: '<path d="M4 4l8 8M12 4l-8 8"/>',
+        up: '<path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/>',
+        left: '<path d="M10 3L5 8l5 5"/>',
+        right: '<path d="M6 3l5 5-5 5"/>',
+      };
+      const svg = (name) =>
+        `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
+
+      document.getElementById('back').innerHTML = D.back
+        .map(
+          (text) =>
+            `<li><span>${text}</span><span class="acts"><button class="key" title="Mark done">Done</button><button class="key" title="Snooze until after your next session">Later</button><button class="key" title="Move to the task list">Task</button><button class="key" title="Delete">×</button></span></li>`,
+        )
+        .join('');
+      document.getElementById('dock').innerHTML = D.profiles
+        .map(
+          (p) =>
+            `<button class="glass profile" style="--c:${p.color}" data-go="session" title="Start a ${p.name} session"><span class="name"><span class="dot"></span>${p.name}</span><span class="length">${p.length}</span><span class="start">Start ▶</span></button>`,
+        )
+        .join('');
+      for (const el of document.querySelectorAll('[data-icon]'))
+        el.insertAdjacentHTML('afterbegin', svg(el.dataset.icon));
+
+      const total = R.minutes.reduce((a, b) => a + b, 0);
+      document.getElementById('report').innerHTML = `
+        <section class="glass card" style="--c:#f5c86b">
+          <h3><span class="dot" style="--c:#f5c86b"></span>Focus</h3>
+          <p class="big">${R.focus} <small>focused</small><span class="trend">${R.focusTrend} vs last week</span></p>
+          <div class="peak"><span>Peak: <b>${R.peak}</b></span></div>
+          ${dotChart(R.minutes, { rows: 6, color: '#f5c86b', peak: 3, size: 7, gap: 4 })}
+          <div class="axis">${R.days.map((d) => `<span>${d}</span>`).join('')}</div>
+          <p class="note">${R.streak}<br />${R.sessions}</p>
+          <ul class="rows">${R.byProfile
+            .map(
+              (p) =>
+                `<li><span class="dot" style="--c:${p.color}"></span>${p.name}<span class="v">${p.time} · ${p.sessions} sessions</span></li>`,
+            )
+            .join('')}</ul>
+        </section>
+        <section class="glass card" style="--c:#f2a7c3">
+          <h3><span class="dot" style="--c:#f2a7c3"></span>Distractions</h3>
+          <p class="big">${R.trips} <small>trips to redirected sites</small><span class="trend">${R.tripsTrend}</span></p>
+          <p class="note" style="margin:0 0 10px">${R.turnedBack}</p>
+          ${dotChart(R.hours, { rows: 5, color: '#f2a7c3', size: 5, gap: 2.5 })}
+          <div class="axis"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span></div>
+          <ul class="rows">${R.sites.map((s) => `<li>${s.name}<span class="v">${s.line}</span></li>`).join('')}</ul>
+        </section>
+        <section class="glass card" style="--c:#9fe3c9">
+          <h3><span class="dot" style="--c:#9fe3c9"></span>Satellites</h3>
+          <p class="big">${R.launched} <small>launched</small></p>
+          <p class="note" style="margin:0">${R.outcomes}</p>
+        </section>
+        <section class="glass card" style="--c:#b9a7f5">
+          <h3><span class="dot" style="--c:#b9a7f5"></span>In the sky</h3>
+          <ul class="rows" style="margin:0">${R.sky.map((s) => `<li>${s.what}<span class="v">${s.day}</span></li>`).join('')}</ul>
+        </section>
+        <section class="glass card" style="--c:#8fd3f0">
+          <h3><span class="dot" style="--c:#8fd3f0"></span>Suggestions</h3>
+          <ul class="tips">${R.suggestions.map((s) => `<li>${s}</li>`).join('')}</ul>
+        </section>`;
+
+      const sky = LockSky(document.getElementById('sky'), { nebula: 0.55 });
+      const skies = {
+        home: {
+          haze: 0.5,
+          nebula: 0.55,
+          cx: 0.5,
+          cy: 0.5,
+          cs: 0.95,
+          older: 1,
+          ox: 0.5,
+          oy: 0.5,
+          orx: 0.42,
+          ory: 0.12,
+          satellites: 3,
+          px: 0.84,
+          py: 0.4,
+          pr: 13,
+          nebulaColors: ['#3b4fb0', '#6d3f99', '#1f6f8b'],
+        },
+        session: {
+          haze: 0,
+          nebula: 0.75,
+          cx: 0.5,
+          cy: 0.17,
+          cs: 0.85,
+          older: 0.6,
+          ox: 0.5,
+          oy: 0.46,
+          orx: 0.47,
+          ory: 0.24,
+          satellites: 2,
+          px: 0.86,
+          py: 0.1,
+          pr: 11,
+          nebulaColors: ['#5a74d6', '#3b4fb0', '#7fa2e8'],
+        },
+        explore: {
+          haze: 0,
+          nebula: 0.5,
+          cx: 0.5,
+          cy: 0.33,
+          cs: 1.25,
+          older: 1,
+          ox: 0.5,
+          oy: 0.33,
+          orx: 0.48,
+          ory: 0.18,
+          satellites: 3,
+          px: 0.8,
+          py: 0.7,
+          pr: 22,
+          nebulaColors: ['#3b4fb0', '#6d3f99', '#1f6f8b'],
+        },
+        week: {
+          haze: 0.3,
+          nebula: 0.45,
+          cx: 0.5,
+          cy: 0.17,
+          cs: 0.75,
+          older: 0,
+          ox: 0.5,
+          oy: 0.2,
+          orx: 0.4,
+          ory: 0.1,
+          satellites: 0,
+          px: 0.86,
+          py: 0.17,
+          pr: 10,
+          nebulaColors: ['#6b5a2a', '#6d3f99', '#1f6f8b'],
+        },
+      };
+      const app = document.querySelector('.app');
+      let first = true;
+      function go(state) {
+        app.dataset.state = state;
+        sky.set(skies[state], first);
+        first = false;
+        const page = state === 'session' ? 'home' : state;
+        for (const tool of document.querySelectorAll('.tools .tool[data-go]')) {
+          if (tool.dataset.go === page) tool.setAttribute('aria-current', 'page');
+          else tool.removeAttribute('aria-current');
+        }
+        // The report waits between sessions, and tasks wait while you focus.
+        const weekTool = document.querySelector('.tools [data-go="week"]');
+        weekTool.disabled = state === 'session';
+        // Tasks wait while you focus, so they don't pull you back in.
+        if (state === 'session') {
+          document.getElementById('tasks').classList.remove('open');
+          document.getElementById('tasks-toggle').setAttribute('aria-expanded', 'false');
+        }
+        weekTool.title = state === 'session' ? 'Your week opens again when this session ends' : 'Your week';
+        document.querySelector('.tools [title^="Tasks"]').disabled = state === 'session';
+        document.getElementById('orbit').textContent = state === 'session' ? '2 in orbit' : '3 tasks';
+        document.querySelector('.launch input').placeholder =
+          state === 'session' ? 'Launch a thought; it comes back after this session' : 'A thought for later';
+      }
+      document.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-go]');
+        if (target && !target.disabled) go(target.dataset.go);
+      });
+      document.getElementById('tasklist').innerHTML = D.tasks
+        .map(
+          (t) =>
+            `<li><label><input type="checkbox" /> <span>${t}</span></label><button class="key" title="Delete">×</button></li>`,
+        )
+        .join('');
+      const tasksToggle = document.getElementById('tasks-toggle');
+      tasksToggle.addEventListener('click', () => {
+        const open = tasksToggle.getAttribute('aria-expanded') !== 'true';
+        if (open && app.dataset.state !== 'home') go('home');
+        tasksToggle.setAttribute('aria-expanded', open);
+        document.getElementById('tasks').classList.toggle('open', open);
+      });
+      addEventListener('keydown', (e) => e.key === 'Escape' && app.dataset.state === 'explore' && go('home'));
+      go(onPrototypeState(go) || 'home');
+    </script>
+  </body>
+</html>
