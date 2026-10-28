@@ -271,7 +271,7 @@ figcaption::before {
 }
 
 .thoughts:focus-within {
-  --t: rgb(220 228 255 / 0.85);
+  --t: var(--tick-bright);
 }
 
 /* Hairlines between what came back, the task list and the launch box. */

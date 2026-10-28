@@ -7,7 +7,12 @@
   /* The Observatory HUD (PLAN Phase 5): hairlines, bright corner ticks and small mono readouts. */
   --faint: #7c84a3;
   --line: rgb(220 228 255 / 0.1);
-  --tick: rgb(220 228 255 / 0.55);
+  /* The glow color: the frames' corner ticks and the tabs' dot. Starlight, unless Settings picks
+     one unlocked by lifetime focus, which App.vue sets here. */
+  --glint: #dce4ff;
+  --dot: var(--starlight);
+  --tick: color-mix(in srgb, var(--glint) 55%, transparent);
+  --tick-bright: color-mix(in srgb, var(--glint) 85%, transparent);
   --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   /* A quick, slightly bouncy spring for UI motion. */

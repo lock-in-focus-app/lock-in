@@ -3,6 +3,7 @@ import type { ActiveSession } from './generated/ActiveSession';
 import type { SessionRecord } from './generated/SessionRecord';
 import { withNewProfile, withStarColor } from './edits';
 import {
+  lifetimeFocusMs,
   milkyWay,
   newStarColor,
   sessionSoFar,
@@ -99,6 +100,19 @@ describe('stardust', () => {
     ];
     expect(stardust(sessions)).toBe(50 + 20 + 15 + 2);
     expect(stardust([])).toBe(0);
+  });
+});
+
+describe('lifetimeFocusMs', () => {
+  it('adds up focus and overtime, leaving out broken sessions', () => {
+    expect(lifetimeFocusMs([])).toBe(0);
+    expect(
+      lifetimeFocusMs([
+        session(0, 50, { focusedMs: 25 * MIN, overtimeMs: 25 * MIN }),
+        session(60, 30),
+        session(120, 90, { broken: true }),
+      ]),
+    ).toBe(80 * MIN);
   });
 });
 

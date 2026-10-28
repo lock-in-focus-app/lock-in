@@ -79,7 +79,7 @@ input::-webkit-inner-spin-button {
 }
 
 .stepper:focus-within {
-  --t: rgb(220 228 255 / 0.85);
+  --t: var(--tick-bright);
 }
 
 .unit {

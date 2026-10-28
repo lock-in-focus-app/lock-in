@@ -623,7 +623,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
 }
 
 .rename input:focus {
-  --t: rgb(220 228 255 / 0.85);
+  --t: var(--tick-bright);
 }
 
 .picker-space {
