@@ -7,6 +7,7 @@ mod commands;
 mod engine;
 mod error;
 mod hosts;
+mod hotkey;
 mod idle;
 mod launches;
 mod link;
@@ -451,6 +452,7 @@ pub fn run() {
             app.manage(wake);
             app.manage(link::Links::default());
             app.manage(capture::CameFrom::default());
+            app.manage(capture::Paused::default());
 
             tray::create(app.handle(), &snapshot)?;
             capture::listen(app.handle());
@@ -484,6 +486,14 @@ pub fn run() {
                     .app_handle()
                     .set_activation_policy(tauri::ActivationPolicy::Accessory);
             }
+            // Settings stops recording a new hotkey once you leave the window, so the hotkey
+            // can't stay ignored.
+            WindowEvent::Focused(false) if window.label() == MAIN_WINDOW => {
+                window
+                    .state::<capture::Paused>()
+                    .0
+                    .store(false, std::sync::atomic::Ordering::Relaxed);
+            }
             // The satellite box goes away when you click somewhere else, like Spotlight.
             WindowEvent::Focused(false) if window.label() == capture::WINDOW => {
                 if let Err(error) = capture::close(window.app_handle(), false) {
@@ -500,6 +510,8 @@ pub fn run() {
             commands::set_profile_star_color,
             commands::use_emergency_pass,
             commands::set_settings,
+            commands::set_satellite_hotkey,
+            commands::pause_satellite_hotkey,
             commands::forget_browser,
             commands::set_profile_apps,
             commands::installed_apps,

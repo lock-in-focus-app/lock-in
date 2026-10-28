@@ -426,6 +426,7 @@ async function run(action: () => Promise<void>) {
           :session="snapshot.session"
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
+          :satellite-hotkey="snapshot.settings.satelliteHotkey"
           :star-count="starCount"
           :glance="glance"
           :stardust="totalStardust"

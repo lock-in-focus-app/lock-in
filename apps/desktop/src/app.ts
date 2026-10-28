@@ -65,6 +65,15 @@ export const installedApps = () => invoke<InstalledApp[]>('installed_apps');
 
 export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings });
 
+/** Changes the satellite box's hotkey, like "Alt+KeyP", once it's registered. Empty turns it off. */
+export const setSatelliteHotkey = (hotkey: string) => invoke<void>('set_satellite_hotkey', { hotkey });
+
+/** Ignores the satellite box's hotkey while a new one is being recorded. */
+export const pauseSatelliteHotkey = (paused: boolean) => invoke<void>('pause_satellite_hotkey', { paused });
+
+/** Whether this is a Mac, for showing keys the way it does. */
+export const mac = navigator.userAgent.includes('Mac');
+
 export const forgetBrowser = (path: string) => invoke<void>('forget_browser', { path });
 
 /** Launches a thought into orbit. Resolves to whether there was anything to launch. */

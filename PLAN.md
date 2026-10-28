@@ -154,7 +154,7 @@ To make the name instantly clear:
 - On first use, a one-line tooltip with a tiny animation shows the thought orbiting the session timer.
 
 **Capture from anywhere:**
-- a global hotkey, **Alt+P** (Option+P on a Mac), which opens a tiny spotlight-style box. Return launches the thought and hands focus straight back to the app you were in; Escape or clicking elsewhere closes it. (Option+P normally types π, which Lock In takes over while it's running; the hotkey becomes changeable in Settings later.)
+- a global hotkey, **Alt+P** (Option+P on a Mac), which opens a tiny spotlight-style box. Return launches the thought and hands focus straight back to the app you were in; Escape or clicking elsewhere closes it. (Option+P normally types π, which Lock In takes over while it's running. The hotkey can be changed or turned off in Settings › Satellites: it needs Option, or two of Control, Shift and Command, so it doesn't take other apps' shortcuts, and a few the system uses are turned away.)
 - the menu-bar icon
 - the extension popup
 - every redirect page

@@ -77,6 +77,7 @@ export {
 export { pickDestination, pickLink, pickQuote } from './destinations';
 export { starterProfiles } from './profiles';
 export { glowColors, glowFor, nextGlow, unlockedGlows, type GlowColor } from './glow';
+export { hotkeyFromPress, hotkeyLabel, type KeyPress } from './hotkey';
 export {
   isStarColor,
   lifetimeFocusMs,

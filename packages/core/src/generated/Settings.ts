@@ -29,4 +29,10 @@ batterySaver: boolean,
  * `glowColors`. Colors past the first come with lifetime focus hours; the app shows the
  * default if this one isn't unlocked (or isn't known).
  */
-glow: string, };
+glow: string, 
+/**
+ * The hotkey that opens the satellite box from anywhere, like "Alt+KeyP" (see hotkey.rs).
+ * Empty turns it off. It only changes once the new one is registered, through its own
+ * command (`set_satellite_hotkey`).
+ */
+satelliteHotkey: string, };

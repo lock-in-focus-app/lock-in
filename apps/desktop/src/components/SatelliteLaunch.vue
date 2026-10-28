@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { hotkeyLabel } from '@lock-in/core';
 import { computed, ref } from 'vue';
-import { maxSatelliteLength } from '../app';
+import { mac, maxSatelliteLength } from '../app';
 
 // The launch box: one line for parking a thought until after the session. It sits in the frame
 // with the satellites that came back and the task list (SkyPage.vue).
-const props = defineProps<{ sessionRunning: boolean }>();
+const props = defineProps<{
+  sessionRunning: boolean;
+  /** The satellite box's hotkey, from Settings. Empty when it's turned off. */
+  hotkey: string;
+}>();
 const emit = defineEmits<{ launch: [text: string] }>();
 
 const text = ref('');
@@ -14,13 +19,13 @@ function launch() {
   text.value = '';
 }
 
-const hotkey = navigator.userAgent.includes('Mac') ? '⌥P' : 'Alt+P';
 const placeholder = computed(() =>
   props.sessionRunning ? 'Park it until this session ends' : 'Park a thought for later',
 );
 const hint = computed(
   () =>
-    `Satellites: thoughts parked until after your ${props.sessionRunning ? '' : 'next '}session. ${hotkey} launches one from anywhere.`,
+    `Satellites: thoughts parked until after your ${props.sessionRunning ? '' : 'next '}session.` +
+    (props.hotkey ? ` ${hotkeyLabel(props.hotkey, mac)} launches one from anywhere.` : ''),
 );
 </script>
 

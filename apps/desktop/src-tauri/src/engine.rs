@@ -300,13 +300,28 @@ impl Engine {
     /// Changes the app-wide settings. While a Hard session is running, passes per week can
     /// only go down and closing browsers can't be turned off, or they'd be easy ways out.
     pub fn set_settings(&mut self, settings: Settings, now: i64) -> Result<()> {
-        let settings = settings.clamped();
+        let mut settings = settings.clamped();
         let hard = self.session().and_then(|s| s.lock(now)) == Some(Strictness::Hard);
         let looser = settings.passes_per_week > self.settings.passes_per_week
             || (self.settings.close_browsers && !settings.close_browsers);
         if hard && looser {
             return Err(Error::Locked);
         }
+        // The hotkey has its own command, since it changes only once it's registered.
+        settings.satellite_hotkey = self.settings.satellite_hotkey.clone();
+        self.save_settings(settings, now)
+    }
+
+    /// Saves the satellite box's hotkey, once capture.rs has registered it.
+    pub fn set_satellite_hotkey(&mut self, hotkey: String, now: i64) -> Result<()> {
+        let settings = Settings {
+            satellite_hotkey: hotkey,
+            ..self.settings.clone()
+        };
+        self.save_settings(settings.clamped(), now)
+    }
+
+    fn save_settings(&mut self, settings: Settings, now: i64) -> Result<()> {
         self.store.save(
             SETTINGS,
             &Synced {
@@ -1089,6 +1104,26 @@ mod tests {
         )
         .unwrap();
         assert_eq!(reloaded.passes_left(21 * MIN), 0);
+    }
+
+    #[test]
+    fn the_hotkey_only_changes_through_its_own_command() {
+        let mut engine = hard_engine();
+        engine
+            .set_settings(
+                Settings {
+                    satellite_hotkey: "Control+Alt+KeyS".into(),
+                    ..Settings::default()
+                },
+                0,
+            )
+            .unwrap();
+        assert_eq!(engine.settings().satellite_hotkey, crate::hotkey::DEFAULT_HOTKEY);
+
+        engine.set_satellite_hotkey("Control+Alt+KeyS".into(), 0).unwrap();
+        assert_eq!(engine.settings().satellite_hotkey, "Control+Alt+KeyS");
+        engine.set_satellite_hotkey(String::new(), 0).unwrap();
+        assert_eq!(engine.settings().satellite_hotkey, "", "turned off");
     }
 
     #[test]

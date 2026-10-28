@@ -19,6 +19,8 @@ const props = defineProps<{
   session: ActiveSession | null;
   passesLeft: number;
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
+  /** The satellite box's hotkey, for the launch box's hint. */
+  satelliteHotkey: string;
   starCount: number;
   /** What the top of the page shows: the date, a quote for the day, time locked in today, and the streak running now. */
   glance: { date: string; quote?: { text: string; author?: string }; lockedInMs: number; streak: number };
@@ -146,7 +148,7 @@ watch(
               />
             </div>
           </Unfold>
-          <SatelliteLaunch :session-running="!!session" @launch="emit('launch', $event)" />
+          <SatelliteLaunch :session-running="!!session" :hotkey="satelliteHotkey" @launch="emit('launch', $event)" />
         </div>
 
         <div class="foot">
