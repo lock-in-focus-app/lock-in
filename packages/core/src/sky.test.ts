@@ -155,6 +155,18 @@ describe('skyClarity', () => {
     expect(skyClarity(last.endedAt + 15 * MIN, false, last)).toBe(0);
     expect(skyClarity(last.endedAt + 600 * MIN, false, last)).toBe(0);
   });
+
+  it('has no afterglow after a session ended before its timer was done', () => {
+    const early = session(0, 30, { timerMinutes: 50 });
+    expect(skyClarity(early.endedAt, false, early)).toBe(1);
+    expect(skyClarity(early.endedAt + 2.5 * MIN, false, early)).toBeCloseTo(0.5);
+    expect(skyClarity(early.endedAt + 5 * MIN, false, early)).toBe(0);
+    // Finishing the timer, or going past it, keeps the afterglow.
+    const done = session(0, 50, { timerMinutes: 50 });
+    expect(skyClarity(done.endedAt + 10 * MIN, false, done)).toBe(1);
+    const over = session(0, 50, { timerMinutes: 45, focusedMs: 45 * MIN, overtimeMs: 5 * MIN });
+    expect(skyClarity(over.endedAt + 10 * MIN, false, over)).toBe(1);
+  });
 });
 
 describe('star colors', () => {

@@ -233,7 +233,7 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
 
 ### Light pollution
 - Outside a session, the sky is washed out by a faint glow and haze. When you lock in, the pollution fades away and the sky is crisp for the whole session, while your new star forms. This is the brand metaphor made playable.
-- **Afterglow:** after a session ends, the sky stays clear for a while (about 20% of the session length) before the haze creeps back in.
+- **Afterglow:** after a session ends, the sky stays clear for a while (about 20% of the session length) before the haze creeps back in over a few minutes. A session ended before its timer was done has no afterglow: the haze starts creeping back straight away.
 - **The sky lives behind everything** in the desktop window, and the pages' hairline frames float over it (glass cards until the Phase 5 redesign), so you see the haze between sessions and the clear sky while you're locked in. The cards are slightly 3D: only their glass tilts under the pointer, with a sheen following it, so the text stays sharp.
 
 ### The Sky page (home)

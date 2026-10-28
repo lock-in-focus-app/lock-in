@@ -134,12 +134,15 @@ export function sessionSoFar(session: ActiveSession, now: number): SessionRecord
 /**
  * How clear the sky is at `now`, from 0 (hazy with light pollution) to 1 (clear). It's clear
  * during a session and for an afterglow of a fifth of the last session's length, then the haze
- * creeps back over a few minutes.
+ * creeps back over a few minutes. A session ended before its timer was done has no afterglow, so
+ * the haze starts creeping back straight away.
  */
 export function skyClarity(now: number, running: boolean, last?: SessionRecord): number {
   if (running) return 1;
   if (!last) return 0;
-  const clearUntil = last.endedAt + afterglowShare * (last.focusedMs + last.overtimeMs);
+  const length = last.focusedMs + last.overtimeMs;
+  const endedEarly = (last.timerMinutes ?? 0) > 0 && length < last.timerMinutes! * minuteMs;
+  const clearUntil = last.endedAt + (endedEarly ? 0 : afterglowShare * length);
   if (now <= clearUntil) return 1;
   return Math.max(0, 1 - (now - clearUntil) / hazeReturnMs);
 }
