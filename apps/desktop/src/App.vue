@@ -42,6 +42,7 @@ import {
   addOwnQuote,
   applyGlow,
   addSampleData,
+  answerGoal,
   constellationNames as savedNames,
   endSession,
   firstDayOfWeek,
@@ -54,6 +55,7 @@ import {
   removeSampleData,
   sessionLog,
   setProfileApps,
+  setProfileAsksGoal,
   setProfilePlan,
   setProfileSites,
   setProfileStarColor,
@@ -482,6 +484,7 @@ async function run(action: () => Promise<void>) {
           v-model:exploring="exploring"
           :profiles="snapshot.profiles"
           :session="snapshot.session"
+          :goal-to-answer="snapshot.goalToAnswer"
           :passes-left="snapshot.passesLeft"
           :satellites="satellites"
           :satellite-hotkey="snapshot.settings.satelliteHotkey"
@@ -497,7 +500,8 @@ async function run(action: () => Promise<void>) {
           :months="skyMonths"
           :month="skyMonth"
           @month="(month: number | undefined) => (steppedMonth = month)"
-          @start="(id: string) => run(() => startSession(id))"
+          @start="(id: string, goal?: string) => run(() => startSession(id, goal))"
+          @answer="(id: string, met: boolean) => run(() => answerGoal(id, met))"
           @end="run(endSession)"
           @pass="run(spendEmergencyPass)"
           @launch="launch"
@@ -512,6 +516,7 @@ async function run(action: () => Promise<void>) {
           :profiles="snapshot.profiles"
           :can-hide-apps="snapshot.canHideApps"
           :star-counts="profileStars"
+          @set-ask-goal="(id: string, on: boolean) => run(() => setProfileAsksGoal(id, on))"
           @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
           @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
           @set-sites="(id: string, sites: SiteRule[]) => run(() => setProfileSites(id, sites))"

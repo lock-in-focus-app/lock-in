@@ -94,7 +94,7 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
             Ok(())
         }
         _ => match id.strip_prefix(START_PREFIX) {
-            Some(profile_id) => crate::start_session(app, profile_id),
+            Some(profile_id) => crate::start_session(app, profile_id, None),
             None => Ok(()),
         },
     };

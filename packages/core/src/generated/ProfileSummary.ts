@@ -13,6 +13,10 @@ sites: Array<SiteRule>,
  */
 starColor: string | null, 
 /**
+ * Whether starting one of its sessions in the window asks for a goal.
+ */
+askGoal: boolean, 
+/**
  * The if-then plan its redirect page shows, or "" if it has none.
  */
 plan: string, };

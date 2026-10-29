@@ -4,6 +4,9 @@ import type { GateSettings, GateWait, PageWait, Profile, RedirectSettings } from
 /** The longest if-then plan we keep. */
 export const maxPlanLength = 140;
 
+/** The longest goal for a session, as in the app's core (session.rs). */
+export const maxGoalLength = 140;
+
 export const defaultRedirectSettings: RedirectSettings = {
   gate: {
     requireReason: false,

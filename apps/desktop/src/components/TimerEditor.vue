@@ -6,8 +6,8 @@ import NumberField from './NumberField.vue';
 import SegmentedControl from './SegmentedControl.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
 
-const props = defineProps<{ timer: TimerSettings }>();
-const emit = defineEmits<{ 'update:timer': [timer: TimerSettings] }>();
+const props = defineProps<{ timer: TimerSettings; askGoal: boolean }>();
+const emit = defineEmits<{ 'update:timer': [timer: TimerSettings]; 'update:askGoal': [on: boolean] }>();
 
 /** The longest timer, 6 hours, as in the app's core (timer.rs). */
 const maxMinutes = 360;
@@ -118,6 +118,18 @@ function save(patch: Partial<TimerSettings>) {
         <p class="help">Shows "Done · 37 min ago" instead of just "Done", so you can see how long extra you worked.</p>
       </div>
     </template>
+
+    <div class="field">
+      <ToggleSwitch
+        label="Ask for a goal"
+        :model-value="askGoal"
+        @update:model-value="emit('update:askGoal', $event)"
+      />
+      <p class="help">
+        Starting a session from the Sky asks for one line on what you'll get done, which you can skip. Afterwards, the
+        Sky asks "Did you do it?", and Your week counts how it went.
+      </p>
+    </div>
   </div>
 </template>
 

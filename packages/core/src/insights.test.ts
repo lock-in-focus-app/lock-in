@@ -25,6 +25,8 @@ function session(startedAt: number, minutes: number, extra: Partial<SessionRecor
     idleTailMs: 0,
     endReason: 'stopped',
     broken: false,
+    goal: null,
+    goalMet: null,
     ...extra,
   };
 }
@@ -135,6 +137,7 @@ describe('weeklyReport', () => {
       emergencyPasses: 1,
       idle: 1,
       broken: 1,
+      goals: { set: 0, met: 0, missed: 0 },
     });
   });
 
@@ -230,6 +233,18 @@ describe('weeklyReport', () => {
     // Not without the tip, or without a session to tell which profile it was.
     expect(report({ sessions, gateVisits: gateVisits.slice(0, 4) }).planIdea).toBeUndefined();
     expect(report({ gateVisits }).planIdea).toBeUndefined();
+  });
+
+  it('counts goals and how they went', () => {
+    const sessions = [
+      session(at(0, 9), 50, { goal: 'Draft the intro', goalMet: true }),
+      session(at(1, 9), 50, { goal: 'Outline part two', goalMet: false }),
+      session(at(2, 9), 50, { goal: 'Edit chapter one' }),
+      session(at(3, 9), 50),
+      session(at(-1, 9), 50, { goal: 'Last week', goalMet: true }),
+    ];
+    expect(report({ sessions }).focus.goals).toEqual({ set: 3, met: 1, missed: 1 });
+    expect(report({}).focus.goals).toEqual({ set: 0, met: 0, missed: 0 });
   });
 
   it('suggests the time of day focus goes best', () => {

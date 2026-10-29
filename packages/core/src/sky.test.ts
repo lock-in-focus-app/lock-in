@@ -36,6 +36,8 @@ function session(offset: number, minutes: number, extra: Partial<SessionRecord> 
     idleTailMs: 0,
     endReason: 'stopped',
     broken: false,
+    goal: null,
+    goalMet: null,
     ...extra,
   };
 }
@@ -138,6 +140,7 @@ describe('sessionSoFar', () => {
     startedAt: start,
     timer: { minutes: 45, onEnd: 'silent', strictness: 'gentle', showSinceDone: false },
     broken: false,
+    goal: null,
   };
 
   it('counts time before the timer is done as focus and after it as overtime', () => {

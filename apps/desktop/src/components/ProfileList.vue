@@ -20,6 +20,7 @@ defineProps<{
 }>();
 const emit = defineEmits<{
   'set-timer': [profileId: string, timer: TimerSettings];
+  'set-ask-goal': [profileId: string, on: boolean];
   'set-apps': [profileId: string, apps: AppRule[]];
   'set-sites': [profileId: string, sites: SiteRule[]];
   'set-plan': [profileId: string, plan: string];
@@ -98,7 +99,9 @@ function summary(profile: ProfileSummary): string {
               <TimerEditor
                 v-if="open.panel === 'timer'"
                 :timer="profile.timer"
+                :ask-goal="profile.askGoal"
                 @update:timer="emit('set-timer', profile.id, $event)"
+                @update:ask-goal="emit('set-ask-goal', profile.id, $event)"
               />
               <AppRulesEditor
                 v-else-if="open.panel === 'apps'"

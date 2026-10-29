@@ -85,6 +85,7 @@ const lockHelp = computed(() => {
         <span v-for="mark in marks" :key="mark" :style="{ left: `${(mark / minutes) * 100}%` }">{{ mark }}</span>
       </div>
     </div>
+    <p v-if="session.goal" class="goal"><span class="mono">Goal ·</span> {{ session.goal }}</p>
     <p class="mono">
       {{ detail }} · Started <b>{{ started }}</b>
     </p>
@@ -179,6 +180,17 @@ p {
 
 .clock.done {
   font-size: 40px;
+}
+
+/* What the session is for, if it was given a goal. */
+.goal {
+  margin: 0 8px 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.goal .mono {
+  color: var(--c);
 }
 
 /* A ruler from 0 to the timer's length, with what's gone by lit up to a marker at now. */

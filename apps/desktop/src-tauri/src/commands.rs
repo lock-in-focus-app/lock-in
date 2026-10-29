@@ -18,9 +18,25 @@ pub fn snapshot(app: AppHandle) -> Snapshot {
     crate::engine(&app).snapshot(crate::now_ms())
 }
 
+/// Starts a session, with a goal if its profile asked for one and one was given.
 #[tauri::command]
-pub fn start_session(app: AppHandle, profile_id: String) -> Result<()> {
-    crate::start_session(&app, &profile_id)
+pub fn start_session(app: AppHandle, profile_id: String, goal: Option<String>) -> Result<()> {
+    crate::start_session(&app, &profile_id, goal.as_deref())
+}
+
+/// Answers "Did you do it?" for the last session's goal.
+#[tauri::command]
+pub fn answer_goal(app: AppHandle, session_id: String, met: bool) -> Result<()> {
+    crate::engine(&app).answer_goal(&session_id, met, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_profile_asks_goal(app: AppHandle, profile_id: String, on: bool) -> Result<()> {
+    crate::engine(&app).set_profile_asks_goal(&profile_id, on, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
 }
 
 /// Ends the session. The window asks for a Gentle or Medium session's pause or typing first.

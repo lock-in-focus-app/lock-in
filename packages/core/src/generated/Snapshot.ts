@@ -4,6 +4,7 @@ import type { KnownBrowser } from "./KnownBrowser";
 import type { OwnQuote } from "./OwnQuote";
 import type { ProfileSummary } from "./ProfileSummary";
 import type { Satellite } from "./Satellite";
+import type { SessionGoal } from "./SessionGoal";
 import type { Settings } from "./Settings";
 
 /**
@@ -35,4 +36,8 @@ tourOffered: boolean,
 /**
  * Quotes the user added, for the Sky's quote for the day and Settings.
  */
-ownQuotes: Array<OwnQuote>, };
+ownQuotes: Array<OwnQuote>, 
+/**
+ * The last session's goal, between sessions, until "Did you do it?" is answered.
+ */
+goalToAnswer: SessionGoal | null, };

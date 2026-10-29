@@ -16,6 +16,7 @@ export type * from './generated/Satellite';
 export type * from './generated/SatelliteAction';
 export type * from './generated/SatelliteRecord';
 export type * from './generated/SatelliteState';
+export type * from './generated/SessionGoal';
 export type * from './generated/SessionRecord';
 export type * from './generated/Settings';
 export type * from './generated/SkyState';
@@ -71,6 +72,7 @@ export {
 export {
   defaultRedirectSettings,
   defaultWaits,
+  maxGoalLength,
   maxPlanLength,
   pageWaitFor,
   redirectSettingsFor,
