@@ -217,6 +217,21 @@ describe('weeklyReport', () => {
     ]);
   });
 
+  it('drafts an if-then plan for the profile whose sessions a site pulls at most', () => {
+    const sessions = [0, 1, 2].map((day) => session(at(day, 13), 120));
+    sessions.push(session(at(3, 13), 120, { profileId: 'writing', profileName: 'Writing' }));
+    const gateVisits = [0, 1, 2, 3, 4].map((day) => visit(at(day, 14, 10), { why: 'stuck' }));
+    expect(report({ sessions, gateVisits }).planIdea).toEqual({
+      profileId: 'deep',
+      recipeId: 'reddit',
+      plan: "When I'm stuck and want Reddit, I'll write down the smallest next step.",
+    });
+
+    // Not without the tip, or without a session to tell which profile it was.
+    expect(report({ sessions, gateVisits: gateVisits.slice(0, 4) }).planIdea).toBeUndefined();
+    expect(report({ gateVisits }).planIdea).toBeUndefined();
+  });
+
   it('suggests the time of day focus goes best', () => {
     const sessions = [
       session(at(0, 9), 60),

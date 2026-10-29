@@ -54,6 +54,7 @@ import {
   removeSampleData,
   sessionLog,
   setProfileApps,
+  setProfilePlan,
   setProfileSites,
   setProfileStarColor,
   setProfileTimer,
@@ -514,6 +515,7 @@ async function run(action: () => Promise<void>) {
           @set-timer="(id: string, timer: TimerSettings) => run(() => setProfileTimer(id, timer))"
           @set-apps="(id: string, apps: AppRule[]) => run(() => setProfileApps(id, apps))"
           @set-sites="(id: string, sites: SiteRule[]) => run(() => setProfileSites(id, sites))"
+          @set-plan="(id: string, plan: string) => run(() => setProfilePlan(id, plan))"
           @set-star-color="(id: string, color: string) => run(() => setProfileStarColor(id, color))"
         />
         <WeekReport
@@ -526,6 +528,7 @@ async function run(action: () => Promise<void>) {
           :profiles="snapshot.profiles"
           @week="(week: number) => (reportWeek = week)"
           @rename="rename"
+          @set-plan="(id: string, plan: string) => run(() => setProfilePlan(id, plan))"
         />
         <SettingsView
           v-else

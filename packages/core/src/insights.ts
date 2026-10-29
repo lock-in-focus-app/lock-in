@@ -1,6 +1,7 @@
 import type { Activity } from './generated/Activity';
 import type { GateVisitRecord } from './generated/GateVisitRecord';
 import type { SessionRecord } from './generated/SessionRecord';
+import { maxPlanLength } from './settings';
 
 // The weekly report, worked out from what the desktop app logged. Weeks are seven days in local
 // time, starting on the first day of the week set on the user's computer, so a day or an hour
@@ -65,6 +66,15 @@ export interface WeeklyReport {
   satellites: SatelliteSummary;
   /** Up to three tips, each only when there's enough data behind it. */
   suggestions: string[];
+  /** An if-then plan drafted from the distraction tip, if there's one and a profile to give it to. */
+  planIdea?: PlanIdea;
+}
+
+/** An if-then plan for the profile whose sessions a site pulled at most, drafted from why it did. */
+export interface PlanIdea {
+  profileId: string;
+  recipeId: string;
+  plan: string;
 }
 
 export interface FocusSummary {
@@ -162,8 +172,9 @@ export function weeklyReport(
     snoozes: sum(satellites.map((s) => s.snoozes)),
   };
 
+  const tipSite = distractionTipSite(distractions);
   const suggestions = [
-    distractionTip(distractions, siteName),
+    tipSite && distractionTip(tipSite, siteName),
     bestTimeTip(sessions, focus),
     timerTip(sessions),
     distractions.visits >= 5 && satellites.length === 0
@@ -178,6 +189,7 @@ export function weeklyReport(
     distractions,
     satellites: satelliteSummary,
     suggestions: suggestions.slice(0, 3),
+    planIdea: tipSite && planIdea(tipSite, visits, activity.sessions, siteName),
   };
 }
 
@@ -282,12 +294,42 @@ const whyTips: Record<string, string> = {
   curious: 'Try launching the question as a satellite and looking it up after the session.',
 };
 
-/** For the most visited site with a reason that stands out. */
-function distractionTip(distractions: DistractionSummary, siteName: (id: string) => string): string | undefined {
-  const site = distractions.sites.find((s) => s.visits >= 5 && s.why && whyTips[s.why]);
-  if (!site) return undefined;
+/** The most visited site with a reason that stands out, for the distraction tip. */
+function distractionTipSite(distractions: DistractionSummary): SiteDistractions | undefined {
+  return distractions.sites.find((s) => s.visits >= 5 && s.why && whyTips[s.why]);
+}
+
+function distractionTip(site: SiteDistractions, siteName: (id: string) => string): string {
   const when = site.peakHour === undefined ? '' : `, mostly ${formatHourRange(site.peakHour)}`;
   return `You reach for ${siteName(site.recipeId)} when ${site.why}${when}. ${whyTips[site.why!]}`;
+}
+
+// The same advice as the tips, as a plan to decide on ahead of time (PLAN §12).
+const planDrafts: Record<string, (site: string) => string> = {
+  stuck: (site) => `When I'm stuck and want ${site}, I'll write down the smallest next step.`,
+  bored: (site) => `When I'm bored and want ${site}, I'll switch to another part of the task.`,
+  tired: (site) => `When I'm tired and want ${site}, I'll take five minutes away from the screen.`,
+  curious: (site) => `When I'm curious and want ${site}, I'll launch the question as a satellite.`,
+};
+
+/**
+ * A plan for the tip's site, given to the profile whose sessions most of its visits came in.
+ * Visits only happen during sessions, so each is matched to the one it fell in.
+ */
+function planIdea(
+  site: SiteDistractions,
+  visits: GateVisitRecord[],
+  sessions: SessionRecord[],
+  siteName: (id: string) => string,
+): PlanIdea | undefined {
+  const draft = planDrafts[site.why!];
+  const profileIds = visits.flatMap((v) => {
+    const session = v.recipeId === site.recipeId && sessions.find((s) => v.at >= s.startedAt && v.at <= s.endedAt);
+    return session ? [session.profileId] : [];
+  });
+  const [profileId] = [...groupBy(profileIds, (id) => id)].sort((a, b) => b[1].length - a[1].length)[0] ?? [];
+  if (!draft || !profileId) return undefined;
+  return { profileId, recipeId: site.recipeId, plan: draft(siteName(site.recipeId)).slice(0, maxPlanLength) };
 }
 
 const partsOfDay = [

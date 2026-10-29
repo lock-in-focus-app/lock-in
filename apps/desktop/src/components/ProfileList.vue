@@ -3,14 +3,15 @@ import type { AppRule, ProfileSummary, SiteRule, Strictness, TimerSettings } fro
 import { starColorFor } from '@lock-in/core';
 import { ref } from 'vue';
 import AppRulesEditor from './AppRulesEditor.vue';
+import PlanEditor from './PlanEditor.vue';
 import SitesEditor from './SitesEditor.vue';
 import StarColorPicker from './StarColorPicker.vue';
 import TimerEditor from './TimerEditor.vue';
 import Unfold from './Unfold.vue';
 
 // Only for setting profiles up, as the Observatory HUD's channels (PLAN Phase 5): each profile is a
-// frame with a port in its star color, opening in place onto its Timer, Apps, Sites and Star
-// panels. Sessions start from the Sky (SkyPage.vue), which keeps this page's purpose clear.
+// frame with a port in its star color, opening in place onto its Timer, Apps, Sites, Plan and
+// Star panels. Sessions start from the Sky (SkyPage.vue), which keeps this page's purpose clear.
 defineProps<{
   profiles: ProfileSummary[];
   canHideApps: boolean;
@@ -21,15 +22,17 @@ const emit = defineEmits<{
   'set-timer': [profileId: string, timer: TimerSettings];
   'set-apps': [profileId: string, apps: AppRule[]];
   'set-sites': [profileId: string, sites: SiteRule[]];
+  'set-plan': [profileId: string, plan: string];
   'set-star-color': [profileId: string, color: string];
 }>();
 
 // Which profile is open, one at a time, and on which panel.
-type Panel = 'timer' | 'apps' | 'sites' | 'star';
+type Panel = 'timer' | 'apps' | 'sites' | 'plan' | 'star';
 const panels: { id: Panel; label: string }[] = [
   { id: 'timer', label: 'Timer' },
   { id: 'apps', label: 'Apps' },
   { id: 'sites', label: 'Sites' },
+  { id: 'plan', label: 'Plan' },
   { id: 'star', label: 'Star' },
 ];
 const open = ref<{ profileId: string; panel: Panel }>();
@@ -108,6 +111,11 @@ function summary(profile: ProfileSummary): string {
                 :sites="profile.sites"
                 @update:sites="emit('set-sites', profile.id, $event)"
               />
+              <PlanEditor
+                v-else-if="open.panel === 'plan'"
+                :plan="profile.plan"
+                @update:plan="emit('set-plan', profile.id, $event)"
+              />
               <div v-else class="star">
                 <StarColorPicker
                   :color="starColorFor(profile.id, profile.starColor)"
@@ -121,7 +129,9 @@ function summary(profile: ProfileSummary): string {
         </Unfold>
       </div>
     </div>
-    <p class="help foot">Sites are kept in step with the browser extension, so they can be changed in either.</p>
+    <p class="help foot">
+      Sites and plans are kept in step with the browser extension, so they can be changed in either.
+    </p>
   </section>
 </template>
 

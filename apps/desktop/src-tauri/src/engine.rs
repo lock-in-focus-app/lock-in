@@ -99,6 +99,8 @@ pub struct ProfileSummary {
     pub sites: Vec<SiteRule>,
     /// The color of its stars, if it was given one.
     pub star_color: Option<String>,
+    /// The if-then plan its redirect page shows, or "" if it has none.
+    pub plan: String,
 }
 
 /// A name someone gave a constellation (PLAN §5). The constellations themselves are worked out
@@ -230,6 +232,7 @@ impl Engine {
                     apps: p.apps(),
                     sites: p.sites(),
                     star_color: p.star_color(),
+                    plan: p.plan(),
                 })
                 .collect(),
             session: self.session().map(|s| ActiveSession {
@@ -492,6 +495,24 @@ impl Engine {
             .find(|p| p.id == profile_id)
             .ok_or(Error::UnknownProfile)?;
         profile.set_star_color(color);
+        let synced = Synced {
+            value: profiles,
+            updated_at: now,
+        };
+        self.store.save(PROFILES, &synced)?;
+        self.profiles = synced;
+        Ok(())
+    }
+
+    /// Changes the if-then plan a profile's redirect page shows (PLAN §3). It can't loosen a
+    /// Hard session, so it can be changed any time.
+    pub fn set_profile_plan(&mut self, profile_id: &str, plan: &str, now: i64) -> Result<()> {
+        let mut profiles = self.profiles.value.clone();
+        let profile = profiles
+            .iter_mut()
+            .find(|p| p.id == profile_id)
+            .ok_or(Error::UnknownProfile)?;
+        profile.set_plan(plan);
         let synced = Synced {
             value: profiles,
             updated_at: now,
@@ -900,6 +921,29 @@ mod tests {
             Err(Error::UnknownProfile)
         ));
         assert_eq!(color(&engine, "writing").as_deref(), Some("#9fe3c9"));
+    }
+
+    #[test]
+    fn sets_plans_during_hard_sessions_too() {
+        let mut engine = hard_engine();
+        let plan = |engine: &Engine| {
+            let profiles = engine.snapshot(0).profiles;
+            profiles.into_iter().find(|p| p.id == "deep-work").unwrap().plan
+        };
+        assert_eq!(plan(&engine), "");
+
+        engine.start_session("deep-work", 1).unwrap();
+        engine
+            .set_profile_plan("deep-work", " When I'm stuck, I'll write the next step. ", 2)
+            .unwrap();
+        assert_eq!(plan(&engine), "When I'm stuck, I'll write the next step.");
+        assert_eq!(engine.profiles.updated_at, 2);
+        engine.set_profile_plan("deep-work", "", 3).unwrap();
+        assert_eq!(plan(&engine), "");
+        assert!(matches!(
+            engine.set_profile_plan("nope", "Plan", 4),
+            Err(Error::UnknownProfile)
+        ));
     }
 
     #[test]

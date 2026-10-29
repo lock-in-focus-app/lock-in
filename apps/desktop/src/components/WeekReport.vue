@@ -5,6 +5,7 @@ import {
   formatHour,
   formatHourRange,
   maxConstellationNameLength,
+  maxPlanLength,
   siteName as nameOfSite,
   starColorFor,
   weeklyReport,
@@ -47,6 +48,7 @@ const emit = defineEmits<{
   /** The start of the week being shown, whenever it changes. */
   week: [start: number];
   rename: [id: string, name: string];
+  'set-plan': [profileId: string, plan: string];
 }>();
 
 const thisWeek = computed(() => weekStart(Date.now(), props.firstDay));
@@ -100,6 +102,25 @@ function saveName() {
   }
 }
 watch(start, () => (renaming.value = false));
+
+// The notes offer the distraction tip as an if-then plan, drafted from it, to change here and save
+// as that profile's plan (PLAN §12). Only while the profile has none, and only in the report.
+const planDraft = ref('');
+const planSaved = ref(false);
+const planProfile = computed(() => props.profiles.find((p) => p.id === report.value?.planIdea?.profileId));
+watch(
+  () => report.value?.planIdea,
+  (idea) => {
+    planDraft.value = idea?.plan ?? '';
+    planSaved.value = false;
+  },
+);
+function savePlan() {
+  const profile = planProfile.value;
+  if (!profile || !planDraft.value.trim()) return;
+  planSaved.value = true;
+  emit('set-plan', profile.id, planDraft.value.trim());
+}
 
 const firstWeek = computed(() =>
   firstLoggedAt.value === null ? thisWeek.value : weekStart(firstLoggedAt.value, props.firstDay),
@@ -516,6 +537,31 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
           <section v-if="report.suggestions.length" class="read" aria-labelledby="suggestions">
             <h3 id="suggestions" class="mono">{{ numbered('notes') }} — Notes</h3>
             <p v-for="tip in report.suggestions" :key="tip" class="tip">{{ tip }}</p>
+            <form v-if="planProfile && !planProfile.plan" class="plan-idea" @submit.prevent="savePlan">
+              <p class="mono">
+                An if-then plan for <b>{{ planProfile.name }}</b>
+              </p>
+              <p class="note">
+                Decide now what you'll do when the urge comes, and the redirect page shows it to you each time. Planning
+                "when this happens, I'll do that" ahead of time is one of the best-tested ways to change a habit.
+              </p>
+              <!-- A text box can't draw the frame's corner ticks itself, so a label around it does. -->
+              <label class="card box">
+                <textarea
+                  v-model="planDraft"
+                  aria-label="If-then plan"
+                  rows="2"
+                  :maxlength="maxPlanLength"
+                  @keydown.enter.exact.prevent="savePlan"
+                />
+              </label>
+              <button class="card mono" type="submit" :disabled="!planDraft.trim()">
+                Save as {{ planProfile.name }}'s plan
+              </button>
+            </form>
+            <p v-else-if="planProfile && planSaved" class="note saved">
+              Saved as {{ planProfile.name }}'s plan. Change it any time in Profiles › Plan.
+            </p>
           </section>
         </template>
       </div>
@@ -811,6 +857,62 @@ p {
 .tip {
   margin-top: 8px;
   font-size: 12.5px;
+}
+
+/* The distraction tip as a plan to save, set off below the notes. */
+.plan-idea {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+
+.plan-idea .note {
+  margin: 0;
+}
+
+.box {
+  display: flex;
+}
+
+.box:focus-within {
+  --t: var(--tick-bright);
+}
+
+.plan-idea textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--starlight);
+  font:
+    12.5px/1.5 system-ui,
+    sans-serif;
+  resize: none;
+}
+
+.plan-idea button {
+  justify-self: end;
+  padding: 6px 10px;
+  background: none;
+  color: var(--dim);
+  transition: color 300ms;
+}
+
+.plan-idea button:not(:disabled):hover {
+  color: var(--starlight);
+}
+
+.plan-idea button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.saved {
+  margin-top: 16px;
 }
 
 .empty {
