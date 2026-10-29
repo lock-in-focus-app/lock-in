@@ -31,7 +31,12 @@ export { matchesPattern, matchPatternToRegex, parseHttpUrl } from './match';
 export { buildRecipeCss, cssForPage, findRecipe, isSafeSelector, pagePathAttribute, resolveToggles } from './recipe';
 export {
   findRule,
+  maxHiddenLabelLength,
+  maxHiddenParts,
   maxProfileNameLength,
+  maxSelectorLength,
+  withHiddenPart,
+  withHiddenPartRemoved,
   withNewProfile,
   withProfileDuplicated,
   withProfileMoved,

@@ -1,6 +1,6 @@
 import { matchesPattern, parseHttpUrl } from './match';
 import { levelFor } from './paths';
-import type { Profile, Session, SiteRecipe, SiteRule } from './types';
+import type { HiddenPart, Profile, Session, SiteRecipe, SiteRule } from './types';
 
 /**
  * While a site is tamed, the extension keeps the page's path in this attribute on
@@ -39,10 +39,20 @@ export function resolveToggles(
   );
 }
 
-/** Builds the stylesheet that tames a site with the given toggles switched on. */
-export function buildRecipeCss(recipe: SiteRecipe, toggles: Record<string, boolean>): string {
+/**
+ * Builds the stylesheet that tames a site with the given toggles switched on, and hides any parts
+ * of the page someone picked.
+ */
+export function buildRecipeCss(
+  recipe: SiteRecipe,
+  toggles: Record<string, boolean>,
+  hidden: readonly HiddenPart[] = [],
+): string {
   const enabled = recipe.toggles.filter((toggle) => toggles[toggle.id]);
-  const selectors = enabled.flatMap((toggle) => toggle.selectors ?? []).filter(isSafeSelector);
+  const selectors = [
+    ...enabled.flatMap((toggle) => toggle.selectors ?? []),
+    ...hidden.map((part) => part.selector),
+  ].filter(isSafeSelector);
 
   const rules: string[] = [];
   if (selectors.length > 0) {
@@ -71,5 +81,5 @@ export function cssForPage(options: {
 
   const rule = profile.sites.find((site) => site.recipeId === recipe.id);
 
-  return buildRecipeCss(recipe, resolveToggles(recipe, rule, session.overrides?.[recipe.id]));
+  return buildRecipeCss(recipe, resolveToggles(recipe, rule, session.overrides?.[recipe.id]), rule?.hidden);
 }

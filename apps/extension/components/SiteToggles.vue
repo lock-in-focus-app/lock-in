@@ -70,9 +70,32 @@ function setLevel(level: SiteLevel) {
 // What the picked level does, spelled out under the picker.
 const levelDetail = computed(() => {
   const level = rule.value?.level ?? 'allowed';
-  if (level === 'tamed' && !props.recipe.toggles.length) return `Nothing to hide on ${props.recipe.name} yet.`;
+  if (level === 'tamed' && own.value) {
+    const count = rule.value?.hidden?.length ?? 0;
+    return count
+      ? `Stays open, with the ${count === 1 ? 'part' : `${count} parts`} you picked hidden.`
+      : `Stays open. Pick the parts of ${props.recipe.name} to hide below.`;
+  }
   return siteLevels.find((l) => l.id === level)?.detail;
 });
+
+// The element picker hides parts of the page while the site is tamed. It runs on the page itself,
+// through the content script, which a tab opened before Lock In could reach the site doesn't have
+// yet, so it's added then.
+const canPick = computed(
+  () => !!profile.value && rule.value?.level === 'tamed' && props.tabId !== undefined && !needsReach.value,
+);
+async function pickParts() {
+  if (!profile.value || props.tabId === undefined) return;
+  const message = { type: 'lock-in:pick', profileId: profile.value.id, recipeId: props.recipe.id };
+  try {
+    await browser.tabs.sendMessage(props.tabId, message);
+  } catch {
+    await browser.scripting.executeScript({ target: { tabId: props.tabId }, files: ['/content-scripts/content.js'] });
+    await browser.tabs.sendMessage(props.tabId, message);
+  }
+  window.close();
+}
 
 const isOpen = computed(() => !isLooser('tamed', rule.value?.level ?? 'allowed'));
 const canKeepAway = computed(() => !!props.session && !!profile.value && !pageRule.value && isOpen.value);
@@ -112,7 +135,7 @@ function set(toggleId: string, value: boolean) {
       v-if="!session && profile"
       class="levels"
       :site-name="recipe.name"
-      :can-tame="recipe.toggles.length > 0"
+      :can-tame="recipe.toggles.length > 0 || own"
       :model-value="rule?.level ?? 'allowed'"
       @update:model-value="setLevel"
     />
@@ -154,6 +177,13 @@ function set(toggleId: string, value: boolean) {
       :model-value="values[toggle.id] ?? false"
       @update:model-value="set(toggle.id, $event)"
     />
+
+    <div v-if="canPick" class="pick">
+      <button type="button" class="key" @click="pickParts">Hide parts of this page</button>
+      <span v-if="rule?.hidden?.length">
+        {{ rule.hidden.length }} {{ rule.hidden.length === 1 ? 'part' : 'parts' }} hidden so far
+      </span>
+    </div>
 
     <p v-if="session && hasSessionChanges" class="footer">
       <span>Changed for this session</span>
@@ -244,6 +274,19 @@ select {
 .keep-away .key {
   flex: 1;
   padding: 7px 8px;
+}
+
+/* Opens the element picker on the page, under the toggles. */
+.pick {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.pick .key {
+  padding: 7px 10px;
 }
 
 .reach {

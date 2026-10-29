@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Profile, SiteLevel, SiteRecipe, SiteRule } from '@lock-in/core';
+import type { Profile, SiteLevel, SiteRule } from '@lock-in/core';
 import {
   hasRoomForOwnSite,
   maxOwnSites,
@@ -16,7 +16,8 @@ import SegmentedControl from './SegmentedControl.vue';
 
 // A profile's sites, the same list as in the browser extension's settings: each built-in site,
 // then any added by address, with its level. The extension does the taming and redirecting, and
-// gets every change here through the link. What Tamed hides, and page rules, are set there.
+// gets every change here through the link. What Tamed hides, and page rules, are set there, and
+// so are the parts of a page picked to hide with its element picker.
 const props = defineProps<{ sites: SiteRule[] }>();
 const emit = defineEmits<{ 'update:sites': [sites: SiteRule[]] }>();
 
@@ -31,13 +32,9 @@ const ruleFor = (id: string) => props.sites.find((site) => site.recipeId === id)
 
 // What each level does is spelled out above the list, so nothing depends on hovering.
 const levels = siteLevels;
-// Added sites have nothing to hide, so Tamed is off for them.
-const levelOptions = (recipe: SiteRecipe) =>
-  levels.map((level) => ({
-    id: level.id,
-    label: level.label,
-    disabled: level.id === 'tamed' && recipe.toggles.length === 0 && ruleFor(recipe.id)?.level !== 'tamed',
-  }));
+// Every site can be tamed: built-in ones with their recipe, added ones by hiding the parts picked
+// on the page in the extension.
+const levelOptions = levels.map((level) => ({ id: level.id, label: level.label }));
 
 // The edits are the extension's own (packages/core), on this profile's sites alone.
 const edit = (change: (list: Profile[]) => Profile[]) =>
@@ -46,6 +43,7 @@ const setLevel = (recipeId: string, level: SiteLevel) => edit((list) => withSite
 const remove = (recipeId: string) => edit((list) => withSiteRemoved(list, 'this', recipeId));
 
 const pageCount = (id: string) => ruleFor(id)?.paths?.length ?? 0;
+const hiddenCount = (id: string) => ruleFor(id)?.hidden?.length ?? 0;
 
 // Adding a site by its address. One that's built in is already listed.
 const draft = ref('');
@@ -84,11 +82,14 @@ function add() {
           <span v-if="pageCount(recipe.id)" class="pages mono">
             + {{ pageCount(recipe.id) }} page {{ pageCount(recipe.id) === 1 ? 'rule' : 'rules' }}
           </span>
+          <span v-if="hiddenCount(recipe.id)" class="pages mono">
+            + {{ hiddenCount(recipe.id) }} hidden {{ hiddenCount(recipe.id) === 1 ? 'part' : 'parts' }}
+          </span>
         </span>
         <SegmentedControl
           class="levels"
           :label="`What happens to ${recipe.name}`"
-          :options="levelOptions(recipe)"
+          :options="levelOptions"
           :model-value="ruleFor(recipe.id)?.level ?? 'allowed'"
           @update:model-value="setLevel(recipe.id, $event)"
         />
@@ -121,7 +122,8 @@ function add() {
     <p class="help">
       These apply in the browser, through Lock In's extension, while this profile runs. Added sites start out
       redirected, and the browser asks once to let Lock In reach each one. What Tamed hides, and page rules, are set in
-      the extension's settings.
+      the extension's settings. To hide part of a page, open the site and choose Hide parts of this page in the
+      extension's popup.
     </p>
   </div>
 </template>

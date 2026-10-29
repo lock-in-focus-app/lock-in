@@ -118,6 +118,14 @@ describe('sitesLooser', () => {
     ).toBe(false);
   });
 
+  it('catches a hidden part shown again, but not one more hidden', () => {
+    const hiding = (...selectors: string[]): SiteRule[] => [
+      { recipeId: 'site:example.com', level: 'tamed', hidden: selectors.map((selector) => ({ selector, label: '' })) },
+    ];
+    expect(sitesLooser(hiding('aside'), hiding('aside', 'nav'))).toBe(false);
+    expect(sitesLooser(hiding('aside'), hiding())).toBe(true);
+  });
+
   it('catches a site loosened or taken off', () => {
     expect(sitesLooser(before, [before[0]!, { recipeId: 'site:example.com', level: 'allowed' }])).toBe(true);
     expect(sitesLooser(before, [before[0]!])).toBe(true);

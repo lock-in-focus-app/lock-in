@@ -1,5 +1,13 @@
 <script lang="ts" setup>
-import { findRule, maxPathLength, maxPathRules, normalizePath, type Profile, type SiteRecipe } from '@lock-in/core';
+import {
+  findRule,
+  maxPathLength,
+  maxPathRules,
+  normalizePath,
+  ownSiteDomain,
+  type Profile,
+  type SiteRecipe,
+} from '@lock-in/core';
 import { computed, ref } from 'vue';
 import LevelPicker from '@/components/LevelPicker.vue';
 
@@ -52,7 +60,7 @@ async function add() {
         <code class="path" :title="rule.path">{{ rule.path === '/' ? '/ (home page)' : rule.path }}</code>
         <LevelPicker
           :site-name="`${recipe.name} ${rule.path}`"
-          :can-tame="recipe.toggles.length > 0"
+          :can-tame="recipe.toggles.length > 0 || !!ownSiteDomain(recipe.id)"
           :model-value="rule.level"
           @update:model-value="setPageLevel(profile.id, recipe.id, [rule.path], $event)"
         />

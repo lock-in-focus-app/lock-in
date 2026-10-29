@@ -276,6 +276,7 @@ async function serveFixtures(): Promise<Server> {
     'www.facebook.test': await fixture('facebook'),
     'www.linkedin.test': await fixture('linkedin'),
     'www.pinterest.test': await fixture('pinterest'),
+    'picker.test': await fixture('picker'),
   };
   const server = createServer((req, res) => {
     const host = req.headers.host?.split(':')[0] ?? '';

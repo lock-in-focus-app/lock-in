@@ -1,6 +1,7 @@
 import { maxPathRules, normalizePath } from './paths';
 import { isStarColor, newStarColor } from './sky';
-import type { Profile, RedirectSettings, Session, SiteLevel, SiteRecipe, SiteRule } from './types';
+import { isSafeSelector } from './recipe';
+import type { HiddenPart, Profile, RedirectSettings, Session, SiteLevel, SiteRecipe, SiteRule } from './types';
 
 // Pure, immutable edits to profiles and sessions. The extension (and later the desktop
 // app) persists whatever these return.
@@ -198,6 +199,45 @@ export function withPathRuleRemoved(
     const { paths: _previous, ...rest } = site;
     const paths = (site.paths ?? []).filter((rule) => !samePath(rule.path, path));
     return paths.length > 0 ? { ...rest, paths } : rest;
+  });
+}
+
+/** Most parts of a page one site can have hidden, and the longest selector and name for one. */
+export const maxHiddenParts = 50;
+export const maxSelectorLength = 500;
+export const maxHiddenLabelLength = 80;
+
+/**
+ * Hides a part of a site's page, picked with the element picker, while the site is tamed. One
+ * already hidden, a selector that isn't safe or too long, or one past the limit is left out.
+ */
+export function withHiddenPart(
+  profiles: readonly Profile[],
+  profileId: string,
+  recipeId: string,
+  part: HiddenPart,
+): Profile[] {
+  const selector = part.selector.trim();
+  if (!isSafeSelector(selector) || selector.length > maxSelectorLength) return [...profiles];
+  const label = part.label.trim().slice(0, maxHiddenLabelLength);
+  return withSite(profiles, profileId, recipeId, (site) => {
+    const hidden = site.hidden ?? [];
+    if (hidden.length >= maxHiddenParts || hidden.some((p) => p.selector === selector)) return site;
+    return { ...site, hidden: [...hidden, { selector, label }] };
+  });
+}
+
+/** Shows a hidden part of a site's page again. */
+export function withHiddenPartRemoved(
+  profiles: readonly Profile[],
+  profileId: string,
+  recipeId: string,
+  selector: string,
+): Profile[] {
+  return withSite(profiles, profileId, recipeId, (site) => {
+    const { hidden: _previous, ...rest } = site;
+    const hidden = (site.hidden ?? []).filter((part) => part.selector !== selector);
+    return hidden.length > 0 ? { ...rest, hidden } : rest;
   });
 }
 

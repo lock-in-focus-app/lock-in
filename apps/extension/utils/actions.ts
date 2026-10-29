@@ -20,6 +20,8 @@ import {
   withGateVisit,
   withGateVisitContinued,
   withGateVisitWhy,
+  withHiddenPart,
+  withHiddenPartRemoved,
   withPass,
   withProfileToggle,
   withSiteRemoved,
@@ -28,6 +30,7 @@ import {
   withSessionOverridesSaved,
   withSessionToggle,
   type PageWait,
+  type HiddenPart,
   type Profile,
   type RedirectSettings,
   type SiteLevel,
@@ -193,6 +196,16 @@ export async function setPageLevel(
 /** Removes a page rule, so the page follows its site's level again. */
 export async function removePageRule(profileId: string, recipeId: string, path: string): Promise<void> {
   await editSites(profileId, (list) => withPathRuleRemoved(list, profileId, recipeId, path));
+}
+
+/** Hides a part of a site's page, picked with the element picker, while the site is tamed. */
+export async function hidePart(profileId: string, recipeId: string, part: HiddenPart): Promise<void> {
+  await editSites(profileId, (list) => withHiddenPart(list, profileId, recipeId, part));
+}
+
+/** Shows a hidden part of a site's page again. Resolves to false during a Hard session of the profile. */
+export function showPart(profileId: string, recipeId: string, selector: string): Promise<boolean> {
+  return editSites(profileId, (list) => withHiddenPartRemoved(list, profileId, recipeId, selector));
 }
 
 /** Restores the starter profiles to how they shipped. The user's own profiles are kept. */

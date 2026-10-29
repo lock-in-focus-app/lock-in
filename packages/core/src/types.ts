@@ -1,4 +1,5 @@
 import type { AppRule } from './generated/AppRule';
+import type { HiddenPart } from './generated/HiddenPart';
 import type { OwnQuote } from './generated/OwnQuote';
 import type { PathRule } from './generated/PathRule';
 import type { SiteLevel } from './generated/SiteLevel';
@@ -7,7 +8,7 @@ import type { TimerSettings } from './generated/TimerSettings';
 
 // How a profile treats each site is shared with the desktop app, so it's generated from its Rust
 // code (sites.rs).
-export type { PathRule, SiteLevel, SiteRule };
+export type { HiddenPart, PathRule, SiteLevel, SiteRule };
 
 // So are quotes the user added (quotes.rs), which sync with the app.
 export type { OwnQuote };

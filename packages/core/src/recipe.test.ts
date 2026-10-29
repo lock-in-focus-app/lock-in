@@ -85,6 +85,15 @@ describe('buildRecipeCss', () => {
   it('returns an empty string when nothing is enabled', () => {
     expect(buildRecipeCss(recipe, {})).toBe('');
   });
+
+  it('hides picked parts too, dropping unsafe ones', () => {
+    const css = buildRecipeCss(recipe, {}, [
+      { selector: 'aside.trending', label: 'Trending' },
+      { selector: '} body {', label: 'Bad' },
+    ]);
+    expect(css).toContain('aside.trending');
+    expect(css).not.toContain('body');
+  });
 });
 
 describe('cssForPage', () => {
@@ -103,6 +112,14 @@ describe('cssForPage', () => {
     });
     expect(css).toContain('#feed');
     expect(css).toContain('grayscale(1)');
+  });
+
+  it("hides the profile's picked parts", () => {
+    const picked: Profile = {
+      ...profileWith('tamed'),
+      sites: [{ recipeId: 'example', level: 'tamed', hidden: [{ selector: 'aside.trending', label: 'Trending' }] }],
+    };
+    expect(cssForPage({ url: page, session, profiles: [picked], recipes: [recipe] })).toContain('aside.trending');
   });
 
   it('applies session overrides on top of the profile', () => {

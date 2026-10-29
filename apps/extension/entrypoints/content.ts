@@ -1,7 +1,10 @@
 import {
+  buildRecipeCss,
   checkOpenPage,
   cssForPage,
+  endLock,
   findRecipe,
+  findRule,
   pagePathAttribute,
   siteAccess,
   siteRecipes,
@@ -9,6 +12,7 @@ import {
   type Session,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
+import type { Picker } from '@/utils/picker';
 
 // Listed here for the built-in sites. The background adds sites people add themselves, once
 // they've let Lock In reach them (ownSites.ts).
@@ -29,11 +33,30 @@ export default defineContentScript({
     let known = recipes;
     let url = new URL(location.href);
 
+    // While the element picker is open (from the popup), the parts it has hidden show here
+    // straight away, in a session or not, so you see what you're doing.
+    let picking: { profileId: string; recipeId: string; picker: Picker } | undefined;
+    const pickStyle = document.createElement('style');
+    pickStyle.dataset.lockInPicker = '';
+
     let removeOverlay: (() => void) | undefined;
     let overlayKey = '';
     let recheck: number | undefined;
 
+    const hiddenWhilePicking = () =>
+      (picking &&
+        findRule(
+          profileList.find((p) => p.id === picking!.profileId),
+          picking.recipeId,
+        )?.hidden) ??
+      [];
+
     const apply = (navigated = false) => {
+      if (picking) {
+        const recipe = known.find((r) => r.id === picking!.recipeId);
+        pickStyle.textContent = recipe ? buildRecipeCss({ ...recipe, toggles: [] }, {}, hiddenWhilePicking()) : '';
+        picking.picker.refresh();
+      }
       style.textContent = cssForPage({ url, session, profiles: profileList, recipes: known });
 
       // Recipes can hide things on some pages only by matching the path kept on <html>.
@@ -86,6 +109,40 @@ export default defineContentScript({
       }
     };
 
+    function startPicking(profileId: string, recipeId: string) {
+      const recipe = known.find((r) => r.id === recipeId);
+      const profile = profileList.find((p) => p.id === profileId);
+      if (!recipe || !profile) return false;
+      picking?.picker.close();
+      document.documentElement.append(pickStyle);
+      const picker = showPicker({
+        siteName: recipe.name,
+        profileName: profile.name,
+        hidden: hiddenWhilePicking,
+        locked: () => session?.profileId === profileId && endLock(session, Date.now()) === 'hard',
+        partFor: hiddenPartFor,
+        pickable,
+        onHide: (part) => hidePart(profileId, recipeId, part),
+        onShow: async (selector) => void (await showPart(profileId, recipeId, selector)),
+        onDone: stopPicking,
+      });
+      picking = { profileId, recipeId, picker };
+      apply();
+      return true;
+    }
+    function stopPicking() {
+      picking?.picker.close();
+      picking = undefined;
+      pickStyle.remove();
+    }
+    // The popup's "Hide parts of this page" asks for the picker on this tab.
+    const onMessage = (message: unknown, _sender: unknown, sendResponse: (started: boolean) => void) => {
+      const ask = message as { type?: string; profileId?: string; recipeId?: string } | undefined;
+      if (ask?.type !== 'lock-in:pick' || !ask.profileId || !ask.recipeId) return;
+      sendResponse(startPicking(ask.profileId, ask.recipeId));
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+
     void Promise.all([activeSession.getValue(), profiles.getValue()]).then(([s, p]) => {
       session = s;
       profileList = p;
@@ -112,6 +169,8 @@ export default defineContentScript({
       if (document.visibilityState === 'visible') apply();
     });
     ctx.onInvalidated(() => {
+      browser.runtime.onMessage.removeListener(onMessage);
+      stopPicking();
       unwatchSession();
       unwatchProfiles();
       style.remove();

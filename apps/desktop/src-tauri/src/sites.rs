@@ -31,6 +31,16 @@ pub struct PathRule {
     pub level: SiteLevel,
 }
 
+/// A part of a site's page someone picked to hide while it's tamed, with the extension's element
+/// picker: the CSS selector that finds it, and a short name for it, like "Trending now".
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct HiddenPart {
+    pub selector: String,
+    pub label: String,
+}
+
 /// How one site is treated by a profile. Built-in sites go by their recipe's id, like "reddit";
 /// ones people add themselves by their address, like "site:example.com".
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -47,6 +57,10 @@ pub struct SiteRule {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub paths: Option<Vec<PathRule>>,
+    /// Parts of the page picked to hide while the site is tamed, beyond its recipe's toggles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub hidden: Option<Vec<HiddenPart>>,
 }
 
 /// The most sites a profile keeps, and page rules and toggles a site keeps, so a bad sync can't
@@ -55,9 +69,13 @@ const MAX_SITES: usize = 200;
 const MAX_PATHS: usize = 50;
 const MAX_PATH_LENGTH: usize = 200;
 const MAX_TOGGLES: usize = 50;
+const MAX_HIDDEN: usize = 50;
+const MAX_SELECTOR_LENGTH: usize = 500;
+const MAX_LABEL_LENGTH: usize = 80;
 
 /// Drops site rules that can't be right (an id that isn't a site, a page path that isn't a
-/// path), and anything past the limits.
+/// path, a hidden part whose selector could break out of the stylesheet), and anything past the
+/// limits.
 pub fn tidy(sites: Vec<SiteRule>) -> Vec<SiteRule> {
     let mut sites: Vec<SiteRule> = sites.into_iter().filter(|site| is_site_id(&site.recipe_id)).collect();
     sites.truncate(MAX_SITES);
@@ -73,8 +91,23 @@ pub fn tidy(sites: Vec<SiteRule>) -> Vec<SiteRule> {
                 toggles.pop_last();
             }
         }
+        if let Some(hidden) = &mut site.hidden {
+            hidden.retain(|part| part.selector.len() <= MAX_SELECTOR_LENGTH && is_safe_selector(&part.selector));
+            hidden.truncate(MAX_HIDDEN);
+            for part in hidden.iter_mut() {
+                if let Some((end, _)) = part.label.char_indices().nth(MAX_LABEL_LENGTH) {
+                    part.label.truncate(end);
+                }
+            }
+        }
     }
     sites
+}
+
+/// Whether a selector can go in the extension's stylesheet without closing its rule or starting
+/// another one. The extension checks the same (`isSafeSelector` in packages/core/src/recipe.ts).
+fn is_safe_selector(selector: &str) -> bool {
+    !selector.trim().is_empty() && !selector.contains(['{', '}', ';', '@', '\\']) && !selector.contains("/*")
 }
 
 /// A built-in recipe's id ("reddit"), or "site:" and an address ("site:example.com").
@@ -98,8 +131,8 @@ fn is_site_id(id: &str) -> bool {
     }
 }
 
-/// Whether `new` lets through anything `old` kept away: a site or page at a looser level, or
-/// one taken off. A new page rule can't be looser than anything already set on its site. Not
+/// Whether `new` lets through anything `old` kept away: a site or page at a looser level, one
+/// taken off, or a hidden part shown again. A new page rule can't be looser than anything already set on its site. Not
 /// allowed during a Hard session. The extension checks the same (packages/core/src/sites.ts).
 pub fn looser(old: &[SiteRule], new: &[SiteRule]) -> bool {
     let same_path = |a: &PathRule, b: &PathRule| a.path.eq_ignore_ascii_case(&b.path);
@@ -120,7 +153,13 @@ pub fn looser(old: &[SiteRule], new: &[SiteRule]) -> bool {
         let new_page_looser = pages
             .iter()
             .any(|page| !old_pages.iter().any(|p| same_path(p, page)) && page.level < strictest);
-        level < before.level || page_loosened || new_page_looser
+        let hidden = kept.and_then(|site| site.hidden.as_deref()).unwrap_or_default();
+        let shown_again = before
+            .hidden
+            .iter()
+            .flatten()
+            .any(|part| !hidden.iter().any(|p| p.selector == part.selector));
+        level < before.level || page_loosened || new_page_looser || shown_again
     })
 }
 
@@ -134,6 +173,7 @@ mod tests {
             recipe_id: id.into(),
             level,
             toggles: None,
+            hidden: None,
             paths: (!paths.is_empty()).then(|| {
                 paths
                     .iter()
@@ -148,7 +188,7 @@ mod tests {
 
     #[test]
     fn reads_what_the_extension_saves_and_writes_it_back_the_same() {
-        let saved = r#"[{"recipeId":"youtube","level":"tamed","toggles":{"hideShorts":true},"paths":[{"path":"/shorts","level":"restricted"}]},{"recipeId":"site:example.com","level":"redirected"}]"#;
+        let saved = r#"[{"recipeId":"youtube","level":"tamed","toggles":{"hideShorts":true},"paths":[{"path":"/shorts","level":"restricted"}]},{"recipeId":"site:example.com","level":"tamed","hidden":[{"selector":"aside.trending","label":"Trending now"}]}]"#;
         let sites: Vec<SiteRule> = serde_json::from_str(saved).unwrap();
         assert_eq!(sites[0].level, Tamed);
         assert_eq!(sites[1].paths, None);
@@ -168,6 +208,42 @@ mod tests {
         let ids: Vec<&str> = sites.iter().map(|s| s.recipe_id.as_str()).collect();
         assert_eq!(ids, ["reddit", "site:example.com"]);
         assert_eq!(sites[0].paths.as_ref().unwrap().len(), 1);
+    }
+
+    fn hiding(id: &str, selectors: &[&str]) -> SiteRule {
+        let hidden = selectors
+            .iter()
+            .map(|&selector| HiddenPart {
+                selector: selector.into(),
+                label: "A part".into(),
+            })
+            .collect();
+        SiteRule {
+            hidden: Some(hidden),
+            ..site(id, Tamed, &[])
+        }
+    }
+
+    #[test]
+    fn tidying_drops_hidden_parts_that_could_break_out_of_the_stylesheet() {
+        let mut long = hiding(
+            "site:a.com",
+            &["aside", "a{}", "b;c", "@import x", "a\\62", "a /* c */", "  "],
+        );
+        long.hidden.as_mut().unwrap()[0].label = "x".repeat(200);
+        let tidied = tidy(vec![long]);
+        let hidden = tidied[0].hidden.as_ref().unwrap();
+        assert_eq!(hidden.len(), 1);
+        assert_eq!(hidden[0].selector, "aside");
+        assert_eq!(hidden[0].label.len(), MAX_LABEL_LENGTH);
+    }
+
+    #[test]
+    fn showing_a_hidden_part_again_is_looser_and_hiding_more_is_not() {
+        let old = vec![hiding("site:a.com", &["aside"])];
+        assert!(!looser(&old, &[hiding("site:a.com", &["aside", "nav"])]));
+        assert!(looser(&old, &[hiding("site:a.com", &[])]));
+        assert!(looser(&old, &[site("site:a.com", Tamed, &[])]));
     }
 
     #[test]

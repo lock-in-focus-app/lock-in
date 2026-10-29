@@ -3,8 +3,8 @@ import type { Profile, SiteLevel, SiteRecipe, SiteRule } from './types';
 
 // Sites people add themselves, beyond the built-in recipes: any site, by its address. Each is
 // kept in the profile like any other site, with the address in its id ("site:example.com"), so
-// it syncs to the desktop app as it is. With no recipe there's nothing to hide, so they're only
-// ever allowed, redirected or restricted.
+// it syncs to the desktop app as it is. With no recipe, taming one hides only the parts of its
+// page picked with the extension's element picker.
 
 const ownSitePrefix = 'site:';
 
@@ -54,7 +54,10 @@ export function ownSitePattern(domain: string): string {
   return `*://*.${domain}/*`;
 }
 
-/** A site someone added, as a recipe with nothing to hide, so it works everywhere recipes do. */
+/**
+ * A site someone added, as a recipe with no toggles, so it works everywhere recipes do. Taming it
+ * hides the parts of its page picked with the element picker.
+ */
 export function ownSiteRecipe(domain: string): SiteRecipe {
   return { id: ownSiteId(domain), name: domain, matches: [ownSitePattern(domain)], toggles: [] };
 }
@@ -126,8 +129,8 @@ export function isLooser(level: SiteLevel, than: SiteLevel): boolean {
 }
 
 /**
- * Whether `after` lets through anything `before` kept away: a site or page at a looser level, or
- * one taken off. A new page rule can't be looser than anything already set on its site. Not
+ * Whether `after` lets through anything `before` kept away: a site or page at a looser level, one
+ * taken off, or a hidden part shown again. A new page rule can't be looser than anything already set on its site. Not
  * allowed during a Hard session (the desktop app checks the same in sites.rs).
  */
 export function sitesLooser(before: readonly SiteRule[], after: readonly SiteRule[]): boolean {
@@ -147,6 +150,9 @@ export function sitesLooser(before: readonly SiteRule[], after: readonly SiteRul
     const newPageLooser = pages.some(
       (page) => !oldPages.some((p) => samePath(p.path, page.path)) && isLooser(page.level, strictest),
     );
-    return pageLoosened || newPageLooser;
+    const shownAgain = (old.hidden ?? []).some(
+      (part) => !(kept?.hidden ?? []).some((p) => p.selector === part.selector),
+    );
+    return pageLoosened || newPageLooser || shownAgain;
   });
 }
