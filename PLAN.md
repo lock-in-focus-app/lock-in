@@ -310,6 +310,19 @@ Insights are all computed locally.
 - **Allowlist-only mode**: block everything except the listed sites.
 - **Earn your scroll** (opt-in): focus time earns a guilt-free budget of tamed-site time.
 
+### Habit goals: earn your sites (later; a planning session first)
+An idea from *Atomic Habits* (James Clear), where it's called temptation bundling: the thing you want comes after the thing you mean to do. A profile can have a **daily gate**: its Restricted sites (and app rules) stay on all day until you've done a habit you set up, e.g. "read 20 pages", "listen to 30 minutes of a book" or "study 50 Anki cards". Then they unlock until the day resets. It's a sibling of *Earn your scroll*, where focus time is what you earn with.
+- **It fits Lock In** rather than a separate app: the app already runs in the background, the extension always does, and the macOS helper (§8) blocks without the extension. A gate is a new way for blocking to *end*: a goal met instead of a timer running out.
+- **The habit loop:** the cue is going to the site, where the redirect page shows what's left ("12 of 20 pages"), only when you go there yourself, so it still observes and never interjects (above). The reward is the site. Finished goals could show in the sky (§5).
+- **First version: the honor system.** You log what you did (pages, minutes, cards) yourself, because most sources have no way to report it (a Kindle, Audible, Apple Books).
+- **Later, once sync (§8) reaches a phone** (mobile is out of scope for now, see Context): goals checked automatically, e.g. a Lock In session with a chosen profile, Anki through the AnkiConnect add-on's local server (it needs Anki open, and only the app can ask it), or sources on the phone.
+- **To work out in a planning session before building** (nothing here is decided):
+  - An escape hatch for days you can't, e.g. a plainly labelled "Skip today", and whether the sky notes it.
+  - When the day resets (e.g. 4am rather than midnight).
+  - No streaks at first: they tend to turn into guilt.
+  - The app, the extension or both. Honor-system goals could live in either; checked goals need the app.
+  - One device only until sync.
+
 ---
 
 ## 8. Platform, architecture & setup
@@ -454,6 +467,8 @@ Built in slices, one PR each:
 - Marketing website (§10) + community-worlds gallery.
 - Constellation sharing endpoint.
 - Sync between devices (§8, Sync): first a planning session to choose hosting, sign-in and encryption, then stats only, with an offline / hosted / self-hosted choice on first run. Live session sync after.
+
+**Later: habit goals** (§7, Habit goals): a planning session first, then the honor system; checked goals once sync reaches a phone.
 
 **Later: the observing spot** (once the art style is chosen)
 - Your spot, the town on the horizon, decorations and companions, bought with stardust or found in rare events (§5).
