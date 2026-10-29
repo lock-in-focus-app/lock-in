@@ -17,7 +17,7 @@ import {
   constellationNames,
   constellations,
   dayStart,
-  seeded,
+  quoteForDay,
   formatDuration,
   glowFor,
   hotkeyLabel,
@@ -39,6 +39,7 @@ import {
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import {
   actOnSatellite,
+  addOwnQuote,
   applyGlow,
   addSampleData,
   constellationNames as savedNames,
@@ -49,6 +50,7 @@ import {
   mac,
   markTourOffered,
   nameConstellation,
+  removeOwnQuote,
   removeSampleData,
   sessionLog,
   setProfileApps,
@@ -327,7 +329,7 @@ const glance = computed(() => {
   const lockedInMs = sessions.value
     .filter((session) => session.startedAt >= today)
     .reduce((sum, session) => sum + session.focusedMs + session.overtimeMs, 0);
-  const quote = quotes[Math.floor(seeded(`quote:${today}`)() * quotes.length)];
+  const quote = quoteForDay(quotes, snapshot.value?.ownQuotes ?? [], String(today));
   return { date: dateFormat.format(at), quote, lockedInMs, streak: streaks(skyStars.value, at).current };
 });
 const totalStardust = computed(() => stardust(sessions.value));
@@ -532,6 +534,9 @@ async function run(action: () => Promise<void>) {
           :browsers="snapshot.browsers"
           :session-running="!!snapshot.session"
           :lifetime-focus-ms="lifetimeFocus"
+          :own-quotes="snapshot.ownQuotes"
+          @add-quote="(text: string, author: string) => run(() => addOwnQuote(text, author))"
+          @remove-quote="(id: string) => run(() => removeOwnQuote(id))"
           @update:settings="(settings: Settings) => run(() => setSettings(settings))"
           @forget-browser="(path: string) => run(() => forgetBrowser(path))"
           @sample-data="sampleData"

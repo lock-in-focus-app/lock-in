@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { BlockerStatus, KnownBrowser, Settings } from '@lock-in/core';
-import { glowFor, nextGlow, unlockedGlows } from '@lock-in/core';
+import type { BlockerStatus, KnownBrowser, OwnQuote, Settings } from '@lock-in/core';
+import { glowFor, maxOwnQuotes, maxQuoteAuthorLength, maxQuoteLength, nextGlow, unlockedGlows } from '@lock-in/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, onMounted, ref } from 'vue';
 import { blockerStatus, installBlocker, mac, removeBlocker } from '../app';
 import GlowPicker from './GlowPicker.vue';
@@ -15,11 +16,14 @@ const props = defineProps<{
   sessionRunning: boolean;
   /** All the time ever focused, which unlocks glow colors. */
   lifetimeFocusMs: number;
+  ownQuotes: OwnQuote[];
 }>();
 const emit = defineEmits<{
   'update:settings': [settings: Settings];
   'forget-browser': [path: string];
   'sample-data': [action: 'add' | 'remove'];
+  'add-quote': [text: string, author: string];
+  'remove-quote': [id: string];
   /** Take the tour for new users again. */
   tour: [];
   close: [];
@@ -35,6 +39,7 @@ const sections = computed(() => [
   'browsers',
   ...(blocker.value?.supported ? ['blocking'] : []),
   'sky',
+  'quotes',
   'glow',
   'tour',
   ...(development ? ['sample'] : []),
@@ -76,6 +81,19 @@ function setBlocking(on: boolean) {
 function save(patch: Partial<Settings>) {
   emit('update:settings', { ...props.settings, ...patch });
 }
+
+// Quotes of the user's own, for the Sky's quote for the day. They sync with the extension's.
+const quoteText = ref('');
+const quoteAuthor = ref('');
+const quotesFull = computed(() => props.ownQuotes.length >= maxOwnQuotes);
+function addQuote() {
+  emit('add-quote', quoteText.value, quoteAuthor.value);
+  quoteText.value = '';
+  quoteAuthor.value = '';
+}
+
+// The one place the app asks for support: a quiet line at the very bottom (PLAN.md §8).
+const supportUrl = 'https://ko-fi.com/sortelone';
 
 // Glow colors come quietly with lifetime focus: only the ones unlocked are shown, with when the
 // next one comes, in hours.
@@ -246,6 +264,56 @@ const glowHelp = computed(() => {
       </div>
     </section>
 
+    <section class="read" aria-labelledby="quotes">
+      <h2 id="quotes" class="mono">{{ numbered('quotes') }} — Your quotes</h2>
+      <ul v-if="ownQuotes.length" class="quotes">
+        <li v-for="quote in ownQuotes" :key="quote.id">
+          <span class="quote"
+            >{{ quote.text }}<span v-if="quote.author" class="faint mono"> · {{ quote.author }}</span></span
+          >
+          <button
+            class="key"
+            type="button"
+            :aria-label="`Remove the quote “${quote.text}”`"
+            @click="emit('remove-quote', quote.id)"
+          >
+            Remove
+          </button>
+        </li>
+      </ul>
+      <p v-else class="none">None yet. Lock In's own quotes take turns until you add some.</p>
+      <form class="add-quote" @submit.prevent="addQuote">
+        <!-- An input can't draw the frame's corner ticks itself, so a label around it does. -->
+        <label class="card box">
+          <input
+            v-model="quoteText"
+            :maxlength="maxQuoteLength"
+            placeholder="A line that gets you back to work"
+            aria-label="Quote"
+          />
+        </label>
+        <span class="add-row">
+          <label class="card box">
+            <input
+              v-model="quoteAuthor"
+              :maxlength="maxQuoteAuthorLength"
+              placeholder="Who said it (optional)"
+              aria-label="Who said it"
+            />
+          </label>
+          <button class="card mono" type="submit" :disabled="!quoteText.trim() || quotesFull">+ Add quote</button>
+        </span>
+      </form>
+      <p class="help">
+        {{
+          quotesFull
+            ? `That's the most quotes Lock In keeps (${maxOwnQuotes}). Remove one to add another.`
+            : "Mixed in with Lock In's own for the Sky's quote of the day, and picked more often."
+        }}
+        They're shared with the extension's quote page once it's linked, and quotes added there show up here.
+      </p>
+    </section>
+
     <section class="read" aria-labelledby="glow">
       <h2 id="glow" class="mono">{{ numbered('glow') }} — Glow color</h2>
       <div class="field">
@@ -290,6 +358,9 @@ const glowHelp = computed(() => {
 
     <button class="card done mono" type="button" @click="emit('close')">Done · Back to the sky</button>
     <p class="colophon mono">Lock In · AGPL-3.0 · Stays on this computer</p>
+    <p class="support">
+      <a class="mono" :href="supportUrl" @click.prevent="openUrl(supportUrl)">Support Lock In on Ko-fi ↗</a>
+    </p>
   </section>
 </template>
 
@@ -401,6 +472,76 @@ h2 {
   gap: 6px;
 }
 
+/* Your quotes: each with Remove, then a box to add one. */
+.quotes {
+  margin: 6px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.quotes li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12.5px;
+}
+
+.quote {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.add-quote {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 8px;
+}
+
+.add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.box {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.box:focus-within {
+  --t: var(--tick-bright);
+}
+
+.add-quote input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--starlight);
+  font: 12px var(--mono);
+}
+
+.add-quote button {
+  padding: 6px 10px;
+  background: none;
+  color: var(--dim);
+  transition: color 300ms;
+}
+
+.add-quote button:not(:disabled):hover {
+  color: var(--starlight);
+}
+
+.add-quote button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .done {
   display: block;
   margin: 16px auto 0;
@@ -417,5 +558,24 @@ h2 {
 .colophon {
   margin: 12px 0 4px;
   text-align: center;
+}
+
+/* Quiet, like the colophon above it: no nags anywhere else. */
+.support {
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.support a {
+  color: var(--faint);
+  text-decoration: underline;
+  text-decoration-color: var(--line-bright);
+  text-underline-offset: 3px;
+  transition: color 300ms;
+}
+
+.support a:hover,
+.support a:focus-visible {
+  color: var(--starlight);
 }
 </style>

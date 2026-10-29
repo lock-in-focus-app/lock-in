@@ -76,6 +76,14 @@ export {
   waitSecondsFor,
 } from './settings';
 export { pickDestination, pickLink, pickQuote } from './destinations';
+export {
+  maxOwnQuotes,
+  maxQuoteAuthorLength,
+  maxQuoteLength,
+  quoteForDay,
+  withOwnQuote,
+  withOwnQuoteRemoved,
+} from './quotes';
 export { starterProfiles } from './profiles';
 export {
   hasRoomForOwnSite,

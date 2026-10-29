@@ -273,6 +273,12 @@ onMounted(() => {
         <button type="button" class="text-button" @click="confirmingReset = false">Cancel</button>
         <button type="button" class="text-button danger confirm-reset" @click="reset">Reset</button>
       </div>
+      <!-- The one place the extension asks for support, like the app's Settings (PLAN.md §8). -->
+      <p class="support">
+        <a class="mono" href="https://ko-fi.com/sortelone" target="_blank" rel="noopener noreferrer"
+          >Support Lock In on Ko-fi ↗</a
+        >
+      </p>
     </footer>
     <TourGuide v-if="touring !== undefined" v-model:step="touring" :steps="tourSteps" @end="touring = undefined" />
   </main>
@@ -444,5 +450,24 @@ footer {
 
 footer .help.small {
   margin-top: 4px;
+}
+
+/* Quiet, at the very bottom: no nags anywhere else. */
+.support {
+  margin: 40px 0 0;
+  text-align: center;
+}
+
+.support a {
+  color: var(--faint);
+  text-decoration: underline;
+  text-decoration-color: var(--line-bright);
+  text-underline-offset: 3px;
+  transition: color 300ms;
+}
+
+.support a:hover,
+.support a:focus-visible {
+  color: var(--starlight);
 }
 </style>

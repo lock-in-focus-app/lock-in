@@ -16,6 +16,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc;
 
 use crate::browsers::KnownBrowser;
+use crate::quotes::OwnQuote;
 use crate::session::{GateVisit, Profile, Session};
 use crate::store::Synced;
 
@@ -60,10 +61,12 @@ pub enum FromExtension {
         protocol: u32,
         browser: String,
     },
-    /// The extension's profiles and session. Each is taken if it's newer than the app's.
+    /// The extension's profiles, session and own quotes. Each is taken if it's newer than the
+    /// app's. Extensions from before own quotes synced don't send them.
     State {
         profiles: Option<Synced<Vec<Profile>>>,
         active_session: Option<Synced<Option<Session>>>,
+        own_quotes: Option<Synced<Vec<OwnQuote>>>,
     },
     GateVisit {
         visit: GateVisit,
@@ -85,6 +88,7 @@ pub enum ToExtension<'a> {
     State {
         profiles: &'a Synced<Vec<Profile>>,
         active_session: &'a Synced<Option<Session>>,
+        own_quotes: &'a Synced<Vec<OwnQuote>>,
     },
 }
 
@@ -107,7 +111,7 @@ impl Links {
     }
 }
 
-/// Sends the current profiles and session to every connected browser.
+/// Sends the current profiles, session and own quotes to every connected browser.
 pub fn broadcast(app: &AppHandle) {
     let Some(line) = state_line(app) else { return };
     for link in app.state::<Links>().links().values() {
@@ -130,6 +134,7 @@ fn state_line(app: &AppHandle) -> Option<Arc<str>> {
     let line = serde_json::to_string(&ToExtension::State {
         profiles,
         active_session,
+        own_quotes: engine.own_quotes(),
     })
     .ok()?;
     if line.len() > MAX_MESSAGE {
@@ -225,8 +230,15 @@ fn on_message(app: &AppHandle, link_id: u64, line: &str) {
         FromExtension::State {
             profiles,
             active_session,
+            own_quotes,
         } => {
-            let changed = crate::engine(app).apply_remote(profiles, active_session, crate::now_ms());
+            let now = crate::now_ms();
+            let changed = {
+                let mut engine = crate::engine(app);
+                engine
+                    .apply_remote(profiles, active_session, now)
+                    .and_then(|changed| Ok(engine.apply_remote_quotes(own_quotes, now)? || changed))
+            };
             match changed {
                 Ok(true) => crate::changed(app),
                 // Sends the app's newer state back, in case the browser's was out of date.
@@ -276,16 +288,19 @@ mod tests {
     #[test]
     fn reads_what_the_extension_sends() {
         let state = r#"{"type":"state","profiles":{"value":[{"id":"p","name":"P","sites":[]}],"updatedAt":5},
-            "activeSession":{"value":{"id":"s","profileId":"p","startedAt":1,"passes":{}},"updatedAt":6}}"#;
+            "activeSession":{"value":{"id":"s","profileId":"p","startedAt":1,"passes":{}},"updatedAt":6},
+            "ownQuotes":{"value":[{"id":"q","text":"Ship it."}],"updatedAt":7}}"#;
         let FromExtension::State {
             profiles,
             active_session,
+            own_quotes,
         } = serde_json::from_str(state).unwrap()
         else {
             panic!("not a state message");
         };
         assert_eq!(profiles.unwrap().value[0].name, "P");
         assert_eq!(active_session.unwrap().value.unwrap().profile_id, "p");
+        assert_eq!(own_quotes.unwrap().value[0].text, "Ship it.");
 
         let ended = r#"{"type":"state","activeSession":{"value":null,"updatedAt":9}}"#;
         assert!(matches!(
@@ -295,7 +310,8 @@ mod tests {
                 active_session: Some(Synced {
                     value: None,
                     updated_at: 9
-                })
+                }),
+                own_quotes: None,
             }
         ));
 
@@ -337,14 +353,23 @@ mod tests {
             value: None,
             updated_at: 2,
         };
+        let quotes = Synced {
+            value: vec![OwnQuote {
+                id: "q".into(),
+                text: "Ship it.".into(),
+                author: None,
+            }],
+            updated_at: 3,
+        };
         let line = serde_json::to_string(&ToExtension::State {
             profiles: &profiles,
             active_session: &session,
+            own_quotes: &quotes,
         })
         .unwrap();
         assert_eq!(
             line,
-            r#"{"type":"state","profiles":{"value":[],"updatedAt":1},"activeSession":{"value":null,"updatedAt":2}}"#
+            r#"{"type":"state","profiles":{"value":[],"updatedAt":1},"activeSession":{"value":null,"updatedAt":2},"ownQuotes":{"value":[{"id":"q","text":"Ship it."}],"updatedAt":3}}"#
         );
     }
 

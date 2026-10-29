@@ -4,6 +4,7 @@ use ts_rs::TS;
 use crate::apps::{self, AppRule};
 use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
+use crate::quotes::{self, MAX_OWN_QUOTES, OwnQuote};
 use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteRecord, SatelliteState};
 use crate::session::{
     EndReason, GateVisit, Profile, Session, SessionRecord, is_star_color, starter_profiles, truncate,
@@ -20,6 +21,7 @@ const BROWSERS: &str = "browsers";
 const BROKEN_SESSION: &str = "brokenSession";
 const SKY: &str = "sky";
 const TOUR: &str = "tour";
+const OWN_QUOTES: &str = "ownQuotes";
 
 /// Emergency passes come back a week after they're used.
 const PASS_WEEK_MS: i64 = 7 * 24 * 60 * 60_000;
@@ -42,6 +44,8 @@ pub struct Engine {
     satellites: Vec<Satellite>,
     /// Whether the tour for new users has been offered (taken or turned down).
     tour_offered: bool,
+    /// Quotes the user added, synced with the extension.
+    own_quotes: Synced<Vec<OwnQuote>>,
 }
 
 /// Everything the UI shows, sent whenever it changes.
@@ -64,6 +68,8 @@ pub struct Snapshot {
     /// Whether the tour for new users has been offered. Until it has, the Sky offers it once;
     /// after that it's only in Settings.
     pub tour_offered: bool,
+    /// Quotes the user added, for the Sky's quote for the day and Settings.
+    pub own_quotes: Vec<OwnQuote>,
 }
 
 /// Everything logged between two times, for the weekly report. The window works the report
@@ -155,6 +161,12 @@ impl Engine {
         let broken_session = store.load(BROKEN_SESSION)?.and_then(|s| s.value);
         let satellites = store.shown_satellites(now - DONE_TASKS_SHOWN_MS)?;
         let tour_offered = store.load::<bool>(TOUR)?.is_some_and(|s| s.value);
+        // Like the starter profiles, none at first counts as never changed, so quotes the
+        // extension already has win when it first connects.
+        let own_quotes = store.load(OWN_QUOTES)?.unwrap_or(Synced {
+            value: vec![],
+            updated_at: 0,
+        });
         Ok(Self {
             store,
             profiles,
@@ -165,6 +177,7 @@ impl Engine {
             broken_session,
             satellites,
             tour_offered,
+            own_quotes,
         })
     }
 
@@ -238,6 +251,7 @@ impl Engine {
                 .cloned()
                 .collect(),
             tour_offered: self.tour_offered,
+            own_quotes: self.own_quotes.value.clone(),
         }
     }
 
@@ -490,6 +504,54 @@ impl Engine {
     /// The profiles and session with when they last changed, for sending to the extension.
     pub fn synced(&self) -> (&Synced<Vec<Profile>>, &Synced<Option<Session>>) {
         (&self.profiles, &self.session)
+    }
+
+    /// The user's own quotes with when they last changed, for sending to the extension.
+    pub fn own_quotes(&self) -> &Synced<Vec<OwnQuote>> {
+        &self.own_quotes
+    }
+
+    /// Takes the extension's own quotes if they're newer than the app's. Returns whether they were.
+    pub fn apply_remote_quotes(&mut self, incoming: Option<Synced<Vec<OwnQuote>>>, now: i64) -> Result<bool> {
+        let Some(incoming) = incoming.filter(|q| q.updated_at.min(now) > self.own_quotes.updated_at) else {
+            return Ok(false);
+        };
+        self.save_quotes(quotes::tidy(incoming.value), incoming.updated_at.min(now))?;
+        Ok(true)
+    }
+
+    /// Adds a quote of the user's own. Returns whether there was a quote to add.
+    pub fn add_own_quote(&mut self, text: &str, author: &str, now: i64) -> Result<bool> {
+        let Some(quote) = OwnQuote::new(text, author) else {
+            return Ok(false);
+        };
+        if self.own_quotes.value.len() >= MAX_OWN_QUOTES {
+            return Err(Error::TooManyQuotes);
+        }
+        let mut list = self.own_quotes.value.clone();
+        list.push(quote);
+        self.save_quotes(list, now)?;
+        Ok(true)
+    }
+
+    pub fn remove_own_quote(&mut self, id: &str, now: i64) -> Result<()> {
+        let mut list = self.own_quotes.value.clone();
+        list.retain(|quote| quote.id != id);
+        if list.len() != self.own_quotes.value.len() {
+            self.save_quotes(list, now)?;
+        }
+        Ok(())
+    }
+
+    fn save_quotes(&mut self, value: Vec<OwnQuote>, now: i64) -> Result<()> {
+        // Always newer than the last change, even if the clock went back.
+        let synced = Synced {
+            value,
+            updated_at: now.max(self.own_quotes.updated_at + 1),
+        };
+        self.store.save(OWN_QUOTES, &synced)?;
+        self.own_quotes = synced;
+        Ok(())
     }
 
     /// Takes the extension's profiles and session where they're newer than the app's.
@@ -942,6 +1004,55 @@ mod tests {
         assert!(matches!(
             engine.name_constellation("nope", "Orion"),
             Err(Error::UnknownConstellation)
+        ));
+    }
+
+    #[test]
+    fn keeps_own_quotes_and_takes_newer_ones_from_the_extension() {
+        let mut engine = engine();
+        assert!(engine.add_own_quote(" Ship it. ", "", 1_000).unwrap());
+        assert!(!engine.add_own_quote("  ", "Me", 1_100).unwrap());
+        let quotes = engine.snapshot(1_100).own_quotes;
+        assert_eq!(quotes.len(), 1);
+        assert_eq!(
+            (quotes[0].text.as_str(), quotes[0].author.as_deref()),
+            ("Ship it.", None)
+        );
+        assert_eq!(engine.own_quotes().updated_at, 1_000);
+
+        let theirs = |text: &str, updated_at| Synced {
+            value: vec![OwnQuote {
+                id: "theirs".into(),
+                text: text.into(),
+                author: Some("Them".into()),
+            }],
+            updated_at,
+        };
+        assert!(!engine.apply_remote_quotes(Some(theirs("Older", 900)), 2_000).unwrap());
+        assert!(engine.apply_remote_quotes(Some(theirs("Newer", 1_500)), 2_000).unwrap());
+        assert_eq!(engine.snapshot(2_000).own_quotes[0].text, "Newer");
+        // Nothing comes from the future.
+        assert!(engine.apply_remote_quotes(Some(theirs("Ahead", 9_000)), 2_000).unwrap());
+        assert_eq!(engine.own_quotes().updated_at, 2_000);
+
+        engine.remove_own_quote("theirs", 2_000).unwrap();
+        assert!(engine.snapshot(2_000).own_quotes.is_empty());
+        assert_eq!(
+            engine.own_quotes().updated_at,
+            2_001,
+            "always newer than the last change"
+        );
+    }
+
+    #[test]
+    fn stops_adding_quotes_at_the_limit() {
+        let mut engine = engine();
+        for i in 0..MAX_OWN_QUOTES {
+            engine.add_own_quote(&format!("Line {i}"), "", 1_000).unwrap();
+        }
+        assert!(matches!(
+            engine.add_own_quote("One more", "", 2_000),
+            Err(Error::TooManyQuotes)
         ));
     }
 

@@ -1,33 +1,899 @@
 [
-  { "text": "It is not that we have a short time to live, but that we waste a lot of it.", "author": "Seneca" },
-  { "text": "While we are postponing, life speeds by.", "author": "Seneca" },
-  { "text": "Hold every hour in your grasp.", "author": "Seneca" },
   {
-    "text": "The impediment to action advances action. What stands in the way becomes the way.",
-    "author": "Marcus Aurelius"
+    "text": "We do not have a very short time assigned to us, but we lose a great deal of it.",
+    "author": "Seneca",
+    "source": "On the Shortness of Life 1, tr. Aubrey Stewart (1889)"
   },
-  { "text": "Waste no more time arguing what a good man should be. Be one.", "author": "Marcus Aurelius" },
-  { "text": "Our life is frittered away by detail. Simplify, simplify.", "author": "Henry David Thoreau" },
   {
-    "text": "It is not enough to be busy; so are the ants. The question is: What are we busy about?",
-    "author": "Henry David Thoreau"
+    "text": "While we are postponing, life speeds by.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 1, tr. Gummere (1917)"
   },
-  { "text": "Nothing is so fatiguing as the eternal hanging on of an uncompleted task.", "author": "William James" },
-  { "text": "Lost time is never found again.", "author": "Benjamin Franklin" },
+  {
+    "text": "Hold every hour in your grasp.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 1, tr. Gummere (1917)"
+  },
+  {
+    "text": "That which is an obstacle on the road helps us on this road.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 5.20, tr. George Long (1862)"
+  },
+  {
+    "text": "No longer talk at all about the kind of man that a good man ought to be, but be such.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 10.16, tr. George Long (1862)"
+  },
+  {
+    "text": "He has half the deed done, who has made a beginning.",
+    "author": "Horace",
+    "source": "Epistles 1.2, tr. C. Smart, rev. T. A. Buckley"
+  },
+  {
+    "text": "The journey of a thousand li commenced with a single step.",
+    "author": "Laozi",
+    "source": "Tao Te Ching 64, tr. James Legge (1891)"
+  },
+  {
+    "text": "Nothing, Lucilius, is ours, except time.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 1, tr. Gummere (1917)"
+  },
+  {
+    "text": "Lay hold of to-day's task, and you will not need to depend so much upon to-morrow's.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 1, tr. Gummere (1917)"
+  },
+  {
+    "text": "Everywhere means nowhere.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 2, tr. Gummere (1917)"
+  },
+  {
+    "text": "For love of bustle is not industry,—it is only the restlessness of a hunted mind.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 3, tr. Gummere (1917)"
+  },
+  {
+    "text": "He who would arrive at the appointed end must follow a single road and not wander through many ways.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 45, tr. Gummere (1917)"
+  },
+  {
+    "text": "I force my mind to concentrate, and keep it from straying to things outside itself.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 56, tr. Gummere (1917)"
+  },
+  {
+    "text": "When a man does not know what harbour he is making for, no wind is the right wind.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 71, tr. Gummere (1920)"
+  },
+  {
+    "text": "Let us postpone nothing. Let us balance life's account every day.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 101, tr. Gummere (1925)"
+  },
+  {
+    "text": "Nature has not given us such a generous and free-handed space of time that we can have the leisure to waste any of it.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 117, tr. Gummere (1925)"
+  },
+  {
+    "text": "One who daily puts the finishing touches to his life is never in want of time.",
+    "author": "Seneca",
+    "source": "Letters to Lucilius 101, tr. Gummere (1925)"
+  },
+  {
+    "text": "Life is long enough, if you know how to use it.",
+    "author": "Seneca",
+    "source": "On the Shortness of Life 2, tr. Aubrey Stewart (1889)"
+  },
+  {
+    "text": "Remember how long thou hast been putting off these things.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 2.4, tr. George Long (1862)"
+  },
+  {
+    "text": "Give thyself time to learn something new and good, and cease to be whirled around.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 2.7, tr. George Long (1862)"
+  },
+  {
+    "text": "For the greatest part of what we say and do being unnecessary, if a man takes this away, he will have more leisure and less uneasiness.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 4.24, tr. George Long (1862)"
+  },
+  {
+    "text": "In the morning when thou risest unwillingly, let this thought be present,—I am rising to the work of a human being.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 5.1, tr. George Long (1862)"
+  },
+  {
+    "text": "Confine thyself to the present.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 7.29, tr. George Long (1862)"
+  },
+  {
+    "text": "Attend to the matter which is before thee, whether it is an opinion or an act or a word.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 8.22, tr. George Long (1862)"
+  },
+  {
+    "text": "Thou sufferest this justly: for thou choosest rather to become good to-morrow than to be good to-day.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 8.22, tr. George Long (1862)"
+  },
+  {
+    "text": "Do not disturb thyself by thinking of the whole of thy life.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 8.36, tr. George Long (1862)"
+  },
+  {
+    "text": "He who follows reason in all things is both tranquil and active at the same time, and also cheerful and collected.",
+    "author": "Marcus Aurelius",
+    "source": "Meditations 10.12, tr. George Long (1862)"
+  },
+  {
+    "text": "When you have remitted your attention for a short time, do not imagine this, that you will recover it when you choose.",
+    "author": "Epictetus",
+    "source": "Discourses 4.12, tr. George Long (1877)"
+  },
+  {
+    "text": "If you would be a good reader, read; if a writer, write.",
+    "author": "Epictetus",
+    "source": "Discourses 2.18, tr. George Long (1877)"
+  },
+  {
+    "text": "Men are disturbed not by the things which happen, but by the opinions about the things.",
+    "author": "Epictetus",
+    "source": "Encheiridion 5, tr. George Long (1877)"
+  },
+  {
+    "text": "All great things are slow of growth; nay, this is true even of a grape or of a fig.",
+    "author": "Epictetus",
+    "source": "Discourses 1.15, tr. Hastings Crossley (1903)"
+  },
+  {
+    "text": "He who overcomes others is strong; he who overcomes himself is mighty.",
+    "author": "Laozi",
+    "source": "Tao Te Ching 33, tr. James Legge (1891)"
+  },
+  {
+    "text": "Though but one basketful is thrown at a time, the advancing with it is my own going forward.",
+    "author": "Confucius",
+    "source": "Analects 9.18, tr. James Legge (1861)"
+  },
+  {
+    "text": "Desire to have things done quickly prevents their being done thoroughly.",
+    "author": "Confucius",
+    "source": "Analects 13.17, tr. James Legge (1861)"
+  },
+  {
+    "text": "The mechanic, who wishes to do his work well, must first sharpen his tools.",
+    "author": "Confucius",
+    "source": "Analects 15.9, tr. James Legge (1861)"
+  },
+  {
+    "text": "Even by the falling of water-drops a water-pot is filled; the wise man becomes full of good, even if he gather it little by little.",
+    "author": "The Dhammapada",
+    "source": "Dhammapada 122, tr. F. Max Müller (1881)"
+  },
+  {
+    "text": "It is good to tame the mind, which is difficult to hold in and flighty, rushing wherever it listeth; a tamed mind brings happiness.",
+    "author": "The Dhammapada",
+    "source": "Dhammapada 35, tr. F. Max Müller (1881)"
+  },
+  {
+    "text": "As a solid rock is not shaken by the wind, wise people falter not amidst blame and praise.",
+    "author": "The Dhammapada",
+    "source": "Dhammapada 81, tr. F. Max Müller (1881)"
+  },
+  {
+    "text": "While we stop to think, we often miss our opportunity.",
+    "author": "Publilius Syrus",
+    "source": "Sententiae, tr. Darius Lyman (1856)"
+  },
+  {
+    "text": "Yesterday should be the teacher of to-day.",
+    "author": "Publilius Syrus",
+    "source": "Sententiae, tr. Darius Lyman (1856)"
+  },
+  {
+    "text": "They live ill who expect to live always.",
+    "author": "Publilius Syrus",
+    "source": "Sententiae, tr. Darius Lyman (1856)"
+  },
+  {
+    "text": "Many things which cannot be overcome when they are together, yield themselves up when taken little by little.",
+    "author": "Plutarch",
+    "source": "Life of Sertorius, tr. Dryden, rev. A. H. Clough (1864)"
+  },
+  {
+    "text": "While we are conversing, envious age has been flying; seize the present day, not giving the least credit to the succeeding one.",
+    "author": "Horace",
+    "source": "Odes 1.11, tr. C. Smart, rev. T. A. Buckley"
+  },
+  {
+    "text": "They change their climate, not their disposition, who run beyond the sea.",
+    "author": "Horace",
+    "source": "Epistles 1.11, tr. C. Smart, rev. T. A. Buckley"
+  },
+  {
+    "text": "Winged time glides on insensibly and deceives us; and there is nothing more fleeting than years.",
+    "author": "Ovid",
+    "source": "Metamorphoses 10, tr. Henry T. Riley (1851)"
+  },
+  {
+    "text": "But hasten, and do not postpone to a future moment; that which is not agreeable to-day, will to-morrow be still less so.",
+    "author": "Ovid",
+    "source": "Remedy of Love, tr. Henry T. Riley (1885)"
+  },
+  {
+    "text": "Men come to be builders, for instance, by building; harp-players, by playing on the harp.",
+    "author": "Aristotle",
+    "source": "Nicomachean Ethics 2.1, tr. D. P. Chase (1847)"
+  },
+  {
+    "text": "It is not one swallow or one fine day that makes a spring, so it is not one day or a short time that makes a man blessed and happy.",
+    "author": "Aristotle",
+    "source": "Nicomachean Ethics 1.7, tr. D. P. Chase (1847)"
+  },
+  {
+    "text": "Our life is frittered away by detail. … Simplify, simplify.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 2 (1854)"
+  },
+  {
+    "text": "It is not enough to be industrious; so are the ants. What are you industrious about?",
+    "author": "Henry David Thoreau",
+    "source": "Letter to H. G. O. Blake, Nov. 16, 1857, Familiar Letters"
+  },
+  {
+    "text": "Nothing so fatiguing as the eternal hanging on of an uncompleted task.",
+    "author": "William James",
+    "source": "Letter to Carl Stumpf, Jan. 1, 1886, The Letters of William James (1920)"
+  },
+  {
+    "text": "Lost time is never found again.",
+    "author": "Benjamin Franklin",
+    "source": "The Way to Wealth (1758)"
+  },
   {
     "text": "Dost thou love life? Then do not squander time, for that's the stuff life is made of.",
-    "author": "Benjamin Franklin"
+    "author": "Benjamin Franklin",
+    "source": "Poor Richard's Almanack (1746)"
   },
-  { "text": "You may delay, but time will not.", "author": "Benjamin Franklin" },
-  { "text": "Do the thing, and you shall have the power.", "author": "Ralph Waldo Emerson" },
-  { "text": "Nothing can bring you peace but yourself.", "author": "Ralph Waldo Emerson" },
-  { "text": "Well begun is half done.", "author": "Aristotle" },
-  { "text": "A journey of a thousand miles begins with a single step.", "author": "Laozi" },
-  { "text": "The best way out is always through.", "author": "Robert Frost" },
-  { "text": "I am not afraid of storms, for I am learning how to sail my ship.", "author": "Louisa May Alcott" },
-  { "text": "Little by little, one travels far.", "author": "Proverb" },
-  { "text": "The feed will still be there. This moment won't." },
-  { "text": "You came here to do something. Go do it." },
-  { "text": "Close the tab. Open the work." },
-  { "text": "Boredom is the doorway. Walk through it into the work." }
+  {
+    "text": "You may delay, but time will not.",
+    "author": "Benjamin Franklin",
+    "source": "Poor Richard's Almanack (1758)"
+  },
+  {
+    "text": "Do the thing, and you shall have the power.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Compensation,\" Essays: First Series (1841)"
+  },
+  {
+    "text": "Nothing can bring you peace but yourself.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Self-Reliance,\" Essays: First Series (1841)"
+  },
+  {
+    "text": "I'm not afraid of storms, for I'm learning how to sail my ship.",
+    "author": "Louisa May Alcott",
+    "source": "Little Women, part 2, ch. 44 (1869)"
+  },
+  {
+    "text": "What we call time enough, always proves little enough.",
+    "author": "Benjamin Franklin",
+    "source": "The Way to Wealth (1758)"
+  },
+  {
+    "text": "Drive thy business, let not that drive thee.",
+    "author": "Benjamin Franklin",
+    "source": "The Way to Wealth (1758)"
+  },
+  {
+    "text": "One today is worth two tomorrows.",
+    "author": "Benjamin Franklin",
+    "source": "The Way to Wealth (1758)"
+  },
+  {
+    "text": "Little strokes fell great oaks.",
+    "author": "Benjamin Franklin",
+    "source": "The Way to Wealth (1758)"
+  },
+  {
+    "text": "Since thou art not sure of a minute, throw not away an hour.",
+    "author": "Benjamin Franklin",
+    "source": "The Way to Wealth (1758)"
+  },
+  {
+    "text": "Leisure is time for doing something useful.",
+    "author": "Benjamin Franklin",
+    "source": "The Way to Wealth (1758)"
+  },
+  {
+    "text": "Lose no time; be always employed in something useful; cut off all unnecessary actions.",
+    "author": "Benjamin Franklin",
+    "source": "Autobiography, the thirteen virtues: Industry"
+  },
+  {
+    "text": "Be not disturbed at trifles, or at accidents common or unavoidable.",
+    "author": "Benjamin Franklin",
+    "source": "Autobiography, the thirteen virtues: Tranquillity"
+  },
+  {
+    "text": "As if you could kill time without injuring eternity.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 1 (1854)"
+  },
+  {
+    "text": "Time is but the stream I go a-fishing in.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 2 (1854)"
+  },
+  {
+    "text": "Let us spend one day as deliberately as Nature.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 2 (1854)"
+  },
+  {
+    "text": "Why should we live with such hurry and waste of life?",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 2 (1854)"
+  },
+  {
+    "text": "A man is rich in proportion to the number of things which he can afford to let alone.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 2 (1854)"
+  },
+  {
+    "text": "Morning is when I am awake and there is a dawn in me.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 2 (1854)"
+  },
+  {
+    "text": "I love a broad margin to my life.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, ch. 4 (1854)"
+  },
+  {
+    "text": "Things do not change; we change.",
+    "author": "Henry David Thoreau",
+    "source": "Walden, Conclusion (1854)"
+  },
+  {
+    "text": "The years teach much which the days never know.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Experience,\" Essays: Second Series (1844)"
+  },
+  {
+    "text": "To fill the hour, that is happiness; to fill the hour and leave no crevice for a repentance or an approval.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Experience,\" Essays: Second Series (1844)"
+  },
+  {
+    "text": "The one prudence in life is concentration; the one evil is dissipation.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Power,\" The Conduct of Life (1860)"
+  },
+  {
+    "text": "Write it on your heart that every day is the best day in the year.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Works and Days,\" Society and Solitude (1870)"
+  },
+  {
+    "text": "He only is rich who owns the day.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Works and Days,\" Society and Solitude (1870)"
+  },
+  {
+    "text": "Adopt the pace of Nature. Her secret is patience.",
+    "author": "Ralph Waldo Emerson",
+    "source": "\"Education,\" Lectures and Biographical Sketches (1883)"
+  },
+  {
+    "text": "My experience is what I agree to attend to.",
+    "author": "William James",
+    "source": "The Principles of Psychology, ch. 11 (1890)"
+  },
+  {
+    "text": "The faculty of voluntarily bringing back a wandering attention, over and over again, is the very root of judgment, character, and will.",
+    "author": "William James",
+    "source": "The Principles of Psychology, ch. 11 (1890)"
+  },
+  {
+    "text": "Never suffer an exception to occur till the new habit is securely rooted in your life.",
+    "author": "William James",
+    "source": "The Principles of Psychology, ch. 4 (1890)"
+  },
+  {
+    "text": "Seize the very first possible opportunity to act on every resolution you make.",
+    "author": "William James",
+    "source": "The Principles of Psychology, ch. 4 (1890)"
+  },
+  {
+    "text": "Keep the faculty of effort alive in you by a little gratuitous exercise every day.",
+    "author": "William James",
+    "source": "The Principles of Psychology, ch. 4 (1890)"
+  },
+  {
+    "text": "If he keep faithfully busy each hour of the working-day, he may safely leave the final result to itself.",
+    "author": "William James",
+    "source": "The Principles of Psychology, ch. 4 (1890)"
+  },
+  {
+    "text": "Leave nothing for tomorrow which can be done today.",
+    "author": "Abraham Lincoln",
+    "source": "Notes for a Law Lecture (1850), Complete Works, vol. 2 (1894)"
+  },
+  {
+    "text": "Whatever piece of business you have in hand, before stopping, do all the labor pertaining to it which can then be done.",
+    "author": "Abraham Lincoln",
+    "source": "Notes for a Law Lecture (1850), Complete Works, vol. 2 (1894)"
+  },
+  {
+    "text": "Habit is habit, and not to be flung out of the window by any man, but coaxed downstairs a step at a time.",
+    "author": "Mark Twain",
+    "source": "Pudd'nhead Wilson, ch. 6 (1894)"
+  },
+  {
+    "text": "Happiness, knowledge, not in another place but this place, not for another hour but this hour.",
+    "author": "Walt Whitman",
+    "source": "\"A Song for Occupations,\" Leaves of Grass (1891–92)"
+  },
+  {
+    "text": "Not knowing when the dawn will come / I open every door.",
+    "author": "Emily Dickinson",
+    "source": "\"Dawn,\" Poems: Third Series (1896)"
+  },
+  {
+    "text": "Let us, then, be up and doing, / With a heart for any fate; / Still achieving, still pursuing, / Learn to labor and to wait.",
+    "author": "Henry Wadsworth Longfellow",
+    "source": "\"A Psalm of Life\" (1838)"
+  },
+  {
+    "text": "Look not mournfully into the Past. It comes not back again. Wisely improve the Present. It is thine.",
+    "author": "Henry Wadsworth Longfellow",
+    "source": "Hyperion, bk. 4, ch. 8 (1839)"
+  },
+  {
+    "text": "I find the great thing in this world is not so much where we stand, as in what direction we are moving.",
+    "author": "Oliver Wendell Holmes Sr.",
+    "source": "The Autocrat of the Breakfast-Table, ch. 4 (1858)"
+  },
+  {
+    "text": "Nothing ever comes to me, that is worth having, except as the result of hard work.",
+    "author": "Booker T. Washington",
+    "source": "Up from Slavery, ch. 12 (1901)"
+  },
+  {
+    "text": "It is at the bottom of life we must begin, and not at the top.",
+    "author": "Booker T. Washington",
+    "source": "Up from Slavery, ch. 14 (1901)"
+  },
+  {
+    "text": "I go to Nature to be soothed and healed, and to have my senses put in tune once more.",
+    "author": "John Burroughs",
+    "source": "\"The Gospel of Nature,\" Time and Change (1912)"
+  },
+  {
+    "text": "There is time enough for everything, in the course of the day, if you do but one thing at once.",
+    "author": "Lord Chesterfield",
+    "source": "Letters to His Son, 14 April 1747"
+  },
+  {
+    "text": "I recommend to you to take care of the minutes; for hours will take care of themselves.",
+    "author": "Lord Chesterfield",
+    "source": "Letters to His Son, 6 November 1747"
+  },
+  {
+    "text": "Know the true value of time; snatch, seize, and enjoy every moment of it.",
+    "author": "Lord Chesterfield",
+    "source": "Letters to His Son, 26 December 1749"
+  },
+  {
+    "text": "Whatever is worth doing at all, is worth doing well; and nothing can be done well without attention.",
+    "author": "Lord Chesterfield",
+    "source": "Letters to His Son, 9 October 1746"
+  },
+  {
+    "text": "The trifling and frivolous mind is always busied, but to little purpose.",
+    "author": "Lord Chesterfield",
+    "source": "Letters to His Son, 20 July 1748"
+  },
+  {
+    "text": "Great works are performed not by strength, but perseverance.",
+    "author": "Samuel Johnson",
+    "source": "Rasselas, ch. 13 (1759)"
+  },
+  {
+    "text": "He that shall walk with vigour three hours a day, will pass in seven years a space equal to the circumference of the globe.",
+    "author": "Samuel Johnson",
+    "source": "Rasselas, ch. 13 (1759)"
+  },
+  {
+    "text": "Few things are impossible to diligence and skill.",
+    "author": "Samuel Johnson",
+    "source": "Rasselas, ch. 12 (1759)"
+  },
+  {
+    "text": "Many of our hours are lost in a rotation of petty cares, in a constant recurrence of the same employments.",
+    "author": "Samuel Johnson",
+    "source": "The Rambler, no. 108 (1751)"
+  },
+  {
+    "text": "For every single act of progression a short time is sufficient.",
+    "author": "Samuel Johnson",
+    "source": "The Rambler, no. 108 (1751)"
+  },
+  {
+    "text": "Idleness never can secure tranquillity.",
+    "author": "Samuel Johnson",
+    "source": "The Rambler, no. 134 (1751)"
+  },
+  {
+    "text": "The soul that has no established aim loses itself.",
+    "author": "Michel de Montaigne",
+    "source": "Essays I.8, \"Of Idleness,\" tr. Charles Cotton, ed. W. C. Hazlitt (1877)"
+  },
+  {
+    "text": "When I dance, I dance; when I sleep, I sleep.",
+    "author": "Michel de Montaigne",
+    "source": "Essays III.13, \"Of Experience,\" tr. Charles Cotton, ed. W. C. Hazlitt (1877)"
+  },
+  {
+    "text": "Have you known how to take repose, you have done more than he who has taken empires and cities.",
+    "author": "Michel de Montaigne",
+    "source": "Essays III.13, \"Of Experience,\" tr. Charles Cotton, ed. W. C. Hazlitt (1877)"
+  },
+  {
+    "text": "I have discovered that all the unhappiness of men arises from one single fact, that they cannot stay quietly in their own chamber.",
+    "author": "Blaise Pascal",
+    "source": "Pensées, no. 139, tr. W. F. Trotter (1910)"
+  },
+  {
+    "text": "So imprudent are we that we wander in the times which are not ours, and do not think of the only one which belongs to us.",
+    "author": "Blaise Pascal",
+    "source": "Pensées, no. 172, tr. W. F. Trotter (1910)"
+  },
+  {
+    "text": "It is not enough to know, we must also apply; it is not enough to will, we must also do.",
+    "author": "Johann Wolfgang von Goethe",
+    "source": "Maxims and Reflections, no. 324, tr. Bailey Saunders (1893)"
+  },
+  {
+    "text": "What is your duty? The claims of the day.",
+    "author": "Johann Wolfgang von Goethe",
+    "source": "Maxims and Reflections, no. 3, tr. Bailey Saunders (1893)"
+  },
+  {
+    "text": "Nothing is more highly to be prized than the value of each day.",
+    "author": "Johann Wolfgang von Goethe",
+    "source": "Maxims and Reflections, no. 332, tr. Bailey Saunders (1893)"
+  },
+  {
+    "text": "Unqualified activity, of whatever kind, leads at last to bankruptcy.",
+    "author": "Johann Wolfgang von Goethe",
+    "source": "Maxims and Reflections, no. 9, tr. Bailey Saunders (1893)"
+  },
+  {
+    "text": "Procrastination is the thief of time. Collar him!",
+    "author": "Charles Dickens",
+    "source": "David Copperfield, ch. 12 (1850)"
+  },
+  {
+    "text": "There is no substitute for thorough-going, ardent, and sincere earnestness.",
+    "author": "Charles Dickens",
+    "source": "David Copperfield, ch. 42 (1850)"
+  },
+  {
+    "text": "Patience and time are my warriors, my champions.",
+    "author": "Leo Tolstoy",
+    "source": "War and Peace, bk. 13, ch. 17, tr. Louise and Aylmer Maude (1922)"
+  },
+  {
+    "text": "There is no greatness where simplicity, goodness, and truth are absent.",
+    "author": "Leo Tolstoy",
+    "source": "War and Peace, bk. 14, ch. 18, tr. Louise and Aylmer Maude (1922)"
+  },
+  {
+    "text": "What is needed is constant work, day and night, constant reading, study, will.... Every hour is precious for it.",
+    "author": "Anton Chekhov",
+    "source": "Letter to his brother Nikolay, 1886, tr. Constance Garnett (1920)"
+  },
+  {
+    "text": "You must love your work, and not be always looking over the edge of it, wanting your play to begin.",
+    "author": "George Eliot",
+    "source": "Middlemarch, ch. 56 (1872)"
+  },
+  {
+    "text": "Lost wealth may be replaced by industry, lost knowledge by study, lost health by temperance or medicine, but lost time is gone for ever.",
+    "author": "Samuel Smiles",
+    "source": "Self-Help, ch. 9 (1859)"
+  },
+  {
+    "text": "An economical use of time is the true mode of securing leisure.",
+    "author": "Samuel Smiles",
+    "source": "Self-Help, ch. 9 (1859)"
+  },
+  {
+    "text": "Talkers may sow, but the silent reap.",
+    "author": "Samuel Smiles",
+    "source": "Self-Help, ch. 6 (1859)"
+  },
+  {
+    "text": "The water you touch in a river is the last of that which has passed, and the first of that which is coming. Thus it is with time present.",
+    "author": "Leonardo da Vinci",
+    "source": "Notebooks, no. 1174, tr. Jean Paul Richter (1883)"
+  },
+  {
+    "text": "Life if well spent, is long.",
+    "author": "Leonardo da Vinci",
+    "source": "Notebooks, no. 1174, tr. Jean Paul Richter (1883)"
+  },
+  {
+    "text": "Just as iron rusts unless it is used, and water putrifies or, in cold, turns to ice, so our intellect spoils unless it is kept in use.",
+    "author": "Leonardo da Vinci",
+    "source": "Notebooks, no. 1177, tr. Jean Paul Richter (1883)"
+  },
+  {
+    "text": "To choose time, is to save time; and an unseasonable motion, is but beating the air.",
+    "author": "Francis Bacon",
+    "source": "Essays, \"Of Dispatch\" (1625)"
+  },
+  {
+    "text": "Measure not dispatch, by the times of sitting, but by the advancement of the business.",
+    "author": "Francis Bacon",
+    "source": "Essays, \"Of Dispatch\" (1625)"
+  },
+  {
+    "text": "We have all a better guide in ourselves, if we would attend to it, than any other person can be.",
+    "author": "Jane Austen",
+    "source": "Mansfield Park, ch. 42 (1814)"
+  },
+  {
+    "text": "Know your own happiness. You want nothing but patience—or give it a more fascinating name, call it hope.",
+    "author": "Jane Austen",
+    "source": "Sense and Sensibility, ch. 19 (1811)"
+  },
+  {
+    "text": "All books are divisible into two classes, the books of the hour, and the books of all time.",
+    "author": "John Ruskin",
+    "source": "Sesame and Lilies, \"Of Kings' Treasuries\" (1865)"
+  },
+  {
+    "text": "The newspaper may be entirely proper at breakfast time, but assuredly it is not reading for all day.",
+    "author": "John Ruskin",
+    "source": "Sesame and Lilies, \"Of Kings' Treasuries\" (1865)"
+  },
+  {
+    "text": "When we build, let us think that we build for ever.",
+    "author": "John Ruskin",
+    "source": "The Seven Lamps of Architecture, \"The Lamp of Memory\" (1849)"
+  },
+  {
+    "text": "Do the Duty which lies nearest thee, which thou knowest to be a Duty! Thy second Duty will already have become clearer.",
+    "author": "Thomas Carlyle",
+    "source": "Sartor Resartus, bk. 2, ch. 9 (1836)"
+  },
+  {
+    "text": "Silence is the element in which great things fashion themselves together.",
+    "author": "Thomas Carlyle",
+    "source": "Sartor Resartus, bk. 3, ch. 3 (1836)"
+  },
+  {
+    "text": "Blessed is he who has found his work; let him ask no other blessedness.",
+    "author": "Thomas Carlyle",
+    "source": "Past and Present, bk. 3, ch. 11 (1843)"
+  },
+  {
+    "text": "Philosophers have explained space. They have not explained time. It is the inexplicable raw material of everything.",
+    "author": "Arnold Bennett",
+    "source": "How to Live on 24 Hours a Day, ch. 1 (1908)"
+  },
+  {
+    "text": "You cannot waste to-morrow; it is kept for you.",
+    "author": "Arnold Bennett",
+    "source": "How to Live on 24 Hours a Day, ch. 1 (1908)"
+  },
+  {
+    "text": "Dear sir, you simply begin. There is no magic method of beginning.",
+    "author": "Arnold Bennett",
+    "source": "How to Live on 24 Hours a Day, ch. 3 (1908)"
+  },
+  {
+    "text": "You can turn over a new leaf every hour if you choose.",
+    "author": "Arnold Bennett",
+    "source": "How to Live on 24 Hours a Day, ch. 3 (1908)"
+  },
+  {
+    "text": "Beware of undertaking too much at the start. Be content with quite a little.",
+    "author": "Arnold Bennett",
+    "source": "How to Live on 24 Hours a Day, ch. 3 (1908)"
+  },
+  {
+    "text": "I do not care what you concentrate on, so long as you concentrate.",
+    "author": "Arnold Bennett",
+    "source": "How to Live on 24 Hours a Day, ch. 7 (1908)"
+  },
+  {
+    "text": "The load of to-morrow, added to that of yesterday, carried to-day makes the strongest falter.",
+    "author": "William Osler",
+    "source": "A Way of Life, part III (1913)"
+  },
+  {
+    "text": "The future is to-day—there is no to-morrow!",
+    "author": "William Osler",
+    "source": "A Way of Life, part III (1913)"
+  },
+  {
+    "text": "Realise how much time there is, how long the day is.",
+    "author": "William Osler",
+    "source": "A Way of Life, part IV (1913)"
+  },
+  {
+    "text": "The quiet life in day-tight compartments will help you to bear your own and others' burdens with a light heart.",
+    "author": "William Osler",
+    "source": "A Way of Life, part V (1913)"
+  },
+  {
+    "text": "When you work you are a flute through whose heart the whispering of the hours turns to music.",
+    "author": "Kahlil Gibran",
+    "source": "The Prophet, \"On Work\" (1923)"
+  },
+  {
+    "text": "Work is love made visible.",
+    "author": "Kahlil Gibran",
+    "source": "The Prophet, \"On Work\" (1923)"
+  },
+  {
+    "text": "Yesterday is but today's memory and tomorrow is today's dream.",
+    "author": "Kahlil Gibran",
+    "source": "The Prophet, \"On Time\" (1923)"
+  },
+  {
+    "text": "In the dew of little things the heart finds its morning and is refreshed.",
+    "author": "Kahlil Gibran",
+    "source": "The Prophet, \"On Friendship\" (1923)"
+  },
+  {
+    "text": "Tiny grass, your steps are small, but you possess the earth under your tread.",
+    "author": "Rabindranath Tagore",
+    "source": "Stray Birds, no. 65 (1916)"
+  },
+  {
+    "text": "The noise of the moment scoffs at the music of the Eternal.",
+    "author": "Rabindranath Tagore",
+    "source": "Stray Birds, no. 96 (1916)"
+  },
+  {
+    "text": "The song that I came to sing remains unsung to this day. I have spent my days in stringing and in unstringing my instrument.",
+    "author": "Rabindranath Tagore",
+    "source": "Gitanjali, no. 13 (1912)"
+  },
+  {
+    "text": "The butterfly counts not months but moments, and has time enough.",
+    "author": "Rabindranath Tagore",
+    "source": "Fireflies (1928)"
+  },
+  {
+    "text": "As a river in the sea, work finds its fulfilment in the depth of leisure.",
+    "author": "Rabindranath Tagore",
+    "source": "Fireflies (1928)"
+  },
+  {
+    "text": "Until thought is linked with purpose there is no intelligent accomplishment.",
+    "author": "James Allen",
+    "source": "As a Man Thinketh, \"Thought and Purpose\" (1903)"
+  },
+  {
+    "text": "Calmness of mind is one of the beautiful jewels of wisdom.",
+    "author": "James Allen",
+    "source": "As a Man Thinketh, \"Serenity\" (1903)"
+  },
+  {
+    "text": "Success is jealous of scattered energies.",
+    "author": "Orison Swett Marden",
+    "source": "Pushing to the Front, ch. 12 (1911)"
+  },
+  {
+    "text": "To travel hopefully is a better thing than to arrive, and the true success is to labour.",
+    "author": "Robert Louis Stevenson",
+    "source": "Virginibus Puerisque, \"El Dorado\" (1881)"
+  },
+  {
+    "text": "He sows hurry and reaps indigestion.",
+    "author": "Robert Louis Stevenson",
+    "source": "Virginibus Puerisque, \"An Apology for Idlers\" (1881)"
+  },
+  {
+    "text": "Concentrate all your thought upon the work in hand. The sun's rays do not burn until brought to a focus.",
+    "author": "Alexander Graham Bell",
+    "source": "Interview in Marden, How They Succeeded, ch. 2 (1901)"
+  },
+  {
+    "text": "It is hard to fail, but it is worse never to have tried to succeed.",
+    "author": "Theodore Roosevelt",
+    "source": "\"The Strenuous Life\" (1899)"
+  },
+  {
+    "text": "No pessimist ever discovered the secrets of the stars, or sailed to an uncharted land, or opened a new heaven to the human spirit.",
+    "author": "Helen Keller",
+    "source": "Optimism, part III (1903)"
+  },
+  {
+    "text": "The best way out is always through.",
+    "author": "Robert Frost",
+    "source": "\"A Servant to Servants\", North of Boston (1914)"
+  },
+  {
+    "text": "An inch of time is like an inch of gold.",
+    "author": "Chinese proverb",
+    "source": "Scarborough, A Collection of Chinese Proverbs, no. 2448 (1875)"
+  },
+  {
+    "text": "In hurry is error.",
+    "author": "Chinese proverb",
+    "source": "Scarborough, A Collection of Chinese Proverbs, no. 89 (1875)"
+  },
+  {
+    "text": "When the melon is ripe it will drop of itself.",
+    "author": "Chinese proverb",
+    "source": "Scarborough, A Collection of Chinese Proverbs, no. 755 (1875)"
+  },
+  {
+    "text": "In calmness heaven and earth seem greater; in leisure days and months seem longer.",
+    "author": "Chinese proverb",
+    "source": "Scarborough, A Collection of Chinese Proverbs, no. 2459 (1875)"
+  },
+  {
+    "text": "The feet of a heron standing in the water, rising to fly, roil not the stream.",
+    "author": "Japanese proverb",
+    "source": "Griffis, Proverbs of Japan (1924)"
+  },
+  {
+    "text": "At the bottom of patience there is heaven.",
+    "author": "Kanuri proverb",
+    "source": "Burton, Wit and Wisdom from West Africa, ch. 2, no. 7 (1865)"
+  },
+  {
+    "text": "He who waits for chance may wait a year.",
+    "author": "Yoruba proverb",
+    "source": "Burton, Wit and Wisdom from West Africa, ch. 5, no. 38 (1865)"
+  },
+  {
+    "text": "He that hunts two hares will catch neither.",
+    "author": "French proverb",
+    "source": "Bohn, A Polyglot of Foreign Proverbs (1857)"
+  },
+  {
+    "text": "Little by little the bird builds its nest.",
+    "author": "French proverb",
+    "source": "Bohn, A Polyglot of Foreign Proverbs (1857)"
+  },
+  {
+    "text": "With patience and time the mulberry leaf becomes a silk gown.",
+    "author": "German proverb",
+    "source": "Bohn, A Polyglot of Foreign Proverbs (1857)"
+  },
+  {
+    "text": "Who goes softly goes safely, and he that goes safely goes far.",
+    "author": "Italian proverb",
+    "source": "Bohn, A Polyglot of Foreign Proverbs (1857)"
+  },
+  {
+    "text": "The feed will still be there. This moment won't."
+  },
+  {
+    "text": "You came here to do something. Go do it."
+  },
+  {
+    "text": "Close the tab. Open the work."
+  },
+  {
+    "text": "Boredom is the doorway. Walk through it into the work."
+  }
 ]
