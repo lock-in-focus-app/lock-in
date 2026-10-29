@@ -52,6 +52,15 @@ describe('settings page', () => {
   });
   afterAll(() => t?.close());
 
+  it('ends with the quiet support link, opening in its own tab', async () => {
+    const link = await page.$eval('footer .support a', (a) => ({
+      text: (a as HTMLElement).innerText,
+      href: a.getAttribute('href'),
+      target: a.getAttribute('target'),
+    }));
+    expect(link).toEqual({ text: 'SUPPORT LOCK IN ON KO-FI ↗', href: 'https://ko-fi.com/sortelone', target: '_blank' });
+  });
+
   it("shows the profile's redirect pages, and the gate on its own", async () => {
     const checked = await page.$$eval('.destinations label', (labels) =>
       labels.filter((l) => l.querySelector('input')!.checked).map((l) => l.querySelector('.name')!.textContent),

@@ -446,7 +446,7 @@ Built in slices, one PR each:
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and they sync with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
-- ✅ The support link (§8): "Support Lock In on Ko-fi" at the very bottom of the app's Settings, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
+- ✅ The support link (§8): "Support Lock In on Ko-fi" at the very bottom of the app's Settings and of the extension's settings page, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
 - Export/import.
 - ✅ Blocking without the extension, macOS first (§8). Windows and Linux later.
 - Signed builds: macOS notarization requires a paid Apple account, while unsigned builds work with a Gatekeeper warning. Also publish to the Chrome Web Store and Firefox Add-ons.
