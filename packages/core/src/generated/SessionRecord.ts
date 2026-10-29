@@ -35,4 +35,12 @@ idleTailMs: number, endReason: EndReason,
  * Whether a browser had to be closed during a Hard session for running without the
  * extension. A broken session won't earn rewards.
  */
-broken: boolean, };
+broken: boolean, 
+/**
+ * The goal set when it started, if its profile asked for one and it wasn't skipped.
+ */
+goal: string | null, 
+/**
+ * The answer to "Did you do it?", if it was answered.
+ */
+goalMet: boolean | null, };

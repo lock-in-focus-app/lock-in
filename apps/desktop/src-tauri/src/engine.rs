@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::quotes::{MAX_OWN_QUOTES, OwnQuote};
 use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteRecord, SatelliteState};
 use crate::session::{
-    EndReason, GateVisit, Profile, Session, SessionRecord, is_star_color, starter_profiles, truncate,
+    EndReason, GateVisit, Profile, Session, SessionGoal, SessionRecord, is_star_color, starter_profiles, truncate,
 };
 use crate::settings::Settings;
 use crate::sites::{self, SiteRule};
@@ -22,6 +22,7 @@ const BROKEN_SESSION: &str = "brokenSession";
 const SKY: &str = "sky";
 const TOUR: &str = "tour";
 const OWN_QUOTES: &str = "ownQuotes";
+const SESSION_GOAL: &str = "sessionGoal";
 
 /// Emergency passes come back a week after they're used.
 const PASS_WEEK_MS: i64 = 7 * 24 * 60 * 60_000;
@@ -46,6 +47,8 @@ pub struct Engine {
     tour_offered: bool,
     /// Quotes the user added, synced with the extension.
     own_quotes: Synced<Vec<OwnQuote>>,
+    /// The running session's goal, or the last one's until "Did you do it?" is answered.
+    goal: Option<SessionGoal>,
 }
 
 /// Everything the UI shows, sent whenever it changes.
@@ -70,6 +73,8 @@ pub struct Snapshot {
     pub tour_offered: bool,
     /// Quotes the user added, for the Sky's quote for the day and Settings.
     pub own_quotes: Vec<OwnQuote>,
+    /// The last session's goal, between sessions, until "Did you do it?" is answered.
+    pub goal_to_answer: Option<SessionGoal>,
 }
 
 /// Everything logged between two times, for the weekly report. The window works the report
@@ -99,6 +104,8 @@ pub struct ProfileSummary {
     pub sites: Vec<SiteRule>,
     /// The color of its stars, if it was given one.
     pub star_color: Option<String>,
+    /// Whether starting one of its sessions in the window asks for a goal.
+    pub ask_goal: bool,
     /// The if-then plan its redirect page shows, or "" if it has none.
     pub plan: String,
 }
@@ -140,6 +147,8 @@ pub struct ActiveSession {
     pub timer: Option<TimerSettings>,
     /// A browser had to be closed during this Hard session for running without the extension.
     pub broken: bool,
+    /// What it's for, if its profile asked and a goal was given.
+    pub goal: Option<String>,
 }
 
 impl Engine {
@@ -169,6 +178,7 @@ impl Engine {
             value: vec![],
             updated_at: 0,
         });
+        let goal = store.load(SESSION_GOAL)?.and_then(|s| s.value);
         Ok(Self {
             store,
             profiles,
@@ -180,6 +190,7 @@ impl Engine {
             satellites,
             tour_offered,
             own_quotes,
+            goal,
         })
     }
 
@@ -232,6 +243,7 @@ impl Engine {
                     apps: p.apps(),
                     sites: p.sites(),
                     star_color: p.star_color(),
+                    ask_goal: p.asks_goal(),
                     plan: p.plan(),
                 })
                 .collect(),
@@ -242,6 +254,11 @@ impl Engine {
                 started_at: s.started_at,
                 timer: s.timer.clone(),
                 broken: self.is_broken(s),
+                goal: self
+                    .goal
+                    .as_ref()
+                    .filter(|g| g.session_id == s.id)
+                    .map(|g| g.text.clone()),
             }),
             settings: self.settings.clone(),
             passes_left: self.passes_left(now),
@@ -255,6 +272,7 @@ impl Engine {
                 .collect(),
             tour_offered: self.tour_offered,
             own_quotes: self.own_quotes.value.clone(),
+            goal_to_answer: self.goal.clone().filter(|_| self.session().is_none()),
         }
     }
 
@@ -281,6 +299,8 @@ impl Engine {
         };
         self.store.save(ACTIVE_SESSION, &synced)?;
         self.session = synced;
+        // Whatever the last session's goal was, it's no longer waiting for an answer.
+        self.save_goal(None, now)?;
         Ok(self.session().expect("just started"))
     }
 
@@ -304,7 +324,7 @@ impl Engine {
             value: None,
             updated_at: now,
         };
-        self.log_end(&record, none)?;
+        self.log_end(&mut record, none)?;
         if reason == EndReason::EmergencyPass {
             self.pass_uses.push(now);
         }
@@ -323,7 +343,7 @@ impl Engine {
             value: None,
             updated_at: now,
         };
-        self.log_end(&record, none)?;
+        self.log_end(&mut record, none)?;
         Ok(Some(record))
     }
 
@@ -522,6 +542,55 @@ impl Engine {
         Ok(())
     }
 
+    /// Turns asking for a goal at the start of a profile's sessions on or off.
+    pub fn set_profile_asks_goal(&mut self, profile_id: &str, on: bool, now: i64) -> Result<()> {
+        let mut profiles = self.profiles.value.clone();
+        let profile = profiles
+            .iter_mut()
+            .find(|p| p.id == profile_id)
+            .ok_or(Error::UnknownProfile)?;
+        profile.set_asks_goal(on);
+        let synced = Synced {
+            value: profiles,
+            updated_at: now,
+        };
+        self.store.save(PROFILES, &synced)?;
+        self.profiles = synced;
+        Ok(())
+    }
+
+    /// Sets the running session's goal. An empty one clears it.
+    pub fn set_session_goal(&mut self, text: &str, now: i64) -> Result<()> {
+        let session = self.session().ok_or(Error::NoSession)?;
+        let goal = SessionGoal::new(session, text);
+        self.save_goal(goal, now)
+    }
+
+    /// Answers "Did you do it?" for the last session's goal, which then stops waiting.
+    pub fn answer_goal(&mut self, session_id: &str, met: bool, now: i64) -> Result<()> {
+        let waiting = self.session().is_none() && self.goal.as_ref().is_some_and(|g| g.session_id == session_id);
+        if !waiting {
+            return Ok(());
+        }
+        self.store.set_goal_met(session_id, met)?;
+        self.save_goal(None, now)
+    }
+
+    fn save_goal(&mut self, goal: Option<SessionGoal>, now: i64) -> Result<()> {
+        if goal == self.goal {
+            return Ok(());
+        }
+        self.store.save(
+            SESSION_GOAL,
+            &Synced {
+                value: &goal,
+                updated_at: now,
+            },
+        )?;
+        self.goal = goal;
+        Ok(())
+    }
+
     /// The profiles and session with when they last changed, for sending to the extension.
     pub fn synced(&self) -> (&Synced<Vec<Profile>>, &Synced<Option<Session>>) {
         (&self.profiles, &self.session)
@@ -620,12 +689,17 @@ impl Engine {
                     let ended_at = incoming.updated_at.min(now);
                     let mut record = SessionRecord::new(previous, &name, ended_at, EndReason::Stopped);
                     record.broken = self.is_broken(previous);
-                    self.log_end(&record, incoming)?;
+                    self.log_end(&mut record, incoming)?;
                 }
                 None => {
                     self.store.save(ACTIVE_SESSION, &incoming)?;
                     self.session = incoming;
                 }
+            }
+            // A session the extension started has no goal, and the last one's no longer waits.
+            let new_session = self.session().map(|s| s.id.clone());
+            if new_session.is_some_and(|id| self.goal.as_ref().is_some_and(|g| g.session_id != id)) {
+                self.save_goal(None, now)?;
             }
             changed = true;
         }
@@ -635,7 +709,12 @@ impl Engine {
 
     /// Logs a session that ended and takes on what replaced it (no session, or one the
     /// extension started). Satellites in orbit come back.
-    fn log_end(&mut self, record: &SessionRecord, replacement: Synced<Option<Session>>) -> Result<()> {
+    fn log_end(&mut self, record: &mut SessionRecord, replacement: Synced<Option<Session>>) -> Result<()> {
+        record.goal = self
+            .goal
+            .as_ref()
+            .filter(|g| g.session_id == record.id)
+            .map(|g| g.text.clone());
         self.store.end_session(record, ACTIVE_SESSION, &replacement)?;
         self.session = replacement;
         for satellite in &mut self.satellites {
@@ -924,6 +1003,64 @@ mod tests {
     }
 
     #[test]
+    fn keeps_a_goal_until_did_you_do_it_is_answered() {
+        let mut engine = engine();
+        let asks = |engine: &Engine| {
+            engine
+                .snapshot(0)
+                .profiles
+                .iter()
+                .find(|p| p.id == "writing")
+                .unwrap()
+                .ask_goal
+        };
+        assert!(!asks(&engine));
+        engine.set_profile_asks_goal("writing", true, 1).unwrap();
+        assert!(asks(&engine));
+
+        let id = engine.start_session("writing", 1_000).unwrap().id.clone();
+        engine.set_session_goal("  Finish   the intro\n", 1_000).unwrap();
+        let snapshot = engine.snapshot(2_000);
+        assert_eq!(snapshot.session.unwrap().goal.as_deref(), Some("Finish the intro"));
+        assert_eq!(snapshot.goal_to_answer, None);
+
+        let record = engine.end_session(30 * MIN, EndReason::Stopped).unwrap();
+        assert_eq!(record.goal.as_deref(), Some("Finish the intro"));
+        let waiting = engine.snapshot(30 * MIN).goal_to_answer.unwrap();
+        assert_eq!(
+            (waiting.session_id.as_str(), waiting.text.as_str()),
+            (id.as_str(), "Finish the intro")
+        );
+
+        // It waits through a restart.
+        let mut engine = Engine::load(
+            std::mem::replace(&mut engine.store, Store::open_in_memory().unwrap()),
+            0,
+        )
+        .unwrap();
+        assert!(engine.snapshot(31 * MIN).goal_to_answer.is_some());
+        engine.answer_goal("someone-else", false, 31 * MIN).unwrap();
+        assert!(engine.snapshot(31 * MIN).goal_to_answer.is_some());
+        engine.answer_goal(&id, true, 31 * MIN).unwrap();
+        assert_eq!(engine.snapshot(31 * MIN).goal_to_answer, None);
+        assert_eq!(engine.store.sessions().unwrap()[0].goal_met, Some(true));
+
+        // Left unanswered, it stops waiting when the next session starts, which can skip its own.
+        engine.start_session("writing", 40 * MIN).unwrap();
+        engine.set_session_goal("Outline part two", 40 * MIN).unwrap();
+        engine.end_session(50 * MIN, EndReason::Stopped).unwrap();
+        engine.start_session("writing", 60 * MIN).unwrap();
+        engine.set_session_goal("   ", 60 * MIN).unwrap();
+        assert_eq!(engine.snapshot(61 * MIN).session.unwrap().goal, None);
+        engine.end_session(70 * MIN, EndReason::Stopped).unwrap();
+        assert_eq!(engine.snapshot(70 * MIN).goal_to_answer, None);
+        let log = engine.store.sessions().unwrap();
+        assert_eq!(log[1].goal.as_deref(), Some("Outline part two"));
+        assert_eq!(log[1].goal_met, None);
+        assert_eq!(log[2].goal, None);
+    }
+
+    #[test]
     fn sets_plans_during_hard_sessions_too() {
         let mut engine = hard_engine();
         let plan = |engine: &Engine| {
@@ -1136,6 +1273,37 @@ mod tests {
         let log = engine.session_log().unwrap();
         assert_eq!(log.len(), 1);
         assert_eq!((log[0].ended_at, log[0].focused_ms), (1_000 + 30 * MIN, 30 * MIN));
+    }
+
+    #[test]
+    fn keeps_the_goal_of_a_session_the_extension_ends_or_replaces() {
+        let mut engine = engine();
+        engine.start_session("writing", 1_000).unwrap();
+        engine.set_session_goal("Draft the intro", 1_000).unwrap();
+        let ended = Synced {
+            value: None,
+            updated_at: 30 * MIN,
+        };
+        engine.apply_remote(None, Some(ended), 31 * MIN).unwrap();
+        assert_eq!(
+            engine.session_log().unwrap()[0].goal.as_deref(),
+            Some("Draft the intro")
+        );
+        assert!(engine.snapshot(31 * MIN).goal_to_answer.is_some());
+
+        // A session the extension starts has no goal, and the last one stops waiting.
+        let started = Synced {
+            value: Some(remote_session("s2", "deep-work", None)),
+            updated_at: 40 * MIN,
+        };
+        engine.apply_remote(None, Some(started), 40 * MIN).unwrap();
+        assert_eq!(engine.snapshot(40 * MIN).session.unwrap().goal, None);
+        let ended = Synced {
+            value: None,
+            updated_at: 50 * MIN,
+        };
+        engine.apply_remote(None, Some(ended), 50 * MIN).unwrap();
+        assert_eq!(engine.snapshot(50 * MIN).goal_to_answer, None);
     }
 
     #[test]

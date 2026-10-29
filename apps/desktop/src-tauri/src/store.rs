@@ -84,6 +84,11 @@ const MIGRATIONS: &[&str] = &[
         name TEXT NOT NULL
     );
 "#,
+    // A session's goal, if its profile asks for one, and whether it was met (NULL until answered).
+    r#"
+    ALTER TABLE sessions ADD COLUMN goal TEXT;
+    ALTER TABLE sessions ADD COLUMN goal_met INTEGER;
+"#,
 ];
 
 impl Store {
@@ -342,7 +347,7 @@ impl Store {
     pub fn sessions_between(&self, from: i64, to: i64) -> Result<Vec<SessionRecord>> {
         let mut statement = self.db.prepare(
             "SELECT id, profile_id, profile_name, started_at, ended_at, timer_minutes,
-                focused_ms, overtime_ms, idle_tail_ms, end_reason, broken
+                focused_ms, overtime_ms, idle_tail_ms, end_reason, broken, goal, goal_met
              FROM sessions WHERE started_at >= ?1 AND started_at < ?2 ORDER BY started_at",
         )?;
         let rows = statement.query_map(params![from, to], |row| {
@@ -358,9 +363,20 @@ impl Store {
                 idle_tail_ms: row.get(8)?,
                 end_reason: EndReason::parse(&row.get::<_, String>(9)?).unwrap_or(EndReason::Stopped),
                 broken: row.get(10)?,
+                goal: row.get(11)?,
+                goal_met: row.get(12)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Saves the answer to "Did you do it?" for a logged session that had a goal.
+    pub fn set_goal_met(&self, session_id: &str, met: bool) -> Result<()> {
+        self.db.execute(
+            "UPDATE sessions SET goal_met = ?2 WHERE id = ?1 AND goal IS NOT NULL",
+            params![session_id, met],
+        )?;
+        Ok(())
     }
 
     /// The satellites launched from `from` up to (not including) `to`, and what became of
@@ -400,8 +416,8 @@ impl Store {
 fn insert_session(db: &Connection, record: &SessionRecord) -> Result<()> {
     db.execute(
         "INSERT OR REPLACE INTO sessions (id, profile_id, profile_name, started_at, ended_at, timer_minutes,
-            focused_ms, overtime_ms, idle_tail_ms, end_reason, broken)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            focused_ms, overtime_ms, idle_tail_ms, end_reason, broken, goal, goal_met)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![
             record.id,
             record.profile_id,
@@ -414,6 +430,8 @@ fn insert_session(db: &Connection, record: &SessionRecord) -> Result<()> {
             record.idle_tail_ms,
             record.end_reason.as_str(),
             record.broken,
+            record.goal,
+            record.goal_met,
         ],
     )?;
     Ok(())

@@ -25,6 +25,8 @@ function session(day: number, hours = 1, hour = 9, extra: Partial<SessionRecord>
     idleTailMs: 0,
     endReason: 'stopped',
     broken: false,
+    goal: null,
+    goalMet: null,
     ...extra,
   };
 }

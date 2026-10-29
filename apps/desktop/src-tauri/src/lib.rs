@@ -59,8 +59,15 @@ pub(crate) fn engine(app: &AppHandle) -> MutexGuard<'_, Engine> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-pub(crate) fn start_session(app: &AppHandle, profile_id: &str) -> Result<()> {
-    engine(app).start_session(profile_id, now_ms())?;
+pub(crate) fn start_session(app: &AppHandle, profile_id: &str, goal: Option<&str>) -> Result<()> {
+    {
+        let mut engine = engine(app);
+        let now = now_ms();
+        engine.start_session(profile_id, now)?;
+        if let Some(goal) = goal {
+            engine.set_session_goal(goal, now)?;
+        }
+    }
     changed(app);
     Ok(())
 }
@@ -590,6 +597,8 @@ pub fn run() {
             commands::set_profile_timer,
             commands::set_profile_star_color,
             commands::set_profile_plan,
+            commands::set_profile_asks_goal,
+            commands::answer_goal,
             commands::use_emergency_pass,
             commands::set_settings,
             commands::set_satellite_hotkey,

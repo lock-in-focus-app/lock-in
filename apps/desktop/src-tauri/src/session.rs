@@ -9,6 +9,9 @@ use crate::timer::{Strictness, TimerSettings};
 /// The longest if-then plan, in characters, the same as `maxPlanLength` in core's settings.ts.
 pub const MAX_PLAN_LENGTH: usize = 140;
 
+/// The longest session goal, in characters.
+pub const MAX_GOAL_LENGTH: usize = 140;
+
 /// A profile, as the extension saves it. The app only reads a few fields; everything else
 /// (site levels, redirect settings) is kept as it is, so nothing is lost when it's saved back.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -89,6 +92,16 @@ impl Profile {
             *redirect = Value::Object(Map::new());
         }
         redirect["plan"] = plan.into();
+    }
+
+    /// Whether starting one of its sessions in the window asks for a goal first (PLAN §7). Off
+    /// unless it's been turned on.
+    pub fn asks_goal(&self) -> bool {
+        self.rest.get("askGoal").and_then(Value::as_bool).unwrap_or(false)
+    }
+
+    pub fn set_asks_goal(&mut self, on: bool) {
+        self.rest.insert("askGoal".into(), on.into());
     }
 
     /// Whether the profile tames, redirects or restricts any site or page, so it needs the
@@ -176,6 +189,31 @@ impl EndReason {
     }
 }
 
+/// A one-line goal for a session (PLAN §7). It's kept from when the session starts until "Did
+/// you do it?" is answered after it, or the next session starts. Only the app has it; it isn't
+/// synced with the extension.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SessionGoal {
+    pub session_id: String,
+    pub profile_id: String,
+    pub text: String,
+}
+
+impl SessionGoal {
+    /// A goal for this session, trimmed and cut to length, or none if it's empty.
+    pub fn new(session: &Session, text: &str) -> Option<Self> {
+        let mut text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        truncate(&mut text, MAX_GOAL_LENGTH);
+        (!text.is_empty()).then(|| Self {
+            session_id: session.id.clone(),
+            profile_id: session.profile_id.clone(),
+            text,
+        })
+    }
+}
+
 /// A finished session, as kept in the session log. It holds everything the night sky will
 /// need later, so stars and stardust can be worked out from past sessions.
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -202,6 +240,10 @@ pub struct SessionRecord {
     /// Whether a browser had to be closed during a Hard session for running without the
     /// extension. A broken session won't earn rewards.
     pub broken: bool,
+    /// The goal set when it started, if its profile asked for one and it wasn't skipped.
+    pub goal: Option<String>,
+    /// The answer to "Did you do it?", if it was answered.
+    pub goal_met: Option<bool>,
 }
 
 impl SessionRecord {
@@ -238,6 +280,8 @@ impl SessionRecord {
             idle_tail_ms: ended_at - counted,
             end_reason,
             broken: false,
+            goal: None,
+            goal_met: None,
         }
     }
 }

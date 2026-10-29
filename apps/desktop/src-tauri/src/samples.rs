@@ -74,6 +74,8 @@ pub fn sample_log(now: i64, profiles: &[(String, String)]) -> (Vec<SessionRecord
                 idle_tail_ms: if idle { 10 * MIN } else { 0 },
                 end_reason: if idle { EndReason::Idle } else { EndReason::Stopped },
                 broken: false,
+                goal: None,
+                goal_met: None,
             });
             // Sometimes another short one right after, which shares its star.
             let gap = if minutes < 30 && random.chance(40) {

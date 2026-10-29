@@ -209,6 +209,14 @@ const sessionsLine = computed(() => {
   if (focus.value.overtimeMs) parts.push(`${formatDuration(focus.value.overtimeMs)} past the timer`);
   return parts.join(' · ');
 });
+// Goals set at the start of sessions, and how "Did you do it?" was answered.
+const goalsLine = computed(() => {
+  const goals = focus.value?.goals;
+  if (!goals?.set) return '';
+  const unanswered = goals.set - goals.met - goals.missed;
+  const done = `${goals.met} of ${plural(goals.set, 'goal')} done`;
+  return unanswered ? `${done} · ${unanswered} unanswered` : done;
+});
 // Only from two days in a row, since one day isn't a streak yet.
 const streakLine = computed(() => {
   const { current, longest } = props.streaks;
@@ -445,6 +453,7 @@ const empty = computed(() => !focus.value?.sessions && !distractions.value?.visi
             <p v-if="streakLine" class="note">{{ streakLine }}</p>
             <template v-if="focus.sessions">
               <p class="note">{{ sessionsLine }}</p>
+              <p v-if="goalsLine" class="note">{{ goalsLine }}</p>
               <p v-if="endings" class="note">{{ endings }}</p>
             </template>
           </section>

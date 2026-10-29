@@ -96,6 +96,8 @@ export interface FocusSummary {
   idle: number;
   /** Sessions that had a browser closed for running without the extension. */
   broken: number;
+  /** Goals set at the start of sessions (PLAN §7), and how "Did you do it?" was answered. */
+  goals: { set: number; met: number; missed: number };
 }
 
 export interface DistractionSummary {
@@ -218,6 +220,11 @@ function focusSummary(sessions: SessionRecord[], start: number): FocusSummary {
     emergencyPasses: sessions.filter((s) => s.endReason === 'emergencyPass').length,
     idle: sessions.filter((s) => s.endReason === 'idle').length,
     broken: sessions.filter((s) => s.broken).length,
+    goals: {
+      set: sessions.filter((s) => s.goal).length,
+      met: sessions.filter((s) => s.goal && s.goalMet === true).length,
+      missed: sessions.filter((s) => s.goal && s.goalMet === false).length,
+    },
   };
 }
 

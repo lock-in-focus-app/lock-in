@@ -46,7 +46,11 @@ export function useNow() {
   return now;
 }
 
-export const startSession = (profileId: string) => invoke<void>('start_session', { profileId });
+/** Starts a session, with a goal if its profile asks for one and one was given. */
+export const startSession = (profileId: string, goal?: string) => invoke<void>('start_session', { profileId, goal });
+
+/** Answers "Did you do it?" for the last session's goal. */
+export const answerGoal = (sessionId: string, met: boolean) => invoke<void>('answer_goal', { sessionId, met });
 
 export const endSession = () => invoke<void>('end_session');
 
@@ -71,6 +75,9 @@ export const removeOwnQuote = (id: string) => invoke<void>('remove_own_quote', {
 
 export const setProfileSites = (profileId: string, sites: SiteRule[]) =>
   invoke<void>('set_profile_sites', { profileId, sites });
+
+export const setProfileAsksGoal = (profileId: string, on: boolean) =>
+  invoke<void>('set_profile_asks_goal', { profileId, on });
 
 export const setProfilePlan = (profileId: string, plan: string) =>
   invoke<void>('set_profile_plan', { profileId, plan });

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction } from '@lock-in/core';
+import type { ActiveSession, ProfileSummary, Satellite, SatelliteAction, SessionGoal } from '@lock-in/core';
 import { formatDuration, starColorFor } from '@lock-in/core';
 import { computed, ref, watch } from 'vue';
 import ExploreView from './ExploreView.vue';
+import GoalCheck from './GoalCheck.vue';
 import LaunchDock from './LaunchDock.vue';
 import SatelliteLaunch from './SatelliteLaunch.vue';
 import SatelliteOrbits from './SatelliteOrbits.vue';
@@ -18,6 +19,8 @@ import Unfold from './Unfold.vue';
 const props = defineProps<{
   profiles: ProfileSummary[];
   session: ActiveSession | null;
+  /** The last session's goal, until "Did you do it?" is answered. */
+  goalToAnswer: SessionGoal | null;
   passesLeft: number;
   satellites: { back: Satellite[]; orbiting: Satellite[]; tasks: Satellite[]; done: Satellite[] };
   /** The satellite box's hotkey, for the launch box's hint. */
@@ -41,7 +44,8 @@ const props = defineProps<{
 }>();
 const exploring = defineModel<boolean>('exploring', { required: true });
 const emit = defineEmits<{
-  start: [profileId: string];
+  start: [profileId: string, goal?: string];
+  answer: [sessionId: string, met: boolean];
   end: [];
   pass: [];
   launch: [text: string];
@@ -84,6 +88,7 @@ const sessionColor = computed(() => {
   const id = props.session?.profileId ?? '';
   return starColorFor(id, props.profiles.find((profile) => profile.id === id)?.starColor);
 });
+const goalProfile = computed(() => props.profiles.find((profile) => profile.id === props.goalToAnswer?.profileId));
 
 const orbitingIds = computed(() => props.satellites.orbiting.map((satellite) => satellite.id));
 
@@ -105,10 +110,10 @@ watch(
              thoughts and tasks that wait for after it. -->
         <header class="today">
           <h2 class="date">{{ glance.date }}</h2>
-          <!-- A quote for the day, between sessions. It folds away while the task list is open, to
-               make room for it. -->
+          <!-- A quote for the day, between sessions. It folds away while the task list is open, or
+               "Did you do it?" waits, to make room for them. -->
           <Unfold>
-            <figure v-if="!session && !showingTasks && glance.quote" class="quote">
+            <figure v-if="!session && !showingTasks && !goalToAnswer && glance.quote" class="quote">
               <blockquote>{{ glance.quote.text }}</blockquote>
               <figcaption v-if="glance.quote.author" class="mono">{{ glance.quote.author }}</figcaption>
             </figure>
@@ -121,6 +126,15 @@ watch(
               · Streak <b>{{ glance.streak }} days</b></span
             >
           </p>
+          <Unfold>
+            <GoalCheck
+              v-if="!session && goalToAnswer"
+              :goal="goalToAnswer"
+              :profile-name="goalProfile?.name ?? 'Last session'"
+              :color="starColorFor(goalToAnswer.profileId, goalProfile?.starColor)"
+              @answer="emit('answer', goalToAnswer.sessionId, $event)"
+            />
+          </Unfold>
           <!-- Offered once, the first time the Sky shows, and in Settings after that. -->
           <Unfold>
             <div v-if="offerTour && !session" class="card offer">
@@ -144,7 +158,12 @@ watch(
           />
         </div>
 
-        <LaunchDock v-if="!session" :profiles="profiles" :first-star="starCount === 0" @start="emit('start', $event)" />
+        <LaunchDock
+          v-if="!session"
+          :profiles="profiles"
+          :first-star="starCount === 0"
+          @start="(id, goal) => emit('start', id, goal)"
+        />
 
         <!-- Thoughts for later, together: what came back after the last session, the task list
              (opened from Tasks below), and the launch box. -->

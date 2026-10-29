@@ -132,6 +132,8 @@ export function sessionSoFar(session: ActiveSession, now: number): SessionRecord
     idleTailMs: 0,
     endReason: 'stopped',
     broken: session.broken,
+    goal: session.goal,
+    goalMet: null,
   };
 }
 
