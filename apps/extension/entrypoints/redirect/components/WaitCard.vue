@@ -1,12 +1,5 @@
 <script lang="ts" setup>
-import {
-  maxIntentionLength,
-  waitLabel,
-  waitSecondsLeft,
-  type PageWait,
-  type Quote,
-  type SavedLink,
-} from '@lock-in/core';
+import { maxIntentionLength, waitLabel, waitSecondsLeft, type PageWait, type SavedLink } from '@lock-in/core';
 import { computed, onUnmounted, ref } from 'vue';
 
 const props = defineProps<{
@@ -15,10 +8,9 @@ const props = defineProps<{
   requireReason: boolean;
   passMinutes: number;
   plan: string;
-  quote?: Quote;
   links: SavedLink[];
 }>();
-const emit = defineEmits<{ back: []; continue: [intention: string]; stuck: [] }>();
+const emit = defineEmits<{ back: []; continue: [intention: string]; stuck: []; addPlan: [] }>();
 
 const intention = ref('');
 const continuing = ref(false);
@@ -69,10 +61,7 @@ const host = (url: string) => new URL(url).hostname.replace(/^www\./, '');
     <figcaption class="mono">Your plan</figcaption>
     <p>{{ plan }}</p>
   </figure>
-  <figure v-else-if="quote" class="quote">
-    <blockquote>{{ quote.text }}</blockquote>
-    <figcaption v-if="quote.author">{{ quote.author }}</figcaption>
-  </figure>
+  <button v-else type="button" class="quiet add-plan" @click="emit('addPlan')">Add an if-then plan ›</button>
 
   <div class="work">
     <a v-for="link in links" :key="link.id" class="secondary link" :href="link.url">
@@ -146,22 +135,9 @@ figure {
   font-size: 17px;
 }
 
-blockquote {
-  margin: 0;
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: 19px;
-  line-height: 1.35;
-  text-wrap: balance;
-}
-
-.quote figcaption {
-  margin-top: 6px;
-  color: var(--dim);
-  font-size: 13px;
-}
-
-.quote figcaption::before {
-  content: '— ';
+/* Without a plan, a quiet way to write one, in the plan's spot. */
+.add-plan {
+  margin-top: 20px;
 }
 
 /* Ways back to work: your own links, and the unstick. */

@@ -51,8 +51,9 @@ describe('the redirect page', () => {
       expect(await tab.$('textarea')).toBeNull();
     });
 
-    it('shows a quote when the profile has no plan', async () => {
-      expect(await tab.$eval('figure.quote blockquote', (el) => el.textContent!.trim())).not.toBe('');
+    it('offers a way to add an if-then plan when the profile has none', async () => {
+      expect(await tab.$('figure.plan')).toBeNull();
+      expect(await tab.$eval('button.add-plan', (b) => b.textContent!.trim())).toBe('Add an if-then plan ›');
     });
 
     it('records the trip and the one-tap "why"', async () => {
@@ -82,11 +83,11 @@ describe('the redirect page', () => {
       }),
     );
 
-    it('shows the if-then plan instead of a quote', async () => {
+    it('shows the if-then plan', async () => {
       expect(await tab.$eval('figure.plan', (el) => (el as HTMLElement).innerText)).toContain(
         "When I want Reddit, I'll write one paragraph first.",
       );
-      expect(await tab.$('figure.quote')).toBeNull();
+      expect(await tab.$('button.add-plan')).toBeNull();
     });
 
     it('offers your links as ways back to work', async () => {

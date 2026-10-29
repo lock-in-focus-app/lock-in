@@ -21,8 +21,6 @@ import {
   withGateVisitContinued,
   withGateVisitWhy,
   withPass,
-  withOwnQuote,
-  withOwnQuoteRemoved,
   withProfileToggle,
   withSiteRemoved,
   withRedirectSettings,
@@ -262,14 +260,4 @@ export async function pageWaitForTrip(recipeId: string, sessionId: string, secon
 /** Saves the one-tap answer to "why are you here?" on a visit. */
 export async function setVisitWhy(visitId: string, why: WhyReason | undefined): Promise<void> {
   await inTurn(async () => gateVisits.setValue(withGateVisitWhy(await gateVisits.getValue(), visitId, why)));
-}
-
-export async function addOwnQuote(text: string, author: string): Promise<void> {
-  await inTurn(async () =>
-    ownQuotes.setValue(withOwnQuote(await ownQuotes.getValue(), crypto.randomUUID(), text, author)),
-  );
-}
-
-export async function removeOwnQuote(id: string): Promise<void> {
-  await inTurn(async () => ownQuotes.setValue(withOwnQuoteRemoved(await ownQuotes.getValue(), id)));
 }

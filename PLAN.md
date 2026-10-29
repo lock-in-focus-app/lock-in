@@ -91,7 +91,7 @@ A profile bundles:
 
 You can create, edit, duplicate, delete, reorder, and import/export (JSON) profiles. The app ships with **starter profiles that show what's possible**. They're ordinary editable profiles, and "Reset starter profiles" restores them:
 - *Writing*: Reddit and YouTube tamed + grayscale (YouTube Shorts redirected); X, Instagram, TikTok and Facebook redirected; Discord closed
-- *Deep Work*: all social redirected (with a quote or unstick page some of the time, and an escalating wait), chat apps closed
+- *Deep Work*: all social redirected (five minutes first), chat apps closed
 - *Wind Down*: Reddit, YouTube and Instagram tamed (no feeds or recommendations; Shorts and Reels redirected), nothing else
 
 ---
@@ -124,7 +124,7 @@ Links to a redirected site can come from anywhere (a search result, a chat), and
 **What the page shows, top to bottom:**
 - The **attempt counter**: "6th try at Reddit today".
 - **Five minutes first**: "Focus for 5 minutes. If you still want Reddit after that, go right ahead," with the time left counting down. It leans on two things: the hard part is usually starting, and a pull that comes from a moment of boredom tends to pass once you're back into the work. (Why: in a study of the one sec app, a short wait and an easy way to back out both cut how often people opened an app, while the message alone did nothing. The "five minutes to get started" part is reasoning, not tested; §12.)
-- The profile's **if-then plan**, if it has one: "When I want Reddit, I'll write one paragraph first." Without one, a quote sits in the same spot (from the bundled pack and your own).
+- The profile's **if-then plan**, if it has one: "When I want Reddit, I'll write one paragraph first." Without one, a quiet "Add an if-then plan" link sits in the same spot and opens the settings. (Quotes used to fill it, but they were more distracting than helpful there, so the extension shows no quotes now; they live on the app's Sky.)
 - **Ways back to work**: a button for each of your own links (your draft, to-do list, Anki or reading list), and **I'm stuck**, which opens a 2-minute unstick in place (say it out loud, shrink it, stand up, breathe).
 - **Not now**, which goes back to where you were (or closes the tab). Like simply never going on to the site, it counts as going back to focus, so it can bring a comet (§5).
 - When the wait is up, **Go to Reddit**, which opens the site with a time-boxed pass to *that site only*.
@@ -143,7 +143,7 @@ Links to a redirected site can come from anywhere (a search result, a chat), and
 
 Every trip is logged the same way (site, time, attempt #, why-tap, typed reason, whether you went on to the site) for the weekly report and comets.
 
-**Quotes & privacy:** quotes come only from the bundled pack and your own; nothing is fetched. The bundled pack is public domain only (texts and translations published before 1931), with each quote's source noted in `packages/quotes` so it can be checked. A daily fetch from a public quote API was considered and dropped: it meant a network request, a third party's terms and adding TLS to the app. Your own quotes sync between the extension and the app like the profiles do (newest change wins). Redirect events (site, time, attempt #, why-tap, intention text) are sent to the desktop app over Native Messaging for stats and insights. The quotes themselves never need to make that round trip.
+**Quotes & privacy:** quotes show only in the app, as the Sky's quote for the day. They come only from the bundled pack and your own; nothing is fetched. The bundled pack is public domain only (texts and translations published before 1931), with each quote's source noted in `packages/quotes` so it can be checked. A daily fetch from a public quote API was considered and dropped: it meant a network request, a third party's terms and adding TLS to the app. Your own quotes are added in the app's Settings. The extension no longer shows or edits them, but still keeps them in step with the app (newest change wins), so quotes added in the extension before reach the app when it links. Redirect events (site, time, attempt #, why-tap, intention text) are sent to the desktop app over Native Messaging for stats and insights.
 
 ---
 

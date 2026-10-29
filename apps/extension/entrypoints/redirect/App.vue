@@ -3,18 +3,15 @@ import {
   attemptsToday,
   findRecipe,
   parseHttpUrl,
-  pickQuote,
   redirectSettingsFor,
   siteAccess,
   siteRecipes,
   waitSecondsFor,
   type PageWait,
-  type Quote,
   type RedirectSettings,
   type SiteRecipe,
   type WhyReason,
 } from '@lock-in/core';
-import { quotes } from '@lock-in/quotes';
 import { recipes } from '@lock-in/recipes';
 import { computed, onMounted, ref, shallowRef, watch } from 'vue';
 import BlockedCard from './components/BlockedCard.vue';
@@ -37,7 +34,6 @@ const settings = ref<RedirectSettings>();
 const blocked = ref(false);
 const stuck = ref(false);
 const wait = ref<PageWait>();
-const quote = ref<Quote>();
 const attempts = ref(0);
 const visitId = ref('');
 const why = ref<WhyReason>();
@@ -91,7 +87,6 @@ onMounted(async () => {
     // A tab sent back after its pass counts as the next attempt for the wait.
     const seconds = waitSecondsFor(settings.value.gate, expired ? attempts.value + 1 : attempts.value);
     wait.value = await pageWaitForTrip(site.id, session.id, seconds);
-    if (!settings.value.plan) quote.value = pickQuote(quotes, await ownQuotes.getValue());
   }
   ready.value = true;
 });
@@ -106,6 +101,10 @@ async function proceed(intention: string) {
   const id = visitId.value || (await recordGateVisit(site.id, 'page'));
   await continueToSite(id, site.id, intention);
   location.replace(target.href);
+}
+
+function openSettings() {
+  void browser.runtime.openOptionsPage();
 }
 
 async function backToFocus() {
@@ -144,11 +143,11 @@ function ordinal(n: number): string {
           :require-reason="settings.gate.requireReason"
           :pass-minutes="settings.gate.passMinutes"
           :plan="settings.plan"
-          :quote="quote"
           :links="settings.links"
           @back="backToFocus"
           @continue="proceed"
           @stuck="stuck = true"
+          @add-plan="openSettings"
         >
           <p class="destination" :title="target?.href">{{ destinationText }}</p>
         </WaitCard>

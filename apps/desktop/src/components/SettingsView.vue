@@ -310,7 +310,6 @@ const glowHelp = computed(() => {
             ? `That's the most quotes Lock In keeps (${maxOwnQuotes}). Remove one to add another.`
             : "Mixed in with Lock In's own for the Sky's quote of the day, and picked more often."
         }}
-        They're shared with the extension's quote page once it's linked, and quotes added there show up here.
       </p>
     </section>
 

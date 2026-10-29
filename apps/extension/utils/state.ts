@@ -30,7 +30,10 @@ export const pageWaits = storage.defineItem<Record<string, PageWait>>('local:pag
   fallback: {},
 });
 
-/** Quotes the user added. They show up on the redirect page alongside the bundled ones, and sync with the app. */
+/**
+ * The user's own quotes, for the app's Sky. The extension doesn't show them any more, but keeps
+ * them in step with the app, so quotes added here before reach the app when it links.
+ */
 export const ownQuotes = storage.defineItem<OwnQuote[]>('local:ownQuotes', {
   fallback: [],
 });

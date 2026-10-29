@@ -85,8 +85,7 @@ function removeLink(id: string) {
   <h2>Your if-then plan</h2>
   <p class="help">
     Decide now what you'll do when the urge comes, and the redirect page shows it to you each time. Planning "when this
-    happens, I'll do that" ahead of time is one of the best-tested ways to change a habit. Without a plan, the page
-    shows a quote instead.
+    happens, I'll do that" ahead of time is one of the best-tested ways to change a habit.
   </p>
   <label class="card plan" data-tour="redirect">
     <input

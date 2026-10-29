@@ -2,7 +2,6 @@
 import { maxProfileNameLength, starColorFor } from '@lock-in/core';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import StarColorPicker from '@/components/StarColorPicker.vue';
-import QuotesSection from './components/QuotesSection.vue';
 import RedirectSection from './components/RedirectSection.vue';
 import SitesSection from './components/SitesSection.vue';
 import TourGuide, { type TourStep } from './components/TourGuide.vue';
@@ -255,10 +254,6 @@ onMounted(() => {
         <SitesSection :profile="profile" />
         <RedirectSection :profile="profile" />
       </template>
-    </section>
-
-    <section>
-      <QuotesSection />
     </section>
 
     <footer>

@@ -78,13 +78,7 @@ describe('settings page', () => {
       .toMatchObject([{ title: 'Draft', url: 'https://docs.example.com/draft' }]);
   });
 
-  it('adds and removes your own quotes', async () => {
-    await page.type('input[aria-label="Quote"]', 'Ship it.');
-    await page.type('input[aria-label="Author"]', 'Me');
-    await page.$eval('form.add:has(input[aria-label="Quote"])', (form) => (form as HTMLFormElement).requestSubmit());
-    await expect.poll(async () => (await stored(page)).ownQuotes).toMatchObject([{ text: 'Ship it.', author: 'Me' }]);
-
-    await (await page.waitForSelector('button[aria-label="Remove quote"]'))!.click();
-    await expect.poll(async () => (await stored(page)).ownQuotes).toEqual([]);
+  it("doesn't show quotes", async () => {
+    expect(await page.$eval('main', (main) => main.textContent)).not.toContain('Your quotes');
   });
 });
