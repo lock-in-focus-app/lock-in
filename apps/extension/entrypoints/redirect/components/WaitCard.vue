@@ -1,6 +1,13 @@
 <script lang="ts" setup>
-import { maxIntentionLength, waitLabel, waitSecondsLeft, type PageWait, type SavedLink } from '@lock-in/core';
-import { computed, onUnmounted, ref } from 'vue';
+import {
+  maxIntentionLength,
+  maxPlanLength,
+  waitLabel,
+  waitSecondsLeft,
+  type PageWait,
+  type SavedLink,
+} from '@lock-in/core';
+import { computed, nextTick, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 
 const props = defineProps<{
   siteName: string;
@@ -9,8 +16,10 @@ const props = defineProps<{
   passMinutes: number;
   plan: string;
   links: SavedLink[];
+  /** Whether "Stuck" is the answer to "what brought you here?". */
+  stuck: boolean;
 }>();
-const emit = defineEmits<{ back: []; continue: [intention: string]; stuck: []; addPlan: [] }>();
+const emit = defineEmits<{ back: []; continue: [intention: string]; addPlan: [] }>();
 
 const intention = ref('');
 const continuing = ref(false);
@@ -49,6 +58,24 @@ function proceed() {
 }
 
 const host = (url: string) => new URL(url).hostname.replace(/^www\./, '');
+
+// Answering "Stuck" asks for the smallest next step, to spend the wait on. It's only shown back
+// here, not kept.
+const nextStep = ref('');
+const step = ref('');
+const stepField = useTemplateRef<HTMLInputElement>('stepField');
+watch(
+  () => props.stuck,
+  async (stuck) => {
+    if (!stuck || step.value) return;
+    await nextTick();
+    stepField.value?.focus();
+  },
+);
+
+function saveStep() {
+  step.value = nextStep.value.trim();
+}
 </script>
 
 <template>
@@ -63,12 +90,26 @@ const host = (url: string) => new URL(url).hostname.replace(/^www\./, '');
   </figure>
   <button v-else type="button" class="quiet add-plan" @click="emit('addPlan')">Add an if-then plan ›</button>
 
-  <div class="work">
+  <figure v-if="step" class="next">
+    <figcaption class="mono">Next step</figcaption>
+    <p>{{ step }}</p>
+  </figure>
+  <label v-else-if="stuck" class="step">
+    <span class="mono">Smallest next step?</span>
+    <input
+      ref="stepField"
+      v-model="nextStep"
+      placeholder="Something you could finish in five minutes"
+      :maxlength="maxPlanLength"
+      @keydown.enter.prevent="saveStep"
+    />
+  </label>
+
+  <div v-if="links.length" class="work">
     <a v-for="link in links" :key="link.id" class="secondary link" :href="link.url">
       <span class="title">{{ link.title || host(link.url) }} ↗</span>
       <span class="host">{{ host(link.url) }}</span>
     </a>
-    <button type="button" class="secondary stuck" @click="emit('stuck')">I'm stuck</button>
   </div>
 
   <textarea
@@ -123,14 +164,17 @@ figure {
   border-left: 1px solid var(--line-bright);
 }
 
-.plan figcaption {
+.plan figcaption,
+.next figcaption,
+.step .mono {
   color: var(--glow);
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.plan p {
+.plan p,
+.next p {
   margin: 4px 0 0;
   font-size: 17px;
 }
@@ -140,7 +184,31 @@ figure {
   margin-top: 20px;
 }
 
-/* Ways back to work: your own links, and the unstick. */
+/* Asked when "Stuck" is the answer: the smallest next step, then shown like the plan. */
+.step {
+  display: block;
+  margin-top: 24px;
+}
+
+.step input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgb(8 11 22 / 0.6);
+  color: var(--starlight);
+  font: inherit;
+  font-size: 15px;
+}
+
+.step input:focus {
+  border-color: var(--tick-bright);
+  outline: none;
+}
+
+/* Ways back to work: your own links. */
 .work {
   display: flex;
   flex-wrap: wrap;

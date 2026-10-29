@@ -15,7 +15,6 @@ import {
 import { recipes } from '@lock-in/recipes';
 import { computed, onMounted, ref, shallowRef, watch } from 'vue';
 import BlockedCard from './components/BlockedCard.vue';
-import StuckPage from './components/StuckPage.vue';
 import WaitCard from './components/WaitCard.vue';
 import WhyTap from './components/WhyTap.vue';
 
@@ -32,7 +31,6 @@ const profileName = ref('');
 const settings = ref<RedirectSettings>();
 // Redirected sites get the one page with its wait; restricted ones a plain "off for now".
 const blocked = ref(false);
-const stuck = ref(false);
 const wait = ref<PageWait>();
 const attempts = ref(0);
 const visitId = ref('');
@@ -135,7 +133,6 @@ function ordinal(n: number): string {
 
       <div class="card stage">
         <BlockedCard v-if="blocked" :site-name="siteName" :profile-name="profileName" @back="backToFocus" />
-        <StuckPage v-else-if="stuck" @back="backToFocus" />
         <WaitCard
           v-else-if="wait"
           :site-name="siteName"
@@ -144,9 +141,9 @@ function ordinal(n: number): string {
           :pass-minutes="settings.gate.passMinutes"
           :plan="settings.plan"
           :links="settings.links"
+          :stuck="why === 'stuck'"
           @back="backToFocus"
           @continue="proceed"
-          @stuck="stuck = true"
           @add-plan="openSettings"
         >
           <p class="destination" :title="target?.href">{{ destinationText }}</p>
@@ -155,9 +152,6 @@ function ordinal(n: number): string {
 
       <footer>
         <WhyTap v-if="visitId" v-model="why" />
-        <div v-if="stuck" class="more">
-          <button type="button" class="quiet" @click="stuck = false">Back to the wait</button>
-        </div>
       </footer>
     </template>
 
@@ -210,7 +204,7 @@ main {
   --c: var(--glow);
 }
 
-/* The page's one frame: the wait, the unstick, or "off for now" for restricted sites. */
+/* The page's one frame: the wait, or "off for now" for restricted sites. */
 .stage {
   padding: 24px 22px 22px;
 }
@@ -234,17 +228,5 @@ footer {
   margin-top: 40px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
-}
-
-.more {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.more:empty {
-  display: none;
 }
 </style>

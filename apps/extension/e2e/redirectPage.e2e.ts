@@ -96,26 +96,20 @@ describe('the redirect page', () => {
     });
   });
 
-  describe("I'm stuck", () => {
+  describe('when stuck', () => {
     beforeAll(() => visitWith(undefined));
 
-    it('walks through the steps in place, and repeats the next step back', async () => {
-      await clickButton("I'm stuck");
-      expect(await pageText()).toContain('Say it out loud');
-      await clickButton('Next');
-      await tab.type('input', 'Write the intro paragraph');
-      await clickButton('Next');
-      await clickButton('Next');
-      expect(await pageText()).toContain('Breathe');
-      await clickButton('Done');
-      const text = await pageText();
-      expect(text).toContain('Ready when you are');
-      expect(text).toContain('Your next step: Write the intro paragraph');
-    });
-
-    it('goes back to the wait', async () => {
-      await clickButton('Back to the wait');
+    it('asks for the smallest next step once "Stuck" is the answer, and shows it back', async () => {
+      expect(await tab.$('.step input')).toBeNull();
+      await clickButton('Stuck');
+      const field = await tab.waitForSelector('.step input');
+      await field!.type('Write the intro sentence');
+      await tab.keyboard.press('Enter');
+      expect(await tab.$eval('figure.next', (el) => (el as HTMLElement).innerText)).toContain(
+        'Write the intro sentence',
+      );
       expect(await pageText()).toContain('Focus for 5 minutes first');
+      await expect.poll(async () => (await stored(control)).gateVisits?.at(-1)?.why).toBe('stuck');
     });
   });
 
