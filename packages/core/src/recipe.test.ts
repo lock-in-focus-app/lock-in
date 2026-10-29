@@ -103,6 +103,27 @@ describe('cssForPage', () => {
     expect(cssForPage({ url: page, session: null, profiles: [profileWith('tamed')], recipes: [recipe] })).toBe('');
   });
 
+  it('tames outside sessions for the profile that keeps the site tamed then', () => {
+    const always = (level: 'tamed' | 'redirected'): Profile => ({
+      id: 'always',
+      name: 'Always',
+      sites: [{ recipeId: 'example', level, toggles: { grayscale: true }, outsideSessions: true }],
+    });
+    const outside = cssForPage({
+      url: page,
+      session: null,
+      profiles: [profileWith('tamed'), always('tamed')],
+      recipes: [recipe],
+    });
+    expect(outside).toContain('grayscale(1)');
+    // Only taming carries outside sessions.
+    expect(cssForPage({ url: page, session: null, profiles: [always('redirected')], recipes: [recipe] })).toBe('');
+    // During a session, the session's profile decides.
+    expect(
+      cssForPage({ url: page, session, profiles: [profileWith('allowed'), always('tamed')], recipes: [recipe] }),
+    ).toBe('');
+  });
+
   it('tames a matching site in a tamed profile', () => {
     const css = cssForPage({
       url: page,

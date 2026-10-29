@@ -5,6 +5,7 @@ import {
   endLock,
   findRecipe,
   findRule,
+  maxHiddenParts,
   pagePathAttribute,
   siteAccess,
   siteRecipes,
@@ -33,9 +34,10 @@ export default defineContentScript({
     let known = recipes;
     let url = new URL(location.href);
 
-    // While the element picker is open (from the popup), the parts it has hidden show here
-    // straight away, in a session or not, so you see what you're doing.
-    let picking: { profileId: string; recipeId: string; picker: Picker } | undefined;
+    // While the element picker is open (from the popup), it decides what's hidden of the parts
+    // picked on this site, in a session or not, so you see what Done would save before saving it.
+    let picking: { profileId: string; recipeId: string } | undefined;
+    let picker: Picker | undefined;
     const pickStyle = document.createElement('style');
     pickStyle.dataset.lockInPicker = '';
 
@@ -43,21 +45,32 @@ export default defineContentScript({
     let overlayKey = '';
     let recheck: number | undefined;
 
-    const hiddenWhilePicking = () =>
+    const savedWhilePicking = () =>
       (picking &&
         findRule(
           profileList.find((p) => p.id === picking!.profileId),
           picking.recipeId,
         )?.hidden) ??
       [];
+    // The profiles as the page's own stylesheet sees them: while picking, without the parts the
+    // picker is showing or hiding itself.
+    const tamingProfiles = () =>
+      picking
+        ? profileList.map((profile) =>
+            profile.id !== picking!.profileId
+              ? profile
+              : {
+                  ...profile,
+                  sites: profile.sites.map((site) =>
+                    site.recipeId === picking!.recipeId ? { ...site, hidden: undefined } : site,
+                  ),
+                },
+          )
+        : profileList;
 
     const apply = (navigated = false) => {
-      if (picking) {
-        const recipe = known.find((r) => r.id === picking!.recipeId);
-        pickStyle.textContent = recipe ? buildRecipeCss({ ...recipe, toggles: [] }, {}, hiddenWhilePicking()) : '';
-        picking.picker.refresh();
-      }
-      style.textContent = cssForPage({ url, session, profiles: profileList, recipes: known });
+      picker?.refresh();
+      style.textContent = cssForPage({ url, session, profiles: tamingProfiles(), recipes: known });
 
       // Recipes can hide things on some pages only by matching the path kept on <html>.
       // It's only there while the page is tamed.
@@ -113,27 +126,36 @@ export default defineContentScript({
       const recipe = known.find((r) => r.id === recipeId);
       const profile = profileList.find((p) => p.id === profileId);
       if (!recipe || !profile) return false;
-      picking?.picker.close();
+      picker?.close();
       document.documentElement.append(pickStyle);
-      const picker = showPicker({
+      // The page's own stylesheet leaves the saved parts to the picker's preview from here on.
+      picking = { profileId, recipeId };
+      picker = showPicker({
         siteName: recipe.name,
         profileName: profile.name,
-        hidden: hiddenWhilePicking,
+        saved: savedWhilePicking,
         locked: () => session?.profileId === profileId && endLock(session, Date.now()) === 'hard',
+        maxParts: maxHiddenParts,
         partFor: hiddenPartFor,
         pickable,
-        onHide: (part) => hidePart(profileId, recipeId, part),
-        onShow: async (selector) => void (await showPart(profileId, recipeId, selector)),
-        onDone: stopPicking,
+        preview: (parts) => {
+          pickStyle.textContent = buildRecipeCss({ ...recipe, toggles: [] }, {}, parts);
+        },
+        onDone: async (change) => {
+          await changeHiddenParts(profileId, recipeId, change);
+          stopPicking();
+        },
+        onCancel: stopPicking,
       });
-      picking = { profileId, recipeId, picker };
       apply();
       return true;
     }
     function stopPicking() {
-      picking?.picker.close();
+      picker?.close();
+      picker = undefined;
       picking = undefined;
       pickStyle.remove();
+      apply();
     }
     // The popup's "Hide parts of this page" asks for the picker on this tab.
     const onMessage = (message: unknown, _sender: unknown, sendResponse: (started: boolean) => void) => {

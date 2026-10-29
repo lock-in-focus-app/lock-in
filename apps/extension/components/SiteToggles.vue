@@ -6,6 +6,7 @@ import {
   ownSiteDomain,
   resolveToggles,
   siteLevels,
+  tamedOutsideSessionsBy,
   type Profile,
   type Session,
   type SiteLevel,
@@ -79,6 +80,16 @@ const levelDetail = computed(() => {
   return siteLevels.find((l) => l.id === level)?.detail;
 });
 
+// A tamed site can stay tamed when no session is running, the way one profile tames it, so changes
+// here show on the page straight away.
+const outsideBy = computed(() => tamedOutsideSessionsBy(props.profiles, props.recipe.id));
+const outsideNote = computed(() => {
+  const by = outsideBy.value;
+  if (!by) return '';
+  if (by.id === profile.value?.id) return 'Tamed like this with no session running too.';
+  return `${by.name} keeps ${props.recipe.name} tamed outside sessions now. Turning this on moves it here.`;
+});
+
 // The element picker hides parts of the page while the site is tamed. It runs on the page itself,
 // through the content script, which a tab opened before Lock In could reach the site doesn't have
 // yet, so it's added then.
@@ -140,6 +151,15 @@ function set(toggleId: string, value: boolean) {
       @update:model-value="setLevel"
     />
     <p v-if="!session && profile" class="note detail">{{ levelDetail }}</p>
+    <template v-if="!session && profile && rule?.level === 'tamed'">
+      <ToggleSwitch
+        class="outside"
+        label="Keep it tamed outside sessions"
+        :model-value="outsideBy?.id === profile.id"
+        @update:model-value="setTamedOutsideSessions(profile.id, recipe.id, $event)"
+      />
+      <p v-if="outsideNote" class="note">{{ outsideNote }}</p>
+    </template>
 
     <p v-if="pageRule" class="note">
       This page follows the {{ pageRule.path === '/' ? 'home page' : pageRule.path }} rule: {{ pageRule.level }}.
@@ -192,7 +212,11 @@ function set(toggleId: string, value: boolean) {
       </button>
     </p>
     <p v-else-if="!session" class="footer">
-      <span>Applies whenever {{ profile?.name }} is running</span>
+      <span>
+        Applies whenever {{ profile?.name }} is running{{
+          outsideBy && outsideBy.id === profile?.id ? ', and outside sessions' : ''
+        }}
+      </span>
     </p>
     <p v-else-if="canKeepAway" class="footer">
       <span>Either one is saved to {{ profile?.name }}, for later sessions too</span>

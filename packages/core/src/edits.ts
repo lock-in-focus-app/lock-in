@@ -241,6 +241,43 @@ export function withHiddenPartRemoved(
   });
 }
 
+/**
+ * Keeps a site tamed the way this profile tames it when no session is running, or stops. Only one
+ * profile does this for each site, so turning it on here turns it off in the others.
+ */
+export function withTamedOutsideSessions(
+  profiles: readonly Profile[],
+  profileId: string,
+  recipeId: string,
+  on: boolean,
+): Profile[] {
+  if (
+    on &&
+    !findRule(
+      profiles.find((p) => p.id === profileId),
+      recipeId,
+    )
+  )
+    return [...profiles];
+  return profiles.map((profile) => {
+    const keep = on && profile.id === profileId;
+    if (profile.id !== profileId && !on) return profile;
+    return {
+      ...profile,
+      sites: profile.sites.map((site) => {
+        if (site.recipeId !== recipeId) return site;
+        const { outsideSessions: _previous, ...rest } = site;
+        return keep ? { ...rest, outsideSessions: true } : rest;
+      }),
+    };
+  });
+}
+
+/** The profile that keeps a site tamed when no session is running, if one does. */
+export function tamedOutsideSessionsBy(profiles: readonly Profile[], recipeId: string): Profile | undefined {
+  return profiles.find((p) => p.sites.some((site) => site.recipeId === recipeId && site.outsideSessions));
+}
+
 /** Paths match without regard to case, so "/Shorts" and "/shorts" are the same rule. */
 function samePath(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();

@@ -15,8 +15,10 @@ import {
   withRedirectSettings,
   withSessionOverridesSaved,
   withSessionToggle,
+  tamedOutsideSessionsBy,
   withSiteLevel,
   withStarterProfilesReset,
+  withTamedOutsideSessions,
 } from './edits';
 import { defaultRedirectSettings } from './settings';
 import type { Profile, Session, SiteRecipe } from './types';
@@ -249,5 +251,23 @@ describe('hidden parts', () => {
     const edited = withHiddenPart(profiles, 'focus', 'example', part);
     expect(hidden(withHiddenPartRemoved(edited, 'focus', 'example', part.selector))).toBeUndefined();
     expect(withHiddenPartRemoved(edited, 'focus', 'example', part.selector)[0]!.sites[0]).toEqual(rule);
+  });
+});
+
+describe('tamed outside sessions', () => {
+  it('belongs to one profile per site', () => {
+    const focus = withTamedOutsideSessions(profiles, 'focus', 'example', true);
+    expect(tamedOutsideSessionsBy(focus, 'example')?.id).toBe('focus');
+    const other = withTamedOutsideSessions(focus, 'other', 'example', true);
+    expect(tamedOutsideSessionsBy(other, 'example')?.id).toBe('other');
+    expect(other[0]!.sites[0]).toEqual(rule);
+  });
+
+  it('turns off, and needs the profile to have the site', () => {
+    const on = withTamedOutsideSessions(profiles, 'focus', 'example', true);
+    expect(tamedOutsideSessionsBy(withTamedOutsideSessions(on, 'focus', 'example', false), 'example')).toBeUndefined();
+    expect(
+      tamedOutsideSessionsBy(withTamedOutsideSessions(profiles, 'focus', 'nowhere', true), 'nowhere'),
+    ).toBeUndefined();
   });
 });

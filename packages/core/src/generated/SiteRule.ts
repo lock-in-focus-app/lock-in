@@ -19,4 +19,9 @@ paths?: Array<PathRule>,
 /**
  * Parts of the page picked to hide while the site is tamed, beyond its recipe's toggles.
  */
-hidden?: Array<HiddenPart>, };
+hidden?: Array<HiddenPart>, 
+/**
+ * Whether the extension tames the site this way when no session is running, too. Only one
+ * profile has it for each site.
+ */
+outsideSessions?: boolean, };

@@ -22,6 +22,7 @@ import {
   withGateVisitWhy,
   withHiddenPart,
   withHiddenPartRemoved,
+  withTamedOutsideSessions,
   withPass,
   withProfileToggle,
   withSiteRemoved,
@@ -198,9 +199,31 @@ export async function removePageRule(profileId: string, recipeId: string, path: 
   await editSites(profileId, (list) => withPathRuleRemoved(list, profileId, recipeId, path));
 }
 
-/** Hides a part of a site's page, picked with the element picker, while the site is tamed. */
-export async function hidePart(profileId: string, recipeId: string, part: HiddenPart): Promise<void> {
-  await editSites(profileId, (list) => withHiddenPart(list, profileId, recipeId, part));
+/**
+ * Saves what the element picker changed on a site: parts picked to hide while it's tamed, and
+ * ones hidden before to show again. During a Hard session of the profile nothing is shown again,
+ * and the whole change is refused if it would be. Resolves to whether it saved.
+ */
+export function changeHiddenParts(
+  profileId: string,
+  recipeId: string,
+  change: { add: HiddenPart[]; remove: string[] },
+): Promise<boolean> {
+  return editSites(profileId, (list) => {
+    const shown = change.remove.reduce(
+      (edited, selector) => withHiddenPartRemoved(edited, profileId, recipeId, selector),
+      list,
+    );
+    return change.add.reduce((edited, part) => withHiddenPart(edited, profileId, recipeId, part), shown);
+  });
+}
+
+/**
+ * Keeps a site tamed the way this profile tames it when no session is running, or stops. Only one
+ * profile does this for each site. It never changes a session, so it's fine during a Hard one.
+ */
+export async function setTamedOutsideSessions(profileId: string, recipeId: string, on: boolean): Promise<void> {
+  await editProfiles((list) => withTamedOutsideSessions(list, profileId, recipeId, on));
 }
 
 /** Shows a hidden part of a site's page again. Resolves to false during a Hard session of the profile. */

@@ -1,9 +1,10 @@
 import type { HiddenPart } from '@lock-in/core';
 
 // The element picker: a small panel on the real page, started from the popup, for hiding parts of
-// a site while it's tamed. Clicking part of the page picks it (outlined, with the page's own
-// clicks held back), then the panel spells out what to do with it: hide it, pick the bigger part
-// around it, or pick again. What's hidden is listed with a way to show each one again. It lives in
+// a site while it's tamed. Clicking part of the page hides it straight away (the page's own clicks
+// are held back), so you see what the site will look like. Each part picked this time is listed
+// with Bigger and Undo, and ones hidden before with Show again. Nothing is saved until Done, and
+// Cancel puts everything back. It lives in
 // a shadow root, like the pause cover, so the site's styles can't change it (shadowHost.ts).
 
 const css = `
@@ -37,11 +38,6 @@ const css = `
   background: rgb(143 168 255 / 0.12);
   box-shadow: 0 0 0 1px rgb(11 16 32 / 0.45);
 }
-.box.picked {
-  outline: 2px solid var(--glow);
-  background: color-mix(in srgb, var(--glow) 12%, transparent);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--glow) 35%, transparent);
-}
 .panel {
   position: fixed;
   right: 16px;
@@ -74,8 +70,6 @@ const css = `
 .mono b { color: var(--dim); font-weight: 500; }
 .star { color: var(--glow); }
 .say { margin: 8px 0 0; color: var(--dim); }
-.say q { color: var(--starlight); }
-.actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 button {
   flex: 1 1 auto;
   padding: 7px 8px;
@@ -101,12 +95,17 @@ button:focus-visible { outline: 1px solid #cfe0ff; outline-offset: 2px; }
 .list { margin: 12px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--line); }
 ul { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
 li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--starlight); }
-li button { flex: none; padding: 3px 6px; }
+li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--starlight); }
+li.shown > span:first-child { color: var(--faint); text-decoration: line-through; }
+li.note { display: block; margin: -2px 0 2px; }
+.keys { display: flex; flex: none; gap: 4px; }
+.keys button { padding: 3px 6px; }
 .note { margin: 8px 0 0; color: var(--faint); font-size: 12px; }
-.footer { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
-.footer .note { flex: 1; margin: 0; }
-.footer button { flex: none; padding: 7px 14px; }
+.footer { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.footer .note { margin: 0; }
+.end { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.end button { flex: none; padding: 7px 14px; }
+.problem { color: var(--glow); }
 @media (prefers-reduced-motion: reduce) {
   .panel { animation: none; }
 }
@@ -115,23 +114,36 @@ li button { flex: none; padding: 3px 6px; }
 export interface PickerOptions {
   siteName: string;
   profileName: string;
-  /** What's hidden on this site now, read again whenever the panel redraws. */
-  hidden: () => readonly HiddenPart[];
+  /** What's saved as hidden on this site now, read again whenever the panel redraws. */
+  saved: () => readonly HiddenPart[];
   /** Whether a Hard session of the profile is running, so parts can be hidden but not shown again. */
   locked: () => boolean;
+  /** The most parts one site can have hidden. */
+  maxParts: number;
   /** Turns a picked element into a part to keep, or undefined when it can't be pointed at safely. */
   partFor: (element: Element) => HiddenPart | undefined;
   /** The element someone means by clicking this one, or undefined for the whole page. */
   pickable: (target: Element) => Element | undefined;
-  onHide: (part: HiddenPart) => Promise<void>;
-  onShow: (selector: string) => Promise<void>;
-  onDone: () => void;
+  /** Hides these parts on the page right now, as a preview of what Done would save. */
+  preview: (parts: HiddenPart[]) => void;
+  /** Saves the parts picked this time, and the saved ones to show again. */
+  onDone: (change: { add: HiddenPart[]; remove: string[] }) => void;
+  /** Closes without saving anything. */
+  onCancel: () => void;
 }
 
 export interface Picker {
-  /** Redraws the panel, as what's hidden changes. */
+  /** Redraws the panel, as what's saved changes. */
   refresh(): void;
   close(): void;
+}
+
+/** A part picked this time: hidden on the page already, saved once Done is clicked. */
+interface Draft {
+  element: Element;
+  part: HiddenPart;
+  /** Whether it's most of the page, which is worth saying since the page goes nearly blank. */
+  big: boolean;
 }
 
 /** Events the page doesn't get while picking, so a click picks instead of following a link. */
@@ -142,24 +154,30 @@ export function showPicker(options: PickerOptions): Picker {
   const style = document.createElement('style');
   style.textContent = css;
   const pointingBox = element('div', 'box pointing');
-  const pickedBox = element('div', 'box picked');
   const panel = element('section', 'panel');
   panel.setAttribute('role', 'region');
   panel.setAttribute('aria-label', `Hide parts of ${options.siteName}`);
-  root.append(style, pointingBox, pickedBox, panel);
+  root.append(style, pointingBox, panel);
   document.documentElement.append(host);
 
   let pointing: Element | undefined;
-  let picked: Element | undefined;
+  let drafts: Draft[] = [];
+  /** Saved parts to show again once Done is clicked. */
+  const showing = new Set<string>();
   let problem = '';
 
-  const place = (box: HTMLElement, target: Element | undefined) => {
-    if (!target?.isConnected) {
-      box.style.display = 'none';
+  const changed = () => drafts.length > 0 || showing.size > 0;
+  const taken = (selector: string) =>
+    drafts.some((d) => d.part.selector === selector) || options.saved().some((p) => p.selector === selector);
+
+  const placePointing = () => {
+    const target = pointing?.isConnected ? pointing : undefined;
+    const rect = target?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) {
+      pointingBox.style.display = 'none';
       return;
     }
-    const rect = target.getBoundingClientRect();
-    Object.assign(box.style, {
+    Object.assign(pointingBox.style, {
       display: 'block',
       left: `${rect.left}px`,
       top: `${rect.top}px`,
@@ -167,95 +185,133 @@ export function showPicker(options: PickerOptions): Picker {
       height: `${rect.height}px`,
     });
   };
-  const placeBoxes = () => {
-    place(pointingBox, pointing === picked ? undefined : pointing);
-    place(pickedBox, picked);
-  };
 
   function draw() {
+    const saved = options.saved();
+    const locked = options.locked();
+    // Showing again isn't allowed during a Hard session, even if it was marked before one started.
+    if (locked) showing.clear();
+    options.preview([...saved.filter((p) => !showing.has(p.selector)), ...drafts.map((d) => d.part)]);
+
     const brand = element('p', 'mono');
     brand.append(element('span', 'star', '✦ '), 'Lock In · Hiding on ', element('b', '', options.siteName));
+    const children: Node[] = [
+      brand,
+      element('p', 'say', 'Click anything on the page to hide it. Nothing is saved until Done.'),
+    ];
+    if (problem) children.push(element('p', 'note problem', problem));
 
-    const children: Node[] = [brand];
-    if (picked) {
-      const say = element('p', 'say', 'Picked: ');
-      say.append(element('q', '', options.partFor(picked)?.label ?? 'this part'));
-      const hide = button('Hide it', 'lit hide', () => void hidePicked());
-      const bigger = button('Pick the bigger part', 'bigger', () => {
-        const parent = picked?.parentElement ? options.pickable(picked.parentElement) : undefined;
-        if (parent) pick(parent);
-      });
-      bigger.disabled = !picked.parentElement || !options.pickable(picked.parentElement);
-      const again = button('Pick again', 'again', () => pick(undefined));
-      const actions = element('div', 'actions');
-      actions.append(hide, bigger, again);
-      children.push(say, actions);
-      if (problem) children.push(element('p', 'note', problem));
-      else if (coversMostOfPage(picked)) {
-        children.push(
-          element('p', 'note', `That's most of the page, so hiding it hides nearly all of ${options.siteName}.`),
-        );
+    if (drafts.length) {
+      const list = section('Hiding now', drafts.length);
+      for (const draft of drafts) {
+        const bigger = button('Bigger', 'bigger', () => widen(draft));
+        const parent = draft.element.parentElement;
+        bigger.disabled = !parent || !options.pickable(parent);
+        bigger.setAttribute('aria-label', `Hide the bigger part around ${draft.part.label}`);
+        const undo = button('Undo', 'undo', () => {
+          drafts = drafts.filter((d) => d !== draft);
+          problem = '';
+          draw();
+        });
+        undo.setAttribute('aria-label', `Undo hiding ${draft.part.label}`);
+        list.items.append(item(draft.part, [bigger, undo]));
+        if (draft.big) {
+          list.items.append(
+            element('li', 'note', `That's most of the page, so it hides nearly all of ${options.siteName}.`),
+          );
+        }
       }
-    } else {
-      children.push(element('p', 'say', 'Click any part of the page to pick it. Links and buttons wait until Done.'));
+      children.push(list.frame);
     }
 
-    const hidden = options.hidden();
-    if (hidden.length) {
-      const list = element('div', 'list');
-      const heading = element('p', 'mono', 'Hidden here · ');
-      heading.append(element('b', '', String(hidden.length)));
-      const items = element('ul', '');
-      for (const part of hidden) {
-        const item = element('li', '');
-        const name = element('span', '', part.label || part.selector);
-        name.title = part.selector;
-        const show = button('Show again', 'show', () => void options.onShow(part.selector));
-        show.disabled = options.locked();
-        show.setAttribute('aria-label', `Show ${part.label || part.selector} again`);
-        item.append(name, show);
-        items.append(item);
+    if (saved.length) {
+      const list = section('Hidden before', saved.length);
+      for (const part of saved) {
+        const shown = showing.has(part.selector);
+        const name = part.label || part.selector;
+        const toggle = shown
+          ? button('Keep hidden', 'keep', () => {
+              showing.delete(part.selector);
+              draw();
+            })
+          : button('Show again', 'show', () => {
+              showing.add(part.selector);
+              draw();
+            });
+        toggle.disabled = locked;
+        toggle.setAttribute('aria-label', `${shown ? 'Keep' : 'Show'} ${name} ${shown ? 'hidden' : 'again'}`);
+        const row = item(part, [toggle]);
+        row.classList.toggle('shown', shown);
+        list.items.append(row);
       }
-      list.append(heading, items);
-      if (options.locked())
-        list.append(element('p', 'note', 'During this Hard session, parts can be hidden but not shown again.'));
-      children.push(list);
+      if (locked) {
+        list.frame.append(element('p', 'note', 'During this Hard session, parts can be hidden but not shown again.'));
+      }
+      children.push(list.frame);
     }
 
     const footer = element('div', 'footer');
     footer.append(
-      element('p', 'note', `Saved to ${options.profileName}, and hidden whenever it tames ${options.siteName}.`),
-      button('Done', 'lit done', () => options.onDone()),
+      element(
+        'p',
+        'note',
+        changed()
+          ? `Done saves this to ${options.profileName}. It's hidden whenever ${options.profileName} tames ${options.siteName}.`
+          : `Saved to ${options.profileName}. It's hidden whenever ${options.profileName} tames ${options.siteName}.`,
+      ),
     );
+    const buttons = element('div', 'end');
+    buttons.append(
+      button('Cancel', 'cancel', () => options.onCancel()),
+      button('Done', 'lit done', () => options.onDone({ add: drafts.map((d) => d.part), remove: [...showing] })),
+    );
+    footer.append(buttons);
     children.push(footer);
     panel.replaceChildren(...children);
-    placeBoxes();
+    placePointing();
   }
 
-  function pick(target: Element | undefined) {
-    picked = target;
+  /** Hides a clicked part straight away, after a quick fade. */
+  async function pick(target: Element) {
     problem = '';
-    draw();
-  }
-
-  async function hidePicked() {
-    if (!picked) return;
-    const part = options.partFor(picked);
-    if (!part) {
-      problem = "Lock In can't point at this part on its own. Try the bigger part.";
+    const part = options.partFor(target);
+    if (!part) problem = "Lock In can't point at that part on its own. Try clicking around it.";
+    else if (taken(part.selector)) return;
+    else if (options.saved().length + drafts.length >= options.maxParts) {
+      problem = `That's the most one site can hide (${options.maxParts}).`;
+    }
+    if (problem || !part) {
       draw();
       return;
     }
-    const target = picked;
-    picked = undefined;
-    placeBoxes();
-    // A quick fade before the saved rule hides it for good.
+    const big = coversMostOfPage(target);
+    pointing = undefined;
+    placePointing();
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       await target
-        .animate([{ opacity: 1 }, { opacity: 0, scale: '0.98' }], { duration: 220, easing: 'ease-out' })
+        .animate([{ opacity: 1 }, { opacity: 0, scale: '0.98' }], { duration: 180, easing: 'ease-out' })
         .finished.catch(() => {});
     }
-    await options.onHide(part);
+    // Picking a part around ones picked already takes their place.
+    drafts = [...drafts.filter((d) => !target.contains(d.element)), { element: target, part, big }];
+    draw();
+  }
+
+  /** Swaps a picked part for the bigger part around it. */
+  function widen(draft: Draft) {
+    const parent = draft.element.parentElement ? options.pickable(draft.element.parentElement) : undefined;
+    const part = parent && options.partFor(parent);
+    problem = '';
+    if (!parent || !part) {
+      problem = "Lock In can't point at the part around that one on its own.";
+    } else {
+      // Its size is read while it's still shown, before the preview hides it again.
+      const others = drafts.filter((d) => d !== draft && !parent.contains(d.element));
+      drafts = others;
+      options.preview([...options.saved().filter((p) => !showing.has(p.selector)), ...others.map((d) => d.part)]);
+      const big = coversMostOfPage(parent);
+      if (!taken(part.selector)) drafts = [...others, { element: parent, part, big }];
+    }
     draw();
   }
 
@@ -266,23 +322,23 @@ export function showPicker(options: PickerOptions): Picker {
     event.stopImmediatePropagation();
     if (event.type === 'click' && event.target instanceof Element) {
       const target = options.pickable(event.target);
-      if (target) pick(target);
+      if (target) void pick(target);
     }
   };
   const point = (event: MouseEvent) => {
     pointing = ours(event) || !(event.target instanceof Element) ? undefined : options.pickable(event.target);
-    placeBoxes();
+    placePointing();
   };
+  // Esc closes the picker when there's nothing to lose; with picks in it, Cancel says so plainly.
   const key = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape') return;
+    if (event.key !== 'Escape' || changed()) return;
     event.stopImmediatePropagation();
-    if (picked) pick(undefined);
-    else options.onDone();
+    options.onCancel();
   };
   let frame = 0;
   const follow = () => {
     cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(placeBoxes);
+    frame = requestAnimationFrame(placePointing);
   };
 
   for (const type of heldBack) window.addEventListener(type, holdBack, true);
@@ -291,7 +347,6 @@ export function showPicker(options: PickerOptions): Picker {
   window.addEventListener('scroll', follow, true);
   window.addEventListener('resize', follow);
   draw();
-  panel.querySelector('button')?.focus();
 
   return {
     refresh: draw,
@@ -305,6 +360,27 @@ export function showPicker(options: PickerOptions): Picker {
       host.remove();
     },
   };
+}
+
+/** A titled list in the panel, like "Hiding now · 2". */
+function section(title: string, count: number) {
+  const frame = element('div', 'list');
+  const heading = element('p', 'mono', `${title} · `);
+  heading.append(element('b', '', String(count)));
+  const items = element('ul', '');
+  frame.append(heading, items);
+  return { frame, items };
+}
+
+/** One part in a list: its name, with the selector on hover, then its buttons. */
+function item(part: HiddenPart, buttons: HTMLButtonElement[]): HTMLLIElement {
+  const row = element('li', '');
+  const name = element('span', '', part.label || part.selector);
+  name.title = part.selector;
+  const keys = element('span', 'keys');
+  keys.append(...buttons);
+  row.append(name, keys);
+  return row;
 }
 
 /** Whether an element takes up most of the window, like the box a whole site sits in. */

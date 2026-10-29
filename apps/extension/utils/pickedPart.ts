@@ -90,9 +90,15 @@ const kinds: Record<string, string> = {
 /** A short name for a picked part, for the list of what's hidden: its label, heading or first words. */
 export function labelFor(element: Element): string {
   const words = (text: string | null | undefined) => text?.trim().split('\n')[0]?.trim() ?? '';
-  const label = words(element.getAttribute('aria-label'));
-  const heading = words(element.querySelector('h1, h2, h3, h4, [role="heading"]')?.textContent);
-  const text = label || heading || words(element instanceof HTMLElement ? element.innerText : element.textContent);
+  // Sites built from web components, like Reddit, keep words inside their own shadow roots.
+  const inside = (selector: string) => element.querySelector(selector) ?? element.shadowRoot?.querySelector(selector);
+  const named = inside('[aria-label], [placeholder], [title]');
+  const text =
+    words(element.getAttribute('aria-label')) ||
+    words(inside('h1, h2, h3, h4, [role="heading"]')?.textContent) ||
+    words(element instanceof HTMLElement ? element.innerText : element.textContent) ||
+    words(element.getAttribute('title')) ||
+    words(named?.getAttribute('aria-label') || named?.getAttribute('placeholder') || named?.getAttribute('title'));
   if (text) return text.length > 40 ? `${text.slice(0, 39).trimEnd()}…` : text;
   return kinds[element.localName] ?? 'A part of the page';
 }

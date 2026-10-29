@@ -61,6 +61,11 @@ pub struct SiteRule {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub hidden: Option<Vec<HiddenPart>>,
+    /// Whether the extension tames the site this way when no session is running, too. Only one
+    /// profile has it for each site.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub outside_sessions: Option<bool>,
 }
 
 /// The most sites a profile keeps, and page rules and toggles a site keeps, so a bad sync can't
@@ -174,6 +179,7 @@ mod tests {
             level,
             toggles: None,
             hidden: None,
+            outside_sessions: None,
             paths: (!paths.is_empty()).then(|| {
                 paths
                     .iter()
@@ -188,7 +194,7 @@ mod tests {
 
     #[test]
     fn reads_what_the_extension_saves_and_writes_it_back_the_same() {
-        let saved = r#"[{"recipeId":"youtube","level":"tamed","toggles":{"hideShorts":true},"paths":[{"path":"/shorts","level":"restricted"}]},{"recipeId":"site:example.com","level":"tamed","hidden":[{"selector":"aside.trending","label":"Trending now"}]}]"#;
+        let saved = r#"[{"recipeId":"youtube","level":"tamed","toggles":{"hideShorts":true},"paths":[{"path":"/shorts","level":"restricted"}]},{"recipeId":"site:example.com","level":"tamed","hidden":[{"selector":"aside.trending","label":"Trending now"}],"outsideSessions":true}]"#;
         let sites: Vec<SiteRule> = serde_json::from_str(saved).unwrap();
         assert_eq!(sites[0].level, Tamed);
         assert_eq!(sites[1].paths, None);

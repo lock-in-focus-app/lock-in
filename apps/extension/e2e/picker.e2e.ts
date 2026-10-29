@@ -41,49 +41,79 @@ describe('the element picker', () => {
   });
   afterAll(() => t?.close());
 
-  it('picks a part, widens it, and hides it straight away', async () => {
+  it('hides each click straight away, and saves them on Done', async () => {
     const tab = await t.browser.newPage();
     await tab.goto(site);
     await startPicking(tab);
 
-    // Clicking a link picks it instead of following it.
+    // Clicking a link hides it instead of following it, and Undo brings it back.
     await tab.click('#away');
     expect(tab.url()).toBe(site);
+    await expect.poll(() => shown(tab, '#away')).toBe(false);
+    await tab.click('lock-in-picker >>> button[aria-label="Undo hiding Elsewhere"]');
+    await expect.poll(() => shown(tab, '#away')).toBe(true);
+
+    // A heading, then the bigger part around it, which takes its place.
     await tab.click('aside.trending h2');
-    expect(await tab.$eval('lock-in-picker >>> .say', (e) => e.textContent)).toContain('Trending now');
+    await expect.poll(() => shown(tab, 'aside.trending h2')).toBe(false);
+    expect(await shown(tab, 'aside.trending')).toBe(true);
     await tab.click('lock-in-picker >>> button.bigger');
-    expect(await tab.$eval('lock-in-picker >>> .say', (e) => e.textContent)).toContain('Trending now');
-    expect(await tab.$('lock-in-picker >>> .say ~ .note')).toBeNull();
-    await tab.click('lock-in-picker >>> button.hide');
-
-    await expect.poll(hidden).toEqual([{ selector: 'aside.trending', label: 'Trending now' }]);
-    // Shown hidden while picking, even with no session running.
     await expect.poll(() => shown(tab, 'aside.trending')).toBe(false);
-    expect(await tab.$eval('lock-in-picker >>> li span', (e) => e.textContent)).toBe('Trending now');
+    expect(await tab.$$eval('lock-in-picker >>> li > span:first-child', (e) => e.map((x) => x.textContent))).toEqual([
+      'Trending now',
+    ]);
 
+    // Nothing is saved until Done.
+    expect(await hidden()).toEqual([]);
     await tab.click('lock-in-picker >>> button.done');
+    await expect.poll(hidden).toEqual([{ selector: 'aside.trending', label: 'Trending now' }]);
     expect(await tab.$('lock-in-picker')).toBeNull();
+    // With no session running, the page goes back to how it was.
     expect(await shown(tab, 'aside.trending')).toBe(true);
     await tab.close();
   });
 
-  it('points at one of several look-alikes by its place', async () => {
+  it('picks several things in one go, and Cancel keeps none of them', async () => {
     const tab = await t.browser.newPage();
     await tab.goto(site);
     await startPicking(tab);
-    // Something as big as the page says so before it's hidden.
-    await tab.click('main', { offset: { x: 5, y: 400 } });
-    expect(await tab.$eval('lock-in-picker >>> .say ~ .note', (e) => e.textContent)).toContain(
-      "That's most of the page",
-    );
     await tab.click('#second');
-    await tab.click('lock-in-picker >>> button.hide');
+    await tab.click('#away');
+    await tab.click('#search');
+    await expect.poll(() => shown(tab, '#second')).toBe(false);
+    await expect.poll(() => shown(tab, '#away')).toBe(false);
+    await expect.poll(() => shown(tab, '#search')).toBe(false);
+    // Named by the words inside it, even inside its own shadow root.
+    expect(
+      await tab.$$eval('lock-in-picker >>> .list:first-of-type li > span:first-child', (e) =>
+        e.map((x) => x.textContent),
+      ),
+    ).toEqual(['Two', 'Elsewhere', 'Search the site']);
+    await tab.click('lock-in-picker >>> button.cancel');
+    expect(await tab.$('lock-in-picker')).toBeNull();
+    expect(await shown(tab, '#second')).toBe(true);
+    expect(await hidden()).toHaveLength(1);
+    await tab.close();
+  });
+
+  it('points at one of several look-alikes by its place, and says when a part is most of the page', async () => {
+    const tab = await t.browser.newPage();
+    await tab.goto(site);
+    await startPicking(tab);
+    await tab.click('main', { offset: { x: 5, y: 400 } });
+    const note = await tab.waitForSelector('lock-in-picker >>> li.note');
+    expect(await note!.evaluate((e) => e.textContent)).toContain("That's most of the page");
+    await tab.click('lock-in-picker >>> button.undo');
+    await expect.poll(() => shown(tab, 'main')).toBe(true);
+
+    await tab.click('#second');
+    await tab.waitForSelector('lock-in-picker >>> button[aria-label="Undo hiding Two"]');
+    await tab.click('lock-in-picker >>> button.done');
     await expect.poll(async () => (await hidden()).length).toBe(2);
     const part = (await hidden())[1]!;
     expect(part.label).toBe('Two');
     expect(part.selector).not.toContain('r-1awozwy');
     expect(await tab.$$eval(part.selector, (found) => found.map((e) => e.id))).toEqual(['second']);
-    await tab.click('lock-in-picker >>> button.done');
     await tab.close();
   });
 
@@ -100,7 +130,7 @@ describe('the element picker', () => {
     await tab.close();
   });
 
-  it("can't show a part again during a Hard session, but can after", async () => {
+  it("can't show a part again during a Hard session", async () => {
     await setStored(control, {
       activeSession: {
         id: 'hard',
@@ -109,16 +139,66 @@ describe('the element picker', () => {
         timer: { minutes: 30, onEnd: 'silent', showSinceDone: false, strictness: 'hard' },
       },
     });
+    const showAgain = 'button[aria-label="Show Trending now again"]';
     const options = await t.browser.newPage();
     await options.goto(`chrome-extension://${t.extensionId}/options.html`);
-    const showAgain = 'button[aria-label="Show Trending now again"]';
     await options.waitForSelector(showAgain);
     expect(await options.$eval(showAgain, (b) => (b as HTMLButtonElement).disabled)).toBe(true);
-
-    await setStored(control, { activeSession: null });
-    await options.waitForFunction((s) => !(document.querySelector(s) as HTMLButtonElement).disabled, {}, showAgain);
-    await options.click(showAgain);
-    await expect.poll(async () => (await hidden()).map((p) => p.label)).toEqual(['Two']);
     await options.close();
+
+    const tab = await t.browser.newPage();
+    await tab.goto(site);
+    await startPicking(tab);
+    expect(await tab.$eval(`lock-in-picker >>> ${showAgain}`, (b) => (b as HTMLButtonElement).disabled)).toBe(true);
+    await tab.click('lock-in-picker >>> button.cancel');
+    await setStored(control, { activeSession: null });
+    await tab.close();
+  });
+
+  it('shows a part again from the picker, saved on Done', async () => {
+    await startSession(control, profileId);
+    const tab = await t.browser.newPage();
+    await tab.goto(site);
+    await expect.poll(() => shown(tab, 'aside.trending')).toBe(false);
+    await startPicking(tab);
+    await tab.click('lock-in-picker >>> button[aria-label="Show Trending now again"]');
+    // Shown on the page before it's saved.
+    await expect.poll(() => shown(tab, 'aside.trending')).toBe(true);
+    expect(await hidden()).toHaveLength(2);
+    await tab.click('lock-in-picker >>> button.done');
+    await expect.poll(async () => (await hidden()).map((p) => p.label)).toEqual(['Two']);
+    expect(await shown(tab, 'aside.trending')).toBe(true);
+    expect(await shown(tab, '#second')).toBe(false);
+    await setStored(control, { activeSession: null });
+    await tab.close();
+  });
+
+  it('keeps a site tamed outside sessions', async () => {
+    const tab = await t.browser.newPage();
+    await tab.goto(site);
+    expect(await shown(tab, '#second')).toBe(true);
+
+    const earlier = new Set(t.browser.targets());
+    await tab.bringToFront();
+    await tab.triggerExtensionAction(t.extension);
+    const target = await t.browser.waitForTarget((x) => x.url().endsWith('/popup.html') && !earlier.has(x));
+    const popup = (await target.asPage())!;
+    await popup.waitForSelector('main > .site button.outside');
+    await popup.click('main > .site button.outside');
+
+    await expect.poll(() => shown(tab, '#second')).toBe(false);
+    const rule = async (id: string) =>
+      (await stored(control)).profiles?.find((p) => p.id === id)?.sites.find((s) => s.recipeId === recipeId);
+    expect(await rule(profileId)).toMatchObject({ outsideSessions: true });
+
+    // Settings says so, and turns it off again.
+    const options = await t.browser.newPage();
+    await options.goto(`chrome-extension://${t.extensionId}/options.html`);
+    await options.waitForFunction(() => document.body.innerText.includes('tamed like this with no session running'));
+    await options.click('::-p-text(Keep picker.test tamed outside sessions)');
+    await expect.poll(async () => (await rule(profileId))?.outsideSessions).toBeUndefined();
+    await expect.poll(() => shown(tab, '#second')).toBe(true);
+    await options.close();
+    await tab.close();
   });
 });

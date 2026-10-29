@@ -64,7 +64,10 @@ export function buildRecipeCss(
   return rules.join('\n\n');
 }
 
-/** The CSS to inject into a page for the active session, or an empty string. */
+/**
+ * The CSS to inject into a page: for the running session's profile, or with no session, for the
+ * profile that keeps the site tamed outside sessions. Empty when the page isn't tamed.
+ */
 export function cssForPage(options: {
   url: string | URL;
   session: Session | null;
@@ -72,14 +75,16 @@ export function cssForPage(options: {
   recipes: readonly SiteRecipe[];
 }): string {
   const { url, session, profiles, recipes } = options;
-  if (!session) return '';
-
-  const profile = profiles.find((p) => p.id === session.profileId);
   const recipe = findRecipe(recipes, url);
+  if (!recipe) return '';
+
+  const profile = session
+    ? profiles.find((p) => p.id === session.profileId)
+    : profiles.find((p) => p.sites.some((site) => site.recipeId === recipe.id && site.outsideSessions));
   const pathname = parseHttpUrl(String(url))?.pathname;
-  if (!profile || !recipe || levelFor(profile, recipe.id, pathname) !== 'tamed') return '';
+  if (!profile || levelFor(profile, recipe.id, pathname) !== 'tamed') return '';
 
   const rule = profile.sites.find((site) => site.recipeId === recipe.id);
 
-  return buildRecipeCss(recipe, resolveToggles(recipe, rule, session.overrides?.[recipe.id]), rule?.hidden);
+  return buildRecipeCss(recipe, resolveToggles(recipe, rule, session?.overrides?.[recipe.id]), rule?.hidden);
 }
