@@ -138,7 +138,7 @@ export interface Stored {
   profiles?: Profile[];
   gateVisits?: GateVisit[];
   ownQuotes?: OwnQuote[];
-  syncedAt?: { profiles: number; activeSession: number };
+  syncedAt?: { profiles: number; activeSession: number; ownQuotes?: number };
   tourOffered?: boolean;
 }
 

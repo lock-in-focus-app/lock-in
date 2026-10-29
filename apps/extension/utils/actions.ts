@@ -20,6 +20,8 @@ import {
   withGateVisitContinued,
   withGateVisitWhy,
   withPass,
+  withOwnQuote,
+  withOwnQuoteRemoved,
   withProfileToggle,
   withSiteRemoved,
   withRedirectSettings,
@@ -245,11 +247,11 @@ export async function setVisitWhy(visitId: string, why: WhyReason | undefined): 
 }
 
 export async function addOwnQuote(text: string, author: string): Promise<void> {
-  const quote = { id: crypto.randomUUID(), text: text.trim(), ...(author.trim() ? { author: author.trim() } : {}) };
-  if (!quote.text) return;
-  await inTurn(async () => ownQuotes.setValue([...(await ownQuotes.getValue()), quote]));
+  await inTurn(async () =>
+    ownQuotes.setValue(withOwnQuote(await ownQuotes.getValue(), crypto.randomUUID(), text, author)),
+  );
 }
 
 export async function removeOwnQuote(id: string): Promise<void> {
-  await inTurn(async () => ownQuotes.setValue((await ownQuotes.getValue()).filter((quote) => quote.id !== id)));
+  await inTurn(async () => ownQuotes.setValue(withOwnQuoteRemoved(await ownQuotes.getValue(), id)));
 }

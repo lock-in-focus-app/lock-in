@@ -65,6 +65,10 @@ export const blockerStatus = () => invoke<BlockerStatus>('blocker_status');
 export const installBlocker = () => invoke<void>('install_blocker');
 export const removeBlocker = () => invoke<void>('remove_blocker');
 
+// Quotes of the user's own (quotes.rs), shared with the extension.
+export const addOwnQuote = (text: string, author: string) => invoke<void>('add_own_quote', { text, author });
+export const removeOwnQuote = (id: string) => invoke<void>('remove_own_quote', { id });
+
 export const setProfileSites = (profileId: string, sites: SiteRule[]) =>
   invoke<void>('set_profile_sites', { profileId, sites });
 

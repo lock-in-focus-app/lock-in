@@ -1,4 +1,4 @@
-import type { GateVisit, Profile, Session } from './types';
+import type { GateVisit, OwnQuote, Profile, Session } from './types';
 
 // Messages between the extension and the desktop app, which talk over Native Messaging.
 // They mirror the Rust ones in apps/desktop/src-tauri/src/link.rs.
@@ -18,11 +18,22 @@ export interface Synced<T> {
 
 export type ToDesktop =
   | { type: 'hello'; protocol: number; browser: string }
-  | { type: 'state'; profiles?: Synced<Profile[]>; activeSession?: Synced<Session | null> }
+  | {
+      type: 'state';
+      profiles?: Synced<Profile[]>;
+      activeSession?: Synced<Session | null>;
+      ownQuotes?: Synced<OwnQuote[]>;
+    }
   | { type: 'gateVisit'; visit: GateVisit };
 
 export type FromDesktop =
   /** The bridge reached the app, or lost it. Sent by the bridge itself. */
   | { type: 'linked' }
   | { type: 'unlinked' }
-  | { type: 'state'; profiles: Synced<Profile[]>; activeSession: Synced<Session | null> };
+  /** Apps from before own quotes synced don't send them. */
+  | {
+      type: 'state';
+      profiles: Synced<Profile[]>;
+      activeSession: Synced<Session | null>;
+      ownQuotes?: Synced<OwnQuote[]>;
+    };

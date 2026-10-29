@@ -13,3 +13,9 @@ it('has no duplicates', () => {
 it('keeps quotes short enough to read at a glance', () => {
   expect(quotes.filter((quote) => quote.text.length > 140)).toEqual([]);
 });
+
+// The pack is public domain only, so each quote by someone notes where it comes from, to be
+// checked. Lines with no author are Lock In's own.
+it('notes where every quote by someone comes from', () => {
+  expect(quotes.filter((quote) => quote.author && !quote.source?.trim())).toEqual([]);
+});

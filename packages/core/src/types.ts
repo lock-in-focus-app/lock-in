@@ -1,4 +1,5 @@
 import type { AppRule } from './generated/AppRule';
+import type { OwnQuote } from './generated/OwnQuote';
 import type { PathRule } from './generated/PathRule';
 import type { SiteLevel } from './generated/SiteLevel';
 import type { SiteRule } from './generated/SiteRule';
@@ -7,6 +8,9 @@ import type { TimerSettings } from './generated/TimerSettings';
 // How a profile treats each site is shared with the desktop app, so it's generated from its Rust
 // code (sites.rs).
 export type { PathRule, SiteLevel, SiteRule };
+
+// So are quotes the user added (quotes.rs), which sync with the app.
+export type { OwnQuote };
 
 /** A single on/off switch in a site recipe, e.g. "Hide home feed". */
 export interface RecipeToggle {
@@ -101,11 +105,8 @@ export interface RedirectSettings {
 export interface Quote {
   text: string;
   author?: string;
-}
-
-/** A quote the user added themselves. */
-export interface OwnQuote extends Quote {
-  id: string;
+  /** Where a bundled quote comes from, so it can be checked. Not shown. */
+  source?: string;
 }
 
 /** The one-tap answer to "why are you here?" on redirect pages. */

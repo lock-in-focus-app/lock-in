@@ -235,6 +235,22 @@ pub fn tour_offered(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+/// Adds a quote of the user's own, for the Sky and the extension's quote page.
+#[tauri::command]
+pub fn add_own_quote(app: AppHandle, text: String, author: String) -> Result<()> {
+    if crate::engine(&app).add_own_quote(&text, &author, crate::now_ms())? {
+        crate::changed(&app);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn remove_own_quote(app: AppHandle, id: String) -> Result<()> {
+    crate::engine(&app).remove_own_quote(&id, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
 /// Trips to redirected sites that went back to focus, oldest first, for comets.
 #[tauri::command]
 pub fn turned_back(app: AppHandle) -> Result<Vec<GateVisit>> {

@@ -1,0 +1,27 @@
+import { pickQuote } from './destinations';
+import { seeded } from './sky';
+import type { OwnQuote, Quote } from './types';
+
+// Quotes people add themselves, in the extension's settings or the app's. They sync between the
+// two like the profiles do, so the limits match the app's (apps/desktop/src-tauri/src/quotes.rs).
+
+export const maxOwnQuotes = 200;
+export const maxQuoteLength = 280;
+export const maxQuoteAuthorLength = 80;
+
+/** The list with a new quote added, or the same list if there's no quote to add or no room. */
+export function withOwnQuote(list: readonly OwnQuote[], id: string, text: string, author: string): OwnQuote[] {
+  const cleanText = text.trim().slice(0, maxQuoteLength).trim();
+  const cleanAuthor = author.trim().slice(0, maxQuoteAuthorLength).trim();
+  if (!cleanText || list.length >= maxOwnQuotes) return [...list];
+  return [...list, { id, text: cleanText, ...(cleanAuthor && { author: cleanAuthor }) }];
+}
+
+export function withOwnQuoteRemoved(list: readonly OwnQuote[], id: string): OwnQuote[] {
+  return list.filter((quote) => quote.id !== id);
+}
+
+/** The quote for a day, like "2026-10-28": the same one all that day, favoring the user's own. */
+export function quoteForDay(bundled: readonly Quote[], own: readonly OwnQuote[], day: string): Quote | undefined {
+  return pickQuote(bundled, own, seeded(`quote:${day}`));
+}

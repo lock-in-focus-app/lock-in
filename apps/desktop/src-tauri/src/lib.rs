@@ -13,6 +13,7 @@ mod idle;
 mod launches;
 mod link;
 mod processes;
+mod quotes;
 mod samples;
 mod satellites;
 mod session;
@@ -609,6 +610,8 @@ pub fn run() {
             commands::sky_state,
             commands::sky_seen,
             commands::tour_offered,
+            commands::add_own_quote,
+            commands::remove_own_quote,
             commands::turned_back,
             commands::add_sample_data,
             commands::remove_sample_data,

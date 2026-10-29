@@ -18,6 +18,7 @@ pub enum Error {
     UnknownConstellation,
     DevelopmentOnly,
     Hotkey(crate::hotkey::Problem),
+    TooManyQuotes,
     /// Installing, removing or reaching the blocker's helper went wrong.
     Blocker(String),
 }
@@ -40,6 +41,11 @@ impl fmt::Display for Error {
             Error::InvalidStarColor => f.write_str("a star color has to be a hex color like #f5c86b"),
             Error::UnknownConstellation => f.write_str("that constellation doesn't exist"),
             Error::DevelopmentOnly => f.write_str("that's only in development builds"),
+            Error::TooManyQuotes => write!(
+                f,
+                "that's the most quotes Lock In keeps ({}); remove one first",
+                crate::quotes::MAX_OWN_QUOTES
+            ),
             Error::Hotkey(problem) => write!(f, "{problem}"),
             Error::Blocker(problem) => f.write_str(problem),
         }
