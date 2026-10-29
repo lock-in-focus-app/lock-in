@@ -32,11 +32,13 @@ describe('restricted sites', () => {
       tab.evaluate(() => {
         const root = document.querySelector('lock-in-pause')?.shadowRoot;
         return {
+          // The fixture hides custom elements until they're registered, like the real Reddit.
+          visible: !!root?.querySelector('.card')?.checkVisibility({ visibilityProperty: true }),
           text: root?.textContent,
           buttons: [...(root?.querySelectorAll('button') ?? [])].map((b) => b.textContent),
         };
       });
-    await expect.poll(overlay).toMatchObject({ text: expect.stringContaining('Reddit is off for now') });
+    await expect.poll(overlay).toMatchObject({ visible: true, text: expect.stringContaining('Reddit is off for now') });
     expect((await overlay()).buttons).toEqual(['Close tab']);
   });
 

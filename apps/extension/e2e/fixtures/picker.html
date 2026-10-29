@@ -3,6 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <title>A site of your own</title>
+    <style>
+      /* Like Reddit, which hides custom elements until they're registered. */
+      :not(:defined) {
+        visibility: hidden;
+      }
+      main {
+        min-height: 100vh;
+      }
+    </style>
   </head>
   <!-- A site added by address, for the element picker: a sidebar with a heading, a link that
        mustn't be followed while picking, and repeated cards with generated class names. -->

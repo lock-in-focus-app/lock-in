@@ -4,7 +4,7 @@ import type { HiddenPart } from '@lock-in/core';
 // a site while it's tamed. Clicking part of the page picks it (outlined, with the page's own
 // clicks held back), then the panel spells out what to do with it: hide it, pick the bigger part
 // around it, or pick again. What's hidden is listed with a way to show each one again. It lives in
-// a shadow root, like the pause cover, so the site's styles can't change it.
+// a shadow root, like the pause cover, so the site's styles can't change it (shadowHost.ts).
 
 const css = `
 :host {
@@ -18,9 +18,7 @@ const css = `
   --t: color-mix(in srgb, #dce4ff 55%, transparent);
   --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
   all: initial;
-  position: fixed;
-  inset: 0;
-  z-index: 2147483647;
+  /* Its place over the page is pinned by shadowHost(). */
   pointer-events: none;
   font: 13px/1.45 system-ui, -apple-system, sans-serif;
   color: var(--starlight);
@@ -140,8 +138,7 @@ export interface Picker {
 const heldBack = ['click', 'dblclick', 'auxclick', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'contextmenu'];
 
 export function showPicker(options: PickerOptions): Picker {
-  const host = document.createElement('lock-in-picker');
-  const root = host.attachShadow({ mode: 'open' });
+  const { host, root } = shadowHost('lock-in-picker');
   const style = document.createElement('style');
   style.textContent = css;
   const pointingBox = element('div', 'box pointing');
@@ -194,6 +191,11 @@ export function showPicker(options: PickerOptions): Picker {
       actions.append(hide, bigger, again);
       children.push(say, actions);
       if (problem) children.push(element('p', 'note', problem));
+      else if (coversMostOfPage(picked)) {
+        children.push(
+          element('p', 'note', `That's most of the page, so hiding it hides nearly all of ${options.siteName}.`),
+        );
+      }
     } else {
       children.push(element('p', 'say', 'Click any part of the page to pick it. Links and buttons wait until Done.'));
     }
@@ -303,6 +305,14 @@ export function showPicker(options: PickerOptions): Picker {
       host.remove();
     },
   };
+}
+
+/** Whether an element takes up most of the window, like the box a whole site sits in. */
+function coversMostOfPage(target: Element): boolean {
+  const rect = target.getBoundingClientRect();
+  const width = Math.min(rect.right, innerWidth) - Math.max(rect.left, 0);
+  const height = Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0);
+  return width > 0 && height > 0 && width * height >= 0.8 * innerWidth * innerHeight;
 }
 
 function button(text: string, className: string, onClick: () => void): HTMLButtonElement {

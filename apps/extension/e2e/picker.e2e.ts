@@ -28,7 +28,7 @@ describe('the element picker', () => {
     const popup = (await target.asPage())!;
     await popup.waitForSelector('main > .site .pick button');
     await popup.click('main > .site .pick button');
-    await tab.waitForSelector('lock-in-picker >>> .panel');
+    await tab.waitForSelector('lock-in-picker >>> .panel', { visible: true });
   }
 
   beforeAll(async () => {
@@ -53,6 +53,7 @@ describe('the element picker', () => {
     expect(await tab.$eval('lock-in-picker >>> .say', (e) => e.textContent)).toContain('Trending now');
     await tab.click('lock-in-picker >>> button.bigger');
     expect(await tab.$eval('lock-in-picker >>> .say', (e) => e.textContent)).toContain('Trending now');
+    expect(await tab.$('lock-in-picker >>> .say ~ .note')).toBeNull();
     await tab.click('lock-in-picker >>> button.hide');
 
     await expect.poll(hidden).toEqual([{ selector: 'aside.trending', label: 'Trending now' }]);
@@ -70,6 +71,11 @@ describe('the element picker', () => {
     const tab = await t.browser.newPage();
     await tab.goto(site);
     await startPicking(tab);
+    // Something as big as the page says so before it's hidden.
+    await tab.click('main', { offset: { x: 5, y: 400 } });
+    expect(await tab.$eval('lock-in-picker >>> .say ~ .note', (e) => e.textContent)).toContain(
+      "That's most of the page",
+    );
     await tab.click('#second');
     await tab.click('lock-in-picker >>> button.hide');
     await expect.poll(async () => (await hidden()).length).toBe(2);
