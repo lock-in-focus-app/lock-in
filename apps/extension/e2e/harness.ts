@@ -7,7 +7,7 @@ import {
   desktopHostName,
   starterProfiles,
   type GateVisit,
-  type OwnQuote,
+  type PageWait,
   type Profile,
   type Session,
 } from '@lock-in/core';
@@ -137,8 +137,8 @@ export interface Stored {
   activeSession?: Session | null;
   profiles?: Profile[];
   gateVisits?: GateVisit[];
-  ownQuotes?: OwnQuote[];
-  syncedAt?: { profiles: number; activeSession: number; ownQuotes?: number };
+  pageWaits?: Record<string, PageWait>;
+  syncedAt?: { profiles: number; activeSession: number };
   tourOffered?: boolean;
 }
 
@@ -166,14 +166,17 @@ export async function controlPage({ browser, extensionId }: TestBrowser): Promis
   return page;
 }
 
-/** Replaces a profile's redirect settings. */
+/** Replaces a profile's redirect settings, and clears running waits so the next visit uses them. */
 export async function setProfileRedirect(
   extensionPage: Page,
   profileId: string,
   redirect: Profile['redirect'],
 ): Promise<void> {
   const list: Profile[] = (await stored(extensionPage)).profiles ?? starterProfiles;
-  await setStored(extensionPage, { profiles: list.map((p) => (p.id === profileId ? { ...p, redirect } : p)) });
+  await setStored(extensionPage, {
+    profiles: list.map((p) => (p.id === profileId ? { ...p, redirect } : p)),
+    pageWaits: {},
+  });
 }
 
 /** Starts a session without going through the popup. */
@@ -209,7 +212,7 @@ export async function storedWhen(extensionPage: Page, check: (storage: Stored) =
 
 /**
  * The background updates the redirect rules soon after storage changes. Asking it to sync
- * waits until they match what's stored now, the same way the gate's Continue does.
+ * waits until they match what's stored now, the same way the redirect page's Go to does.
  */
 function syncRedirects(extensionPage: Page): Promise<void> {
   return extensionPage.evaluate(() =>

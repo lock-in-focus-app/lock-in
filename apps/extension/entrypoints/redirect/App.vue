@@ -3,25 +3,19 @@ import {
   attemptsToday,
   findRecipe,
   parseHttpUrl,
-  pickDestination,
-  pickLink,
   redirectSettingsFor,
   siteAccess,
   siteRecipes,
   waitSecondsFor,
-  type RedirectDestination,
+  type PageWait,
   type RedirectSettings,
-  type SavedLink,
   type SiteRecipe,
   type WhyReason,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import { computed, onMounted, ref, shallowRef, watch } from 'vue';
 import BlockedCard from './components/BlockedCard.vue';
-import IntentionGate from './components/IntentionGate.vue';
-import LinkCard from './components/LinkCard.vue';
-import QuoteCard from './components/QuoteCard.vue';
-import StuckPage from './components/StuckPage.vue';
+import WaitCard from './components/WaitCard.vue';
 import WhyTap from './components/WhyTap.vue';
 
 // The URL the user was heading to comes after the #. "?expired" means the tab was sent
@@ -35,8 +29,9 @@ const expired = new URLSearchParams(location.search).has('expired');
 const ready = ref(false);
 const profileName = ref('');
 const settings = ref<RedirectSettings>();
-const destination = ref<RedirectDestination | 'blocked'>('gate');
-const link = ref<SavedLink>();
+// Redirected sites get the one page with its wait; restricted ones a plain "off for now".
+const blocked = ref(false);
+const wait = ref<PageWait>();
 const attempts = ref(0);
 const visitId = ref('');
 const why = ref<WhyReason>();
@@ -49,10 +44,6 @@ const badge = computed(() => {
     ? `First try at ${siteName.value} today`
     : `${ordinal(attempts.value)} try at ${siteName.value} today`;
 });
-// A tab sent back after its pass counts as the next attempt for the wait.
-const waitSeconds = computed(() =>
-  settings.value ? waitSecondsFor(settings.value.gate, expired ? attempts.value + 1 : attempts.value) : 0,
-);
 
 onMounted(async () => {
   if (!target) return;
@@ -83,14 +74,18 @@ onMounted(async () => {
   settings.value = redirectSettingsFor(profile);
 
   if (access === 'restricted') {
-    destination.value = 'blocked';
+    blocked.value = true;
     visitId.value = await recordGateVisit(site.id, 'blocked');
   } else if (!expired) {
-    destination.value = pickDestination(settings.value);
-    link.value = destination.value === 'link' ? pickLink(settings.value.links) : undefined;
-    visitId.value = await recordGateVisit(site.id, destination.value);
+    visitId.value = await recordGateVisit(site.id, 'page');
   }
   attempts.value = attemptsToday(await gateVisits.getValue(), site.id, Date.now());
+
+  if (!blocked.value && session) {
+    // A tab sent back after its pass counts as the next attempt for the wait.
+    const seconds = waitSecondsFor(settings.value.gate, expired ? attempts.value + 1 : attempts.value);
+    wait.value = await pageWaitForTrip(site.id, session.id, seconds);
+  }
   ready.value = true;
 });
 
@@ -101,9 +96,13 @@ watch(why, (value) => {
 async function proceed(intention: string) {
   const site = recipe.value;
   if (!target || !site) return;
-  const id = visitId.value || (await recordGateVisit(site.id, 'gate'));
+  const id = visitId.value || (await recordGateVisit(site.id, 'page'));
   await continueToSite(id, site.id, intention);
   location.replace(target.href);
+}
+
+function openSettings() {
+  void browser.runtime.openOptionsPage();
 }
 
 async function backToFocus() {
@@ -133,48 +132,26 @@ function ordinal(n: number): string {
       <p class="badge"><span class="dot" aria-hidden="true" />{{ badge }}</p>
 
       <div class="card stage">
-        <IntentionGate
-          v-if="destination === 'gate'"
+        <BlockedCard v-if="blocked" :site-name="siteName" :profile-name="profileName" @back="backToFocus" />
+        <WaitCard
+          v-else-if="wait"
           :site-name="siteName"
-          :wait-seconds="waitSeconds"
+          :wait="wait"
           :require-reason="settings.gate.requireReason"
           :pass-minutes="settings.gate.passMinutes"
+          :plan="settings.plan"
+          :links="settings.links"
+          :stuck="why === 'stuck'"
           @back="backToFocus"
           @continue="proceed"
+          @add-plan="openSettings"
         >
           <p class="destination" :title="target?.href">{{ destinationText }}</p>
-        </IntentionGate>
-        <QuoteCard v-else-if="destination === 'quote'" @back="backToFocus" />
-        <LinkCard v-else-if="destination === 'link' && link" :link="link" />
-        <BlockedCard
-          v-else-if="destination === 'blocked'"
-          :site-name="siteName"
-          :profile-name="profileName"
-          @back="backToFocus"
-        />
-        <StuckPage v-else @back="backToFocus" />
+        </WaitCard>
       </div>
 
       <footer>
         <WhyTap v-if="visitId" v-model="why" />
-        <div class="more">
-          <button
-            v-if="why === 'stuck' && destination !== 'stuck'"
-            type="button"
-            class="quiet"
-            @click="destination = 'stuck'"
-          >
-            Stuck? Try a 2-minute unstick
-          </button>
-          <button
-            v-if="destination !== 'gate' && destination !== 'blocked'"
-            type="button"
-            class="quiet still-need"
-            @click="destination = 'gate'"
-          >
-            Still need {{ siteName }}?
-          </button>
-        </div>
       </footer>
     </template>
 
@@ -227,15 +204,16 @@ main {
   --c: var(--glow);
 }
 
-/* Where the visit landed: the gate, a quote, a link or the unstick, in one frame. */
+/* The page's one frame: the wait, or "off for now" for restricted sites. */
 .stage {
   padding: 24px 22px 22px;
 }
 
 .destination {
   overflow: hidden;
-  margin: 8px 0 24px;
-  color: var(--dim);
+  margin: 4px 0 0;
+  color: var(--faint);
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -250,17 +228,5 @@ footer {
   margin-top: 40px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
-}
-
-.more {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.more:empty {
-  display: none;
 }
 </style>

@@ -1,4 +1,4 @@
-import { starterProfiles, type GateVisit, type OwnQuote, type Profile, type Session } from '@lock-in/core';
+import { starterProfiles, type GateVisit, type PageWait, type Profile, type Session } from '@lock-in/core';
 
 /** The running session, shared by the popup and every content script. */
 export const activeSession = storage.defineItem<Session | null>('local:activeSession', {
@@ -15,20 +15,21 @@ export const gateVisits = storage.defineItem<GateVisit[]>('local:gateVisits', {
   fallback: [],
 });
 
-/** Quotes the user added. They show up on the quote card alongside the bundled ones, and sync with the app. */
-export const ownQuotes = storage.defineItem<OwnQuote[]>('local:ownQuotes', {
-  fallback: [],
+/**
+ * The redirect page's running wait for each site, keyed by recipe id, so leaving the page to
+ * work and coming back picks the countdown back up.
+ */
+export const pageWaits = storage.defineItem<Record<string, PageWait>>('local:pageWaits', {
+  fallback: {},
 });
 
 /**
- * When the profiles, the session and the quotes last changed, for the desktop app link. The
- * newest change wins, whether it was made here, in the app, or in another browser. Quotes were
- * added later, so older installs have no time for them yet.
+ * When the profiles and the session last changed, for the desktop app link. The newest change
+ * wins, whether it was made here, in the app, or in another browser.
  */
-export const syncedAt = storage.defineItem<{ profiles: number; activeSession: number; ownQuotes?: number }>(
-  'local:syncedAt',
-  { fallback: { profiles: 0, activeSession: 0 } },
-);
+export const syncedAt = storage.defineItem<{ profiles: number; activeSession: number }>('local:syncedAt', {
+  fallback: { profiles: 0, activeSession: 0 },
+});
 
 /** Whether the tour for new users has been offered (taken or turned down), so the popup offers it once. */
 export const tourOffered = storage.defineItem<boolean>('local:tourOffered', {

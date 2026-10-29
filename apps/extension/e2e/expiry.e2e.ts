@@ -97,7 +97,7 @@ describe('open tabs and expired passes', () => {
   describe('send it back', () => {
     beforeAll(async () => {
       await endSession();
-      await setProfileRedirect(control, 'deep-work', { destinations: ['gate'], gate: { onPassExpiry: 'redirect' } });
+      await setProfileRedirect(control, 'deep-work', { gate: { onPassExpiry: 'redirect' } });
     });
 
     it('sends the tab back when its pass ends', async () => {

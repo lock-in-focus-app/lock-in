@@ -28,7 +28,6 @@ const pagesProfile: Profile = {
       ],
     },
   ],
-  redirect: { destinations: ['gate'] },
 };
 
 describe('page rules', () => {
@@ -61,9 +60,7 @@ describe('page rules', () => {
     it('redirects a page inside a tamed site', async () => {
       await tab.goto(youtube('/shorts/abc'));
       expect(tab.url()).toBe(redirectPage(t, youtube('/shorts/abc')));
-      expect(await tab.$eval('main', (main) => (main as HTMLElement).innerText)).toContain(
-        'What did you come here for?',
-      );
+      expect(await tab.$eval('main', (main) => (main as HTMLElement).innerText)).toContain('Focus for 5 minutes first');
     });
 
     it('tames the rest of the site', async () => {

@@ -7,7 +7,6 @@ import {
   controlPage,
   launch,
   openPopup,
-  setStored,
   stored,
   text,
   until,
@@ -146,23 +145,6 @@ describe('the desktop app link', () => {
     const storage = await stored(control);
     expect(storage.activeSession?.id).toBe('second');
     expect(storage.profiles).toBeUndefined();
-  });
-
-  it("keeps the user's own quotes in step with the app", async () => {
-    const fromApp = [{ id: 'app-quote', text: 'From the app.' }];
-    await app.send({
-      type: 'state',
-      profiles: { value: starterProfiles, updatedAt: 0 },
-      activeSession: { value: null, updatedAt: 0 },
-      ownQuotes: { value: fromApp, updatedAt: Date.now() },
-    });
-    await expect.poll(async () => (await stored(control)).ownQuotes).toEqual(fromApp);
-
-    // A quote added here goes to the app, newer than the app's change.
-    const added = [...fromApp, { id: 'browser-quote', text: 'From the browser.' }];
-    await setStored(control, { ownQuotes: added });
-    await expect.poll(async () => states(await app.received()).at(-1)?.ownQuotes?.value).toEqual(added);
-    expect(states(await app.received()).filter((m) => m.ownQuotes?.value.length === 1)).toEqual([]);
   });
 
   it('carries on by itself once the app goes away', async () => {

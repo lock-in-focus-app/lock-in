@@ -4,7 +4,7 @@ use ts_rs::TS;
 use crate::apps::{self, AppRule};
 use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
-use crate::quotes::{self, MAX_OWN_QUOTES, OwnQuote};
+use crate::quotes::{MAX_OWN_QUOTES, OwnQuote};
 use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteRecord, SatelliteState};
 use crate::session::{
     EndReason, GateVisit, Profile, Session, SessionRecord, is_star_color, starter_profiles, truncate,
@@ -506,20 +506,6 @@ impl Engine {
         (&self.profiles, &self.session)
     }
 
-    /// The user's own quotes with when they last changed, for sending to the extension.
-    pub fn own_quotes(&self) -> &Synced<Vec<OwnQuote>> {
-        &self.own_quotes
-    }
-
-    /// Takes the extension's own quotes if they're newer than the app's. Returns whether they were.
-    pub fn apply_remote_quotes(&mut self, incoming: Option<Synced<Vec<OwnQuote>>>, now: i64) -> Result<bool> {
-        let Some(incoming) = incoming.filter(|q| q.updated_at.min(now) > self.own_quotes.updated_at) else {
-            return Ok(false);
-        };
-        self.save_quotes(quotes::tidy(incoming.value), incoming.updated_at.min(now))?;
-        Ok(true)
-    }
-
     /// Adds a quote of the user's own. Returns whether there was a quote to add.
     pub fn add_own_quote(&mut self, text: &str, author: &str, now: i64) -> Result<bool> {
         let Some(quote) = OwnQuote::new(text, author) else {
@@ -1008,7 +994,7 @@ mod tests {
     }
 
     #[test]
-    fn keeps_own_quotes_and_takes_newer_ones_from_the_extension() {
+    fn keeps_own_quotes() {
         let mut engine = engine();
         assert!(engine.add_own_quote(" Ship it. ", "", 1_000).unwrap());
         assert!(!engine.add_own_quote("  ", "Me", 1_100).unwrap());
@@ -1018,29 +1004,14 @@ mod tests {
             (quotes[0].text.as_str(), quotes[0].author.as_deref()),
             ("Ship it.", None)
         );
-        assert_eq!(engine.own_quotes().updated_at, 1_000);
+        assert_eq!(engine.own_quotes.updated_at, 1_000);
 
-        let theirs = |text: &str, updated_at| Synced {
-            value: vec![OwnQuote {
-                id: "theirs".into(),
-                text: text.into(),
-                author: Some("Them".into()),
-            }],
-            updated_at,
-        };
-        assert!(!engine.apply_remote_quotes(Some(theirs("Older", 900)), 2_000).unwrap());
-        assert!(engine.apply_remote_quotes(Some(theirs("Newer", 1_500)), 2_000).unwrap());
-        assert_eq!(engine.snapshot(2_000).own_quotes[0].text, "Newer");
-        // Nothing comes from the future.
-        assert!(engine.apply_remote_quotes(Some(theirs("Ahead", 9_000)), 2_000).unwrap());
-        assert_eq!(engine.own_quotes().updated_at, 2_000);
-
-        engine.remove_own_quote("theirs", 2_000).unwrap();
-        assert!(engine.snapshot(2_000).own_quotes.is_empty());
+        let id = quotes[0].id.clone();
+        engine.remove_own_quote(&id, 900).unwrap();
+        assert!(engine.snapshot(1_100).own_quotes.is_empty());
         assert_eq!(
-            engine.own_quotes().updated_at,
-            2_001,
-            "always newer than the last change"
+            engine.own_quotes.updated_at, 1_001,
+            "always newer than the last change, even if the clock went back"
         );
     }
 

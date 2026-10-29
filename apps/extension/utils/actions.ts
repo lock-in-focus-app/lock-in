@@ -3,6 +3,7 @@ import {
   findRule,
   hasRoomForOwnSite,
   ownSiteDomain,
+  pageWaitFor,
   redirectSettingsFor,
   starterProfiles,
   withNewProfile,
@@ -20,16 +21,14 @@ import {
   withGateVisitContinued,
   withGateVisitWhy,
   withPass,
-  withOwnQuote,
-  withOwnQuoteRemoved,
   withProfileToggle,
   withSiteRemoved,
   withRedirectSettings,
   sitesLooser,
   withSessionOverridesSaved,
   withSessionToggle,
+  type PageWait,
   type Profile,
-  type RedirectDestination,
   type RedirectSettings,
   type SiteLevel,
   type SiteRecipe,
@@ -212,7 +211,7 @@ export async function setRedirectSettings(
 }
 
 /** Records a trip to a redirected site and returns its id. */
-export async function recordGateVisit(recipeId: string, destination: RedirectDestination | 'blocked'): Promise<string> {
+export async function recordGateVisit(recipeId: string, destination: 'page' | 'blocked'): Promise<string> {
   const visit = { id: crypto.randomUUID(), recipeId, at: Date.now(), destination };
   await inTurn(async () => gateVisits.setValue(withGateVisit(await gateVisits.getValue(), visit)));
   return visit.id;
@@ -232,26 +231,33 @@ export async function continueToSite(visitId: string, recipeId: string, intentio
     if (!session) return false;
 
     const { passMinutes } = redirectSettingsFor(profileList.find((p) => p.id === session.profileId)).gate;
+    // Going on to the site ends its wait, so the next trip after the pass waits again.
+    const { [recipeId]: _ended, ...waits } = await pageWaits.getValue();
     await storage.setItems([
       { item: activeSession, value: withPass(session, recipeId, Date.now(), passMinutes) },
       { item: gateVisits, value: withGateVisitContinued(visits, visitId, intention) },
+      { item: pageWaits, value: waits },
     ]);
     return true;
   });
   if (continued) await syncRedirectsNow();
 }
 
+/**
+ * The redirect page's wait for a trip to a site: the one already running, or a new one of the
+ * given length. Waits from other sessions are dropped along the way.
+ */
+export async function pageWaitForTrip(recipeId: string, sessionId: string, seconds: number): Promise<PageWait> {
+  return inTurn(async () => {
+    const all = await pageWaits.getValue();
+    const wait = pageWaitFor(all[recipeId], sessionId, seconds, Date.now());
+    const kept = Object.fromEntries(Object.entries(all).filter(([, w]) => w.sessionId === sessionId));
+    await pageWaits.setValue({ ...kept, [recipeId]: wait });
+    return wait;
+  });
+}
+
 /** Saves the one-tap answer to "why are you here?" on a visit. */
 export async function setVisitWhy(visitId: string, why: WhyReason | undefined): Promise<void> {
   await inTurn(async () => gateVisits.setValue(withGateVisitWhy(await gateVisits.getValue(), visitId, why)));
-}
-
-export async function addOwnQuote(text: string, author: string): Promise<void> {
-  await inTurn(async () =>
-    ownQuotes.setValue(withOwnQuote(await ownQuotes.getValue(), crypto.randomUUID(), text, author)),
-  );
-}
-
-export async function removeOwnQuote(id: string): Promise<void> {
-  await inTurn(async () => ownQuotes.setValue(withOwnQuoteRemoved(await ownQuotes.getValue(), id)));
 }

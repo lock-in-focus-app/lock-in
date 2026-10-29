@@ -102,7 +102,7 @@ describe('withSessionOverridesSaved', () => {
 
 describe('withRedirectSettings', () => {
   it('replaces the settings of one profile only', () => {
-    const settings = { ...defaultRedirectSettings, destinations: ['quote' as const] };
+    const settings = { ...defaultRedirectSettings, plan: 'Write one line first.' };
     const next = withRedirectSettings(profiles, 'other', settings);
     expect(next[1]!.redirect).toEqual(settings);
     expect(next[0]).toBe(profiles[0]);

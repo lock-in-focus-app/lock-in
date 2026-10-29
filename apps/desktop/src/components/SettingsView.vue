@@ -82,7 +82,7 @@ function save(patch: Partial<Settings>) {
   emit('update:settings', { ...props.settings, ...patch });
 }
 
-// Quotes of the user's own, for the Sky's quote for the day. They sync with the extension's.
+// Quotes of the user's own, for the Sky's quote for the day.
 const quoteText = ref('');
 const quoteAuthor = ref('');
 const quotesFull = computed(() => props.ownQuotes.length >= maxOwnQuotes);
@@ -310,7 +310,6 @@ const glowHelp = computed(() => {
             ? `That's the most quotes Lock In keeps (${maxOwnQuotes}). Remove one to add another.`
             : "Mixed in with Lock In's own for the Sky's quote of the day, and picked more often."
         }}
-        They're shared with the extension's quote page once it's linked, and quotes added there show up here.
       </p>
     </section>
 

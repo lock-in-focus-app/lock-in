@@ -1,8 +1,5 @@
-//! Quotes people add themselves, in the app's Settings or the extension's. They show up with the
-//! bundled ones (packages/quotes): as the Sky's quote for the day here, and on the extension's
-//! quote page. They sync with the extension like the profiles do.
-
-use std::collections::HashSet;
+//! Quotes people add themselves, in the app's Settings. They show up with the bundled ones
+//! (packages/quotes) as the Sky's quote for the day.
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -20,7 +17,7 @@ pub struct OwnQuote {
     pub author: Option<String>,
 }
 
-/// The same limits as the extension's (packages/core/src/quotes.ts).
+/// The same limits as packages/core/src/quotes.ts.
 pub const MAX_OWN_QUOTES: usize = 200;
 const MAX_TEXT: usize = 280;
 const MAX_AUTHOR: usize = 80;
@@ -51,29 +48,9 @@ fn trimmed(text: &str, max_chars: usize) -> Option<String> {
     (!text.is_empty()).then_some(text)
 }
 
-/// Quotes from the extension, tidied the same way: empty ones and repeated ids dropped, and
-/// anything past the limits.
-pub fn tidy(quotes: Vec<OwnQuote>) -> Vec<OwnQuote> {
-    let mut ids = HashSet::new();
-    quotes
-        .into_iter()
-        .filter_map(OwnQuote::cleaned)
-        .filter(|quote| ids.insert(quote.id.clone()))
-        .take(MAX_OWN_QUOTES)
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn quote(id: &str, text: &str, author: Option<&str>) -> OwnQuote {
-        OwnQuote {
-            id: id.into(),
-            text: text.into(),
-            author: author.map(Into::into),
-        }
-    }
 
     #[test]
     fn new_quotes_are_trimmed_and_need_text() {
@@ -84,22 +61,9 @@ mod tests {
     }
 
     #[test]
-    fn tidies_quotes_from_the_extension() {
-        let long = "é".repeat(MAX_TEXT + 10);
-        let tidied = tidy(vec![
-            quote("a", "One", Some("")),
-            quote("b", "  ", None),
-            quote("a", "Same id", None),
-            quote("", "No id", None),
-            quote("c", &long, None),
-        ]);
-        assert_eq!(tidied.len(), 2);
-        assert_eq!(tidied[0], quote("a", "One", None));
-        assert_eq!(tidied[1].text.chars().count(), MAX_TEXT);
-
-        let many = (0..MAX_OWN_QUOTES + 5)
-            .map(|i| quote(&i.to_string(), "Line", None))
-            .collect();
-        assert_eq!(tidy(many).len(), MAX_OWN_QUOTES);
+    fn new_quotes_keep_to_the_limits() {
+        let made = OwnQuote::new(&"é".repeat(MAX_TEXT + 10), &"a".repeat(MAX_AUTHOR + 10)).unwrap();
+        assert_eq!(made.text.chars().count(), MAX_TEXT);
+        assert_eq!(made.author.unwrap().chars().count(), MAX_AUTHOR);
     }
 }

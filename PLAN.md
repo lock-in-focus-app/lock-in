@@ -34,7 +34,7 @@ Each site has one of four levels, set per session profile:
 |---|---|---|
 | **Allowed** | Normal | Google Docs, Wikipedia |
 | **Tamed** | The site works, but feeds, recommendations and Shorts are hidden; can be grayscale | Reddit threads and search work, the home feed is gone |
-| **Redirected** | Sent to a redirect destination (§3) | x.com → intention gate |
+| **Redirected** | Sent to the redirect page (§3), with a wait before the way through | x.com → "Focus for 5 minutes first" |
 | **Restricted** | Blocked outright: no countdown, no pass, no way through until the session ends | Reddit during an exam-prep session |
 
 **Page rules** give part of a site its own level (e.g. `reddit.com/r/writing` allowed while the rest of Reddit is redirected, or YouTube tamed with `/shorts` redirected).
@@ -87,11 +87,11 @@ A profile bundles:
 - app rules
 - strictness
 - timer settings
-- redirect destinations
+- the redirect page's settings (wait, if-then plan, pass, links)
 
 You can create, edit, duplicate, delete, reorder, and import/export (JSON) profiles. The app ships with **starter profiles that show what's possible**. They're ordinary editable profiles, and "Reset starter profiles" restores them:
 - *Writing*: Reddit and YouTube tamed + grayscale (YouTube Shorts redirected); X, Instagram, TikTok and Facebook redirected; Discord closed
-- *Deep Work*: all social redirected (with a quote or unstick page some of the time, and an escalating wait), chat apps closed
+- *Deep Work*: all social redirected (five minutes first), chat apps closed
 - *Wind Down*: Reddit, YouTube and Instagram tamed (no feeds or recommendations; Shorts and Reels redirected), nothing else
 
 ---
@@ -115,34 +115,36 @@ The timer is a *starting ramp*, not a cage.
 
 ---
 
-## 3. Redirect destinations (handled by the extension)
+## 3. The redirect page (handled by the extension)
 
-When a site is *Redirected*, the extension intercepts the navigation and sends you to one of the destinations below. Each profile chooses which ones it uses; if several are enabled, one is **picked at random** (each equally likely for now; per-destination weights may come later). The pages are bundled inside the extension, so they load instantly and work offline.
-
-The intention gate (1) is the way through, so Settings gives it its own section: a "Show the gate right away" switch decides whether visits can land straight on it, and the other pages (2–4) each link to it with "Still need it?". At least one page is picked, or the switch is on, so a visit always has somewhere to land.
+When a site is *Redirected*, the extension intercepts the navigation and sends you to **one Lock In page that always looks the same**, so you know what to expect. (It used to pick one of four pages at random: an intention gate, a quote card, a link and an "I'm stuck" page. They overlapped, and three of them were different ways of saying "go back to work" that all led to the gate, so they were folded into this one page in Phase 5.) The page is bundled inside the extension, so it loads instantly and works offline. *Restricted* sites get a plainer page instead: "Reddit is off for now", with no way through until the session ends.
 
 Links to a redirected site can come from anywhere (a search result, a chat), and Chrome only redirects to an extension page if the page the visit came from may load it. So the redirect page is open to every site, with `use_dynamic_url` so websites can't load it directly to detect Lock In.
 
-1. **Intention gate**: "What did you come here for?" The **"Continue to site" button stays disabled behind a countdown**, so you have to pause and think. Three settings per profile keep it flexible without becoming a settings maze:
-   - **Require a reason**: on/off. When on, you must type why you're going; when off, you just sit with the question during the countdown.
-   - **Wait time**: either *fixed* (e.g. 10–15s) or *escalating* (starts at a few seconds and grows with each attempt at that site today, capped).
-   - **When the pass expires**: you get a time-boxed pass (default 5 min) to *that site only*. When it runs out:
-     - *Nothing*: the tab stays as it is.
-     - *Pause* (default): the tab is covered by a dim overlay with a "Still need this?" button, which leads back to the intention gate. Reference tabs stay where they are.
-     - *Auto-redirect*: the tab is sent back to the redirect page.
-   - Typed reasons are logged for insights.
-2. **Quote card**: a random quote from the bundled pack plus your own quotes.
-3. **Productive URL**: one of your own links, such as your draft doc, to-do list, Anki or reading list.
-4. **"I'm stuck" page**: a 2-minute structured unstick (rubber-duck prompt, break the task down, stretch, breathe).
-5. **Five minutes first** (the default for new profiles; existing profiles keep their choices): "Focus for 5 minutes. If you still want Reddit after that, go right ahead." It leans on two things: the hard part is usually starting, and a pull that comes from a moment of boredom tends to pass once you're back into the work. The five minutes keep counting if you leave the page, and the page shows your productive link (3) and your if-then plan (below) to get going with. Once they're up, it offers the site (with a pass, like the gate's) and an equally plain "Not now". Its "Still need it?" link to the gate only appears then too. The length can be changed per profile. (Why: in a study of the one sec app, a short wait and an easy way to back out both cut how often people opened an app, while the message alone did nothing. The "five minutes to get started" part is reasoning, not tested; §12.)
+**What the page shows, top to bottom:**
+- The **attempt counter**: "6th try at Reddit today".
+- **Five minutes first**: "Focus for 5 minutes. If you still want Reddit after that, go right ahead," with the time left counting down. It leans on two things: the hard part is usually starting, and a pull that comes from a moment of boredom tends to pass once you're back into the work. (Why: in a study of the one sec app, a short wait and an easy way to back out both cut how often people opened an app, while the message alone did nothing. The "five minutes to get started" part is reasoning, not tested; §12.)
+- The profile's **if-then plan**, if it has one: "When I want Reddit, I'll write one paragraph first." Without one, a quiet "Add an if-then plan" link sits in the same spot and opens the settings. (Quotes used to fill it, but they were more distracting than helpful there, so the extension shows no quotes now; they live on the app's Sky.)
+- **Ways back to work**: a button for each of your own links (your draft, to-do list, Anki or reading list).
+- **When you're stuck**: answering "Stuck" to "why?" asks for the **smallest next step**, something you could finish in five minutes, right under the clock, and shows it back as "Next step". It replaces a separate 2-minute "I'm stuck" page (say it out loud, shrink it, stand up, breathe): the five minutes already are the time to get going, and shrinking the task was the part that helps. The step isn't kept.
+- **Not now**, which goes back to where you were (or closes the tab). Like simply never going on to the site, it counts as going back to focus, so it can bring a comet (§5).
+- When the wait is up, **Go to Reddit**, which opens the site with a time-boxed pass to *that site only*.
+- The one-tap **"why?"**: bored / stuck / tired / curious.
 
-Every redirect page shows:
-- the profile's **if-then plan**, if it has one: "When I want Reddit, I'll write one paragraph first." A profile can hold one optional plan line, edited with the profile in the app and the extension, with a line explaining what an if-then plan is (decide ahead of time what you'll do when the urge comes; it's one of the best-tested habit techniques, §12) and an example.
-- the **attempt counter**: "6th try at Reddit today"
-- the **one-tap "why?"**: bored / stuck / tired / curious
-- a **Satellites quick-capture box** (§4, comes with Satellites in Phase 3)
+**Settings, per profile:**
+- **Wait**: *fixed* (5 minutes by default; a few seconds works too, for a short pause) or *longer each try* (starts short and grows with each attempt at that site today, capped). The page words itself to fit: "Focus for 5 minutes" or "Focus for 10 seconds".
+- **The wait keeps counting if you leave the page**, since the point is to go and work. Coming back to the site picks the same countdown back up, and once it's done the site stays a click away for as long as the wait was (5 more minutes). After that, a new trip starts a new wait. Going on to the site ends it.
+- **If-then plan**: one optional line, with a line explaining what an if-then plan is (decide ahead of time what you'll do when the urge comes; it's one of the best-tested habit techniques, §12) and an example. Set in the extension's settings for now; the app's Profiles page later.
+- **Require a reason**: off by default. When on, "What did you come here for?" has to be answered before Go to Reddit. Typed reasons are listed in the weekly report (§6); the "why?" taps are what get charted.
+- **Pass length** (default 5 min), and **when the pass runs out**:
+  - *Nothing*: the tab stays as it is.
+  - *Pause* (default): the tab is covered by a dim overlay with a "Still need this?" button, which leads back to the redirect page. Reference tabs stay where they are.
+  - *Auto-redirect*: the tab is sent back to the redirect page.
+- **Your links**, shown as buttons on the page.
 
-**Quotes & privacy:** quotes come only from the bundled pack and your own; nothing is fetched. The bundled pack is public domain only (texts and translations published before 1931), with each quote's source noted in `packages/quotes` so it can be checked. A daily fetch from a public quote API was considered and dropped: it meant a network request, a third party's terms and adding TLS to the app. Your own quotes sync between the extension and the app like the profiles do (newest change wins). Redirect events (site, time, attempt #, why-tap, intention text) are sent to the desktop app over Native Messaging for stats and insights. The quotes themselves never need to make that round trip.
+Every trip is logged the same way (site, time, attempt #, why-tap, typed reason, whether you went on to the site) for the weekly report and comets.
+
+**Quotes & privacy:** quotes show only in the app, as the Sky's quote for the day. They come only from the bundled pack and your own; nothing is fetched. The bundled pack is public domain only (texts and translations published before 1931), with each quote's source noted in `packages/quotes` so it can be checked. A daily fetch from a public quote API was considered and dropped: it meant a network request, a third party's terms and adding TLS to the app. Your own quotes are added in the app's Settings. The extension has no quotes at all: it used to show them and sync your own with the app, and both were taken out in Phase 5. Redirect events (site, time, attempt #, why-tap, intention text) are sent to the desktop app over Native Messaging for stats and insights.
 
 ---
 
@@ -224,7 +226,7 @@ One big sky that keeps growing as you focus, a bit like Obsidian's graph view: y
 - **Things that happen to a planet.** Now and then a rare event happens to the month's planet instead of the sky (see Rare events), and stays: a **moon crashes into it**, leaving a glowing crater; a **chunk breaks off** and drifts beside it, its broken side glowing; or it **shatters** into a ring of debris circling it, with glowing cracks left on it. At most one a month, and only once the planet is round.
 
 ### Comets: resisting a distraction
-- Leaving the intention gate for "Back to focus" instead of continuing can bring a comet: a 1 in 4 chance.
+- Leaving the redirect page with "Not now" (or just never going on to the site) can bring a comet: a 1 in 4 chance.
 - **Don't reward the trip, reward the turn-around.** Only the first resist per site per day counts, and the daily chance doesn't grow with more visits, so going to a site just to resist it earns nothing. Comets stay rare enough to be a nice surprise, not a target. (General reasoning, not research: worth revisiting if it seems to pull people toward the sites.)
 - A comet glides in the first time the Sky shows it, then stays faintly beside its week's constellation, its tails streaming away. The Sky shows this week's; Explore and the weekly report show each week's (the latest 3 a week).
 
@@ -296,7 +298,7 @@ The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly te
 
 ## 6. Insights (weekly report)
 - When you get distracted, broken down by time of day, site, and **why** ("You reach for Reddit when *stuck*, mostly 2–4pm").
-- Intention-gate reasons, grouped.
+- Typed reasons from the redirect page (when a profile requires one), grouped.
 - Satellites parked and their outcomes.
 - Overtime and focus trends.
 - Suggestions, e.g. "Try scheduling Deep Work before 2pm."
@@ -357,7 +359,7 @@ An idea from *Atomic Habits* (James Clear), where it's called temptation bundlin
 lock-in/
   apps/
     desktop/        # Tauri 2: src-tauri/ (Rust) + src/ (Vue 3 + Vite + TS)
-    extension/      # WXT + Vue: background, content scripts, redirect/gate/stuck pages, recipe live mode
+    extension/      # WXT + Vue: background, content scripts, the redirect page, recipe live mode
     website/        # Night-sky themed product site (later; Nuxt static is fine here)
     sync-server/    # Self-hostable Rust sync server (later)
   packages/
@@ -459,10 +461,10 @@ Built in slices, one PR each:
 - Richer report charts if the plain lines and bars stop being enough, e.g. focus across many weeks or a day-by-hour heatmap. A chart library such as [vue-data-ui](https://vue-data-ui.graphieros.com/docs) could do these; weigh its size against the performance budget (§8) first.
 - ✅ A short tour for new users, in the app and the extension. The app's Sky offers it once in a one-line strip (Take the tour, No thanks), and the extension's popup does the same. It walks the real pages in short steps, with the part a step is about framed and the page switching as it goes: the app's covers the sky, starting a session, profiles, satellites (and Alt+P) and the browser; the extension's covers profiles, site levels, the redirect page and linking the app. Every step has Back, Next and Skip tour (and Esc ends it). It can be taken again from the app's Settings › Tour and from the top of the extension's settings page.
 - ✅ Sites editable from either side: the app's Profiles › Sites sets each site's level and adds or removes sites by address, and the extension's settings and popup can add any site too (the popup offers "Keep it away from now on" during a session).
-- From the research (§12): the **Five minutes first** redirect page as the new default (§3), **if-then plans** on profiles, shown on redirect pages and suggested by the weekly report (§3, §6), and **session intention + reflection** as a switch on each profile (§7).
+- From the research (§12): **one predictable redirect page** with Five minutes first, replacing the four random pages (§3); **if-then plans** on profiles, shown on the redirect page (extension settings first, the app's Profiles later) and suggested by the weekly report (§3, §6); and **session intention + reflection** as a switch on each profile (§7).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
-- ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and they sync with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
+- ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and (until the extension dropped quotes) they synced with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
 - ✅ The support link (§8): "Support Lock In on Ko-fi" at the very bottom of the app's Settings and of the extension's settings page, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
 - Export/import.
 - ✅ Blocking without the extension, macOS first (§8). Windows and Linux later.
@@ -498,8 +500,8 @@ Built in slices, one PR each:
 - **Extension, by hand:** run `wxt dev` for Chrome and Firefox. In a *Writing* session:
   - each recipe hides what it says on the **real** site (stand-in pages can't catch a site changing its HTML), while threads, search and messages still work
   - grayscale is applied
-  - x.com goes to the intention gate, whose Continue button counts down and grants a 5-minute pass that later expires
-  - clicking a Short from a YouTube video goes to the gate, and Back returns to the video
+  - x.com goes to the redirect page, whose Go to button counts down and grants a 5-minute pass that later expires
+  - clicking a Short from a YouTube video goes to the redirect page, and Not now returns to the video
   - the attempt counter goes up
 - End the session: everything returns to normal.
 - **Recipe editor:** each toggle animates the preview mock instantly. Exported JSON matches the schema in `packages/core`.
@@ -520,7 +522,7 @@ Lock In should help because of research that has held up, not because it sounds 
 ### What Lock In already does, and why it works
 | Finding | Strength | In Lock In |
 |---|---|---|
-| **A pause and an easy way out cut how often you give in.** In a 6-week field study of the one sec app (Grüning et al., 2023), openings of the chosen apps fell 57%. The option to back out mattered most and the wait helped; the message alone did nothing. | Modest (one study) | The intention gate's countdown, the redirect pages, Five minutes first (§3) |
+| **A pause and an easy way out cut how often you give in.** In a 6-week field study of the one sec app (Grüning et al., 2023), openings of the chosen apps fell 57%. The option to back out mattered most and the wait helped; the message alone did nothing. | Modest (one study) | The redirect page's wait and its Not now (§3) |
 | **Limits you set yourself work.** Letting people cap their own future screen time cut social media use a lot, and short-term help to cut back kept working after it ended (Allcott, Gentzkow & Song, 2022). | Strong (large field experiment) | Profiles, Hard mode and its passes, Restricted sites |
 | **Habits form from repeating something in the same context, and then that context sets them off** (Wood & Rünger, 2016). | Strong (review) | Taming feeds and hiding recommendations, removing the cue instead of fighting it |
 | **Writing down a plan for an unfinished task stops it from pulling at your attention** (Masicampo & Baumeister, 2011). | Modest (a set of lab studies) | Satellites (§4) |
@@ -531,7 +533,7 @@ Lock In should help because of research that has held up, not because it sounds 
 | **People keep at things they chose themselves; pressure from outside wears that down** (self-determination theory, Ryan & Deci, 2000). | Strong (a large body of work) | Lock In observes and never interjects (§7); every default is editable |
 
 ### New, from the research (decided October 2026)
-- **Five minutes first** (§3), the new default redirect page.
+- **Five minutes first** (§3), at the heart of one redirect page that always looks the same.
 - **If-then plans** (§3, §6). Deciding ahead of time "when X happens, I'll do Y" had a medium-to-large effect on reaching goals across 94 tests (Gollwitzer & Sheeran, 2006), one of the strongest results in the field. Since few people know the term, the app explains it where you write one.
 - **Session intention + reflection** (§7), a switch on each profile. A specific goal beats a vague "do your best" (Locke & Latham, 2002), and the "did you do it?" afterwards is progress tracking.
 

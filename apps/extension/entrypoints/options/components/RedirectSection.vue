@@ -1,17 +1,17 @@
 <script lang="ts" setup>
 import {
   defaultWaits,
+  maxPlanLength,
+  waitLabel,
   parseHttpUrl,
-  redirectDestinations,
   redirectSettingsFor,
   type GateSettings,
   type GateWait,
   type PassExpiry,
   type Profile,
-  type RedirectDestination,
   type RedirectSettings,
 } from '@lock-in/core';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import ToggleSwitch from '@/components/ToggleSwitch.vue';
 import NumberField from './NumberField.vue';
 
@@ -19,25 +19,9 @@ const props = defineProps<{ profile: Profile }>();
 
 const settings = computed(() => redirectSettingsFor(props.profile));
 
-// The pages a redirected visit can land on. The intention gate is set up in its own
-// section: it's the way through, which every one of these links to.
-const pages: { id: Exclude<RedirectDestination, 'gate'>; label: string; detail: string }[] = [
-  { id: 'quote', label: 'Quote', detail: 'A quote to pull you back, from the built-in pack or your own.' },
-  {
-    id: 'link',
-    label: 'Your links',
-    detail: 'Opens one of your own links instead, like the draft you meant to write. Add them under Your links.',
-  },
-  {
-    id: 'stuck',
-    label: "I'm stuck",
-    detail: 'For when you reached for the site because the work got hard: a 2-minute unstick.',
-  },
-];
-
 const expiryOptions: { id: PassExpiry; label: string }[] = [
   { id: 'pause', label: 'Pause the tab' },
-  { id: 'redirect', label: 'Send it back to the gate' },
+  { id: 'redirect', label: 'Send it back to the redirect page' },
   { id: 'nothing', label: 'Leave it open' },
 ];
 
@@ -55,18 +39,16 @@ function saveWait(patch: Partial<GateWait>) {
   save((current) => ({ gate: { ...current.gate, wait: { ...current.gate.wait, ...patch } as GateWait } }));
 }
 
-function toggleDestination(id: RedirectDestination, on: boolean) {
-  save((current) => ({
-    destinations: redirectDestinations.filter((d) => (d === id ? on : current.destinations.includes(d))),
-  }));
-}
+// The plan is typed here and saved when the field is left, so each keystroke isn't a save.
+const plan = ref(settings.value.plan);
+watch(
+  () => settings.value.plan,
+  (saved) => (plan.value = saved),
+);
 
-// A redirected visit has to land somewhere: on one of the pages, or straight on the gate.
-const gateRightAway = computed(() => settings.value.destinations.includes('gate'));
-const pagesPicked = computed(() => settings.value.destinations.filter((d) => d !== 'gate'));
-const isLastChoice = (id: RedirectDestination) =>
-  settings.value.destinations.length === 1 && settings.value.destinations.includes(id);
-const linksMissing = computed(() => settings.value.destinations.includes('link') && settings.value.links.length === 0);
+function savePlan() {
+  if (plan.value.trim() !== settings.value.plan) save(() => ({ plan: plan.value.trim() }));
+}
 
 const linkTitle = ref('');
 const linkUrl = ref('');
@@ -95,61 +77,33 @@ function removeLink(id: string) {
 <template>
   <h2>Redirected sites</h2>
   <p class="help">
-    When {{ profile.name }} redirects a site, you land on a Lock In page instead. Pick which pages can show up; one is
-    chosen at random each visit. Every page has a "Still need it?" link to the intention gate below.
-  </p>
-  <ul class="list destinations" data-tour="redirect">
-    <li v-for="d in pages" :key="d.id">
-      <label>
-        <input
-          type="checkbox"
-          :checked="settings.destinations.includes(d.id)"
-          :disabled="isLastChoice(d.id)"
-          @change="toggleDestination(d.id, ($event.target as HTMLInputElement).checked)"
-        />
-        <span>
-          <span class="name">{{ d.label }}</span>
-          <span class="detail">{{ d.detail }}</span>
-        </span>
-      </label>
-    </li>
-  </ul>
-  <p v-if="linksMissing" class="help small">You haven't added any links yet, so Your links is skipped for now.</p>
-  <p v-else-if="!pagesPicked.length" class="help small">
-    None picked, so every redirected visit goes straight to the intention gate.
+    When {{ profile.name }} redirects a site, you land on a Lock In page first. It asks you to focus for a little while,
+    and once the wait is up you can go on to the site with a short pass. The wait keeps counting if you leave the page
+    to work. Restricted sites have no way through.
   </p>
 
-  <h2>Intention gate</h2>
+  <h2>Your if-then plan</h2>
   <p class="help">
-    The way through a redirected site. It asks what you came for and holds Continue for a few seconds, so opening the
-    site becomes a choice instead of a habit. Continuing gives you a short pass to that one site. Restricted sites have
-    no gate.
+    Decide now what you'll do when the urge comes, and the redirect page shows it to you each time. Planning "when this
+    happens, I'll do that" ahead of time is one of the best-tested ways to change a habit.
   </p>
+  <label class="card plan" data-tour="redirect">
+    <input
+      v-model="plan"
+      aria-label="Your if-then plan"
+      placeholder="When I want Reddit, I'll write one paragraph first."
+      :maxlength="maxPlanLength"
+      @blur="savePlan"
+      @keydown.enter="($event.target as HTMLInputElement).blur()"
+    />
+  </label>
+
+  <h2>The wait</h2>
   <div class="rows">
-    <ToggleSwitch
-      label="Show the gate right away"
-      :model-value="gateRightAway"
-      :disabled="isLastChoice('gate')"
-      @update:model-value="toggleDestination('gate', $event)"
-    />
-    <p class="row-help">
-      <template v-if="isLastChoice('gate')">Pick a page above to turn this off.</template>
-      <template v-else>
-        On: some visits land straight on the gate, mixed in with the pages above. Off: you always see a page first.
-      </template>
-    </p>
-
-    <ToggleSwitch
-      label="Require a reason to continue"
-      :model-value="settings.gate.requireReason"
-      @update:model-value="saveGate({ requireReason: $event })"
-    />
-    <p class="row-help">Continue stays off until you type what you came for. Answers stay on this device.</p>
-
     <div class="row">
-      <span>Wait before Continue</span>
+      <span>Wait before going on</span>
       <select
-        aria-label="Wait before Continue"
+        aria-label="Wait before going on"
         :value="settings.gate.wait.mode"
         @change="saveGate({ wait: defaultWaits[($event.target as HTMLSelectElement).value as GateWait['mode']] })"
       >
@@ -163,7 +117,7 @@ function removeLink(id: string) {
         label="Wait in seconds"
         unit="sec"
         :min="0"
-        :max="300"
+        :max="600"
         :model-value="settings.gate.wait.seconds"
         @update:model-value="saveWait({ seconds: $event })"
       />
@@ -175,7 +129,7 @@ function removeLink(id: string) {
           label="First wait in seconds"
           unit="sec"
           :min="0"
-          :max="300"
+          :max="600"
           :model-value="settings.gate.wait.startSeconds"
           @update:model-value="saveWait({ startSeconds: $event })"
         />
@@ -186,7 +140,7 @@ function removeLink(id: string) {
           label="Seconds added per try"
           unit="sec"
           :min="0"
-          :max="300"
+          :max="600"
           :model-value="settings.gate.wait.stepSeconds"
           @update:model-value="saveWait({ stepSeconds: $event })"
         />
@@ -197,14 +151,32 @@ function removeLink(id: string) {
           label="Longest wait in seconds"
           unit="sec"
           :min="0"
-          :max="300"
+          :max="600"
           :model-value="settings.gate.wait.maxSeconds"
           @update:model-value="saveWait({ maxSeconds: $event })"
         />
       </div>
     </template>
 
-    <p class="row-help">"Longer each try" starts short and grows with every visit to the same site today.</p>
+    <p class="row-help">
+      <template v-if="settings.gate.wait.mode === 'fixed' && settings.gate.wait.seconds === 0">
+        No wait: the page just asks if you still want the site.
+      </template>
+      <template v-else-if="settings.gate.wait.mode === 'fixed'">
+        The page says "Focus for {{ waitLabel(settings.gate.wait.seconds) }} first". A few seconds works too, for a
+        short pause.
+      </template>
+      <template v-else>"Longer each try" starts short and grows with every visit to the same site today.</template>
+    </p>
+
+    <ToggleSwitch
+      label="Require a reason to go on"
+      :model-value="settings.gate.requireReason"
+      @update:model-value="saveGate({ requireReason: $event })"
+    />
+    <p class="row-help">
+      The page asks what you came for, and you can't go on until you answer. Answers stay on this device.
+    </p>
 
     <div class="row">
       <span>Pass length</span>
@@ -217,7 +189,7 @@ function removeLink(id: string) {
         @update:model-value="saveGate({ passMinutes: $event })"
       />
     </div>
-    <p class="row-help">How long the site stays open after you continue. Other redirected sites stay redirected.</p>
+    <p class="row-help">How long the site stays open after you go on to it. Other redirected sites stay redirected.</p>
 
     <div class="row">
       <span>When a pass runs out</span>
@@ -237,8 +209,8 @@ function removeLink(id: string) {
 
   <h2>Your links</h2>
   <p class="help">
-    Places you'd rather be: the draft you're meant to be writing, your to-do list, flashcards or reading list. When Your
-    links is picked above, a redirected visit can open one of these instead of the site.
+    Places you'd rather be: the draft you're meant to be writing, your to-do list, flashcards or reading list. They show
+    up as buttons on the redirect page, to get you back to work.
   </p>
   <ul v-if="settings.links.length" class="list items">
     <li v-for="link in settings.links" :key="link.id">
@@ -260,20 +232,28 @@ function removeLink(id: string) {
 </template>
 
 <style scoped>
-.destinations label {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--sky-raised);
-  cursor: pointer;
+/* The plan field, framed with corner ticks like the other boxes. */
+.plan {
+  display: block;
+  padding: 0;
 }
 
-.destinations input {
-  margin-top: 3px;
-  accent-color: var(--glow);
+.plan input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--starlight);
+  font: inherit;
+}
+
+.plan input:focus {
+  outline: none;
+}
+
+.plan:focus-within {
+  --t: var(--tick-bright);
 }
 
 .rows {

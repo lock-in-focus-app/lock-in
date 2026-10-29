@@ -2,7 +2,6 @@
 import { maxProfileNameLength, starColorFor } from '@lock-in/core';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import StarColorPicker from '@/components/StarColorPicker.vue';
-import QuotesSection from './components/QuotesSection.vue';
 import RedirectSection from './components/RedirectSection.vue';
 import SitesSection from './components/SitesSection.vue';
 import TourGuide, { type TourStep } from './components/TourGuide.vue';
@@ -92,7 +91,7 @@ const tourSteps: TourStep[] = [
   {
     target: 'redirect',
     title: 'The redirect page',
-    text: 'A redirected site shows one of these Lock In pages instead. If you really need the site, the intention gate asks what you came for, then lets you through for a few minutes.',
+    text: 'A redirected site shows a Lock In page first: focus for a few minutes, and if you still want the site after that, go right ahead. Your if-then plan, written here, shows on that page.',
   },
   {
     title: 'The Lock In app',
@@ -255,10 +254,6 @@ onMounted(() => {
         <SitesSection :profile="profile" />
         <RedirectSection :profile="profile" />
       </template>
-    </section>
-
-    <section>
-      <QuotesSection />
     </section>
 
     <footer>

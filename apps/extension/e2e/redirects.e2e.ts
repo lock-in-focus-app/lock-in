@@ -18,7 +18,7 @@ import {
 } from './harness';
 
 // One browser for the whole file; each test picks up where the last one left off.
-describe('redirects and the intention gate', () => {
+describe('redirects and the redirect page', () => {
   let t: TestBrowser;
   let tab: Page;
   const gate = (target: string) => redirectPage(t, target);
@@ -29,11 +29,10 @@ describe('redirects and the intention gate', () => {
 
   beforeAll(async () => {
     t = await launch();
-    // Always show the gate, with a short fixed wait, so the test knows what to expect.
+    // A short fixed wait, and a reason to type, so the test knows what to expect.
     const control = await controlPage(t);
     await setProfileRedirect(control, 'deep-work', {
-      destinations: ['gate'],
-      gate: { wait: { mode: 'fixed', seconds: 3 } },
+      gate: { requireReason: true, wait: { mode: 'fixed', seconds: 3 } },
     });
     await control.close();
     tab = await t.browser.newPage();
@@ -46,7 +45,7 @@ describe('redirects and the intention gate', () => {
     expect(tab.url()).toBe(urls.x);
   });
 
-  it('sends redirected sites to the gate during a session', async () => {
+  it('sends redirected sites to the redirect page during a session', async () => {
     const popup = await openPopup(t, tab);
     const deepWork = await popup.$$('button.profile').then((buttons) => buttons[1]!);
     await deepWork.click();
@@ -55,7 +54,8 @@ describe('redirects and the intention gate', () => {
     await tab.goto(urls.reddit);
     await tab.waitForSelector('h1');
     expect(tab.url()).toBe(gate(urls.reddit));
-    expect(await gateText()).toContain('What did you come here for?');
+    expect(await gateText()).toContain('Focus for 3 seconds first');
+    expect(await gateText()).toContain('If you still want Reddit after that, go right ahead.');
     expect(await gateText()).toContain('First try at Reddit today');
     expect(await gateText()).toContain('LOCK IN · DEEP WORK');
   });
@@ -66,19 +66,16 @@ describe('redirects and the intention gate', () => {
     expect(await gateText()).toContain('2nd try at Reddit today');
   });
 
-  it('holds Continue behind a countdown', async () => {
-    expect(await continueButton()).toMatchObject({
-      disabled: true,
-      label: expect.stringMatching(/^Continue in \d+s$/),
-    });
+  it('holds the way through behind the wait', async () => {
+    expect(await continueButton()).toEqual({ disabled: true, label: 'Go to Reddit' });
   });
 
-  it('continues to the site with a pass once the countdown ends', async () => {
+  it('goes on to the site with a pass once the wait is up', async () => {
     await tab.type('textarea', 'Check the camping thread');
     await tab.waitForFunction(() => !document.querySelector<HTMLButtonElement>('button.continue')!.disabled, {
       timeout: 15_000,
     });
-    expect((await continueButton()).label).toBe('Continue to Reddit');
+    expect(await gateText()).toContain("Time's up. If you still want Reddit, go right ahead.");
 
     await Promise.all([tab.waitForNavigation(), tab.click('button.continue')]);
     expect(tab.url()).toBe(urls.reddit);
@@ -88,8 +85,11 @@ describe('redirects and the intention gate', () => {
     const storage = await stored(await openPopup(t, tab));
     expect(storage.activeSession?.passes?.reddit).toBeGreaterThan(Date.now() + 4 * 60_000);
     expect(storage.gateVisits).toHaveLength(2);
+    // Going on ends the wait, so the next trip after the pass waits again.
+    expect(storage.pageWaits?.reddit).toBeUndefined();
     expect(storage.gateVisits?.[1]).toMatchObject({
       recipeId: 'reddit',
+      destination: 'page',
       continued: true,
       intention: 'Check the camping thread',
     });
@@ -107,7 +107,7 @@ describe('redirects and the intention gate', () => {
     expect(tab.url()).toBe(gate(urls.x));
   });
 
-  it('goes back to the previous page from "Back to focus"', async () => {
+  it('goes back to the previous page from "Not now"', async () => {
     await tab.waitForSelector('button.back');
     await Promise.all([tab.waitForNavigation(), tab.click('button.back')]);
     expect(tab.url()).toBe(urls.reddit);

@@ -60,31 +60,41 @@ export interface Profile {
   apps?: AppRule[];
   /** How redirected sites behave. Missing fields fall back to the defaults. */
   redirect?: {
-    destinations?: RedirectDestination[];
     gate?: Partial<GateSettings>;
     links?: SavedLink[];
+    /** The profile's if-then plan, e.g. "When I want Reddit, I'll write one paragraph first." */
+    plan?: string;
   };
 }
-
-/** The pages a redirected site can send you to. */
-export type RedirectDestination = 'gate' | 'quote' | 'link' | 'stuck';
 
 /** What happens to a site's open tabs once its pass runs out. */
 export type PassExpiry = 'nothing' | 'pause' | 'redirect';
 
-/** How long Continue stays disabled on the intention gate. */
+/** How long the redirect page waits before the way through opens. */
 export type GateWait =
   | { mode: 'fixed'; seconds: number }
   /** Starts short and grows with each attempt at the same site today, up to a cap. */
   | { mode: 'escalating'; startSeconds: number; stepSeconds: number; maxSeconds: number };
 
 export interface GateSettings {
-  /** Whether Continue needs a typed reason. */
+  /** Whether going on to the site needs a typed reason. */
   requireReason: boolean;
   wait: GateWait;
   /** How long a pass to a redirected site lasts. */
   passMinutes: number;
   onPassExpiry: PassExpiry;
+}
+
+/**
+ * A running wait on the redirect page. It's kept, so leaving the page to work and coming back
+ * picks it up again instead of starting over.
+ */
+export interface PageWait {
+  /** The session it belongs to; a wait never carries into another session. */
+  sessionId: string;
+  /** Epoch milliseconds. */
+  startedAt: number;
+  seconds: number;
 }
 
 /** One of the user's own links, e.g. their draft or reading list. */
@@ -96,10 +106,11 @@ export interface SavedLink {
 
 /** How a profile handles redirected sites. */
 export interface RedirectSettings {
-  /** Which pages to show. One is picked at random for each visit. */
-  destinations: RedirectDestination[];
   gate: GateSettings;
+  /** Shown on the redirect page as ways back to work. */
   links: SavedLink[];
+  /** The if-then plan shown on the redirect page; empty for none. */
+  plan: string;
 }
 
 export interface Quote {
@@ -135,8 +146,11 @@ export interface GateVisit {
   recipeId: string;
   /** Epoch milliseconds. */
   at: number;
-  /** The page the visit was sent to. "blocked" is the page for restricted sites. */
-  destination?: RedirectDestination | 'blocked';
+  /**
+   * The page the visit was sent to: "page" for the redirect page, "blocked" for restricted sites.
+   * Visits from before the page was one page say "gate", "quote", "link" or "stuck".
+   */
+  destination?: string;
   /** The user's one-tap answer to "why are you here?". */
   why?: WhyReason;
   /** What the user said they came for, if they typed anything. */
