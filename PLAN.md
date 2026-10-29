@@ -134,8 +134,10 @@ Links to a redirected site can come from anywhere (a search result, a chat), and
 2. **Quote card**: a random quote from the bundled pack plus your own quotes.
 3. **Productive URL**: one of your own links, such as your draft doc, to-do list, Anki or reading list.
 4. **"I'm stuck" page**: a 2-minute structured unstick (rubber-duck prompt, break the task down, stretch, breathe).
+5. **Five minutes first** (the default for new profiles; existing profiles keep their choices): "Focus for 5 minutes. If you still want Reddit after that, go right ahead." It leans on two things: the hard part is usually starting, and a pull that comes from a moment of boredom tends to pass once you're back into the work. The five minutes keep counting if you leave the page, and the page shows your productive link (3) and your if-then plan (below) to get going with. Once they're up, it offers the site (with a pass, like the gate's) and an equally plain "Not now". Its "Still need it?" link to the gate only appears then too. The length can be changed per profile. (Why: in a study of the one sec app, a short wait and an easy way to back out both cut how often people opened an app, while the message alone did nothing. The "five minutes to get started" part is reasoning, not tested; §12.)
 
 Every redirect page shows:
+- the profile's **if-then plan**, if it has one: "When I want Reddit, I'll write one paragraph first." A profile can hold one optional plan line, edited with the profile in the app and the extension, with a line explaining what an if-then plan is (decide ahead of time what you'll do when the urge comes; it's one of the best-tested habit techniques, §12) and an example.
 - the **attempt counter**: "6th try at Reddit today"
 - the **one-tap "why?"**: bored / stuck / tired / curious
 - a **Satellites quick-capture box** (§4, comes with Satellites in Phase 3)
@@ -298,6 +300,7 @@ The sky has to stay smooth after years of use (aim for 20,000+ stars, roughly te
 - Satellites parked and their outcomes.
 - Overtime and focus trends.
 - Suggestions, e.g. "Try scheduling Deep Work before 2pm."
+- **Cues you can see:** when a pattern is clear ("You reach for Reddit when *stuck*, mostly 2–4pm"), a suggestion can offer to add an if-then plan for it (§3), with the same short explanation of what one is. Only inside the report, never as a pop-up.
 
 Insights are all computed locally.
 
@@ -306,9 +309,22 @@ Insights are all computed locally.
 ## 7. Other features
 - **Lock In observes; it doesn't interject.** It works quietly in the background and collects what happens, for the weekly report and the sky. It never prompts you to start a session or nudges you outside what you set up yourself. (Session suggestions from apps, e.g. "Obsidian opened — start *Writing*?", were considered and dropped for this reason.)
 - **App rules**: close or hide desktop apps (Discord, Steam, Slack) during a session.
-- **Session intention + reflection**: a one-line goal at the start, and "did you do it?" on the page that waits after the session ends (never a pop-up).
+- **Session intention + reflection**: a one-line goal at the start, and "did you do it?" on the page that waits after the session ends (never a pop-up). It's a switch on each profile, off by default, so people who don't want to give a reason never see it (e.g. on for Deep Work, off for Writing). The goal can be skipped even when it's on. Answers feed the weekly report (§6).
 - **Allowlist-only mode**: block everything except the listed sites.
 - **Earn your scroll** (opt-in): focus time earns a guilt-free budget of tamed-site time.
+
+### Habit goals: earn your sites (later; a planning session first)
+An idea from *Atomic Habits* (James Clear), where it's called temptation bundling (the evidence is real but modest, §12, which is one more question for the planning session): the thing you want comes after the thing you mean to do. A profile can have a **daily gate**: its Restricted sites (and app rules) stay on all day until you've done a habit you set up, e.g. "read 20 pages", "listen to 30 minutes of a book" or "study 50 Anki cards". Then they unlock until the day resets. It's a sibling of *Earn your scroll*, where focus time is what you earn with.
+- **It fits Lock In** rather than a separate app: the app already runs in the background, the extension always does, and the macOS helper (§8) blocks without the extension. A gate is a new way for blocking to *end*: a goal met instead of a timer running out.
+- **The habit loop:** the cue is going to the site, where the redirect page shows what's left ("12 of 20 pages"), only when you go there yourself, so it still observes and never interjects (above). The reward is the site. Finished goals could show in the sky (§5).
+- **First version: the honor system.** You log what you did (pages, minutes, cards) yourself, because most sources have no way to report it (a Kindle, Audible, Apple Books).
+- **Later, once sync (§8) reaches a phone** (mobile is out of scope for now, see Context): goals checked automatically, e.g. a Lock In session with a chosen profile, Anki through the AnkiConnect add-on's local server (it needs Anki open, and only the app can ask it), or sources on the phone.
+- **To work out in a planning session before building** (nothing here is decided):
+  - An escape hatch for days you can't, e.g. a plainly labelled "Skip today", and whether the sky notes it.
+  - When the day resets (e.g. 4am rather than midnight).
+  - No streaks at first: they tend to turn into guilt.
+  - The app, the extension or both. Honor-system goals could live in either; checked goals need the app.
+  - One device only until sync.
 
 ---
 
@@ -443,6 +459,7 @@ Built in slices, one PR each:
 - Richer report charts if the plain lines and bars stop being enough, e.g. focus across many weeks or a day-by-hour heatmap. A chart library such as [vue-data-ui](https://vue-data-ui.graphieros.com/docs) could do these; weigh its size against the performance budget (§8) first.
 - ✅ A short tour for new users, in the app and the extension. The app's Sky offers it once in a one-line strip (Take the tour, No thanks), and the extension's popup does the same. It walks the real pages in short steps, with the part a step is about framed and the page switching as it goes: the app's covers the sky, starting a session, profiles, satellites (and Alt+P) and the browser; the extension's covers profiles, site levels, the redirect page and linking the app. Every step has Back, Next and Skip tour (and Esc ends it). It can be taken again from the app's Settings › Tour and from the top of the extension's settings page.
 - ✅ Sites editable from either side: the app's Profiles › Sites sets each site's level and adds or removes sites by address, and the extension's settings and popup can add any site too (the popup offers "Keep it away from now on" during a session).
+- From the research (§12): the **Five minutes first** redirect page as the new default (§3), **if-then plans** on profiles, shown on redirect pages and suggested by the weekly report (§3, §6), and **session intention + reflection** as a switch on each profile (§7).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and they sync with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
@@ -452,9 +469,11 @@ Built in slices, one PR each:
 - Signed builds: macOS notarization requires a paid Apple account, while unsigned builds work with a Gatekeeper warning. Also publish to the Chrome Web Store and Firefox Add-ons.
 
 **Phase 6: Website, community sky & sync**
-- Marketing website (§10) + community-worlds gallery.
+- Marketing website (§10) + community-worlds gallery, with the Why it works page (§12).
 - Constellation sharing endpoint.
 - Sync between devices (§8, Sync): first a planning session to choose hosting, sign-in and encryption, then stats only, with an offline / hosted / self-hosted choice on first run. Live session sync after.
+
+**Later: habit goals** (§7, Habit goals): a planning session first, then the honor system; checked goals once sync reaches a phone.
 
 **Later: the observing spot** (once the art style is chosen)
 - Your spot, the town on the horizon, decorations and companions, bought with stardust or found in rare events (§5).
@@ -470,6 +489,7 @@ Built in slices, one PR each:
   - Animations, sections and even button hovers play on this contrast.
   - It respects `prefers-reduced-motion`.
 - Also on the site: download links, the community sky (§5), how it works, privacy promises, and the quiet support link.
+- **Why it works:** a page that walks through the research behind the features (§12) in plain words, each with its source, and is honest about what's strong, what's modest and what's only reasoning.
 
 ---
 
@@ -494,6 +514,46 @@ Built in slices, one PR each:
 
 ---
 
+## 12. The science behind it
+Lock In should help because of research that has held up, not because it sounds like it should. Most of what it does already rests on that research. This section keeps track of which findings back which features, so new features can be checked against it and the website's Why it works page (§10) can explain it. Each finding was checked against its paper's abstract (October 2026); the links are under Sources. "Strong" means a large meta-analysis, "modest" means real but small or a single study, and "reasoning" means not tested.
+
+### What Lock In already does, and why it works
+| Finding | Strength | In Lock In |
+|---|---|---|
+| **A pause and an easy way out cut how often you give in.** In a 6-week field study of the one sec app (Grüning et al., 2023), openings of the chosen apps fell 57%. The option to back out mattered most and the wait helped; the message alone did nothing. | Modest (one study) | The intention gate's countdown, the redirect pages, Five minutes first (§3) |
+| **Limits you set yourself work.** Letting people cap their own future screen time cut social media use a lot, and short-term help to cut back kept working after it ended (Allcott, Gentzkow & Song, 2022). | Strong (large field experiment) | Profiles, Hard mode and its passes, Restricted sites |
+| **Habits form from repeating something in the same context, and then that context sets them off** (Wood & Rünger, 2016). | Strong (review) | Taming feeds and hiding recommendations, removing the cue instead of fighting it |
+| **Writing down a plan for an unfinished task stops it from pulling at your attention** (Masicampo & Baumeister, 2011). | Modest (a set of lab studies) | Satellites (§4) |
+| **Tracking your progress helps you reach goals, more so when it's written down** (Harkin et al., 2016, 138 studies). | Strong (meta-analysis) | The weekly report (§6), the sky |
+| **Habits take a while, and one missed day doesn't undo one.** In the best-known study, the median was about 66 days, from 18 to 254 (Lally et al., 2010). | Modest (small study, not yet replicated) | Never showing a broken streak (§5); no "21 days" claims anywhere |
+| **Being kind to yourself after a slip goes with less procrastination next time** (Wohl, Pychyl & Bennett, 2010, students across two exams). | Modest (correlational) | A session that ends early just ends: no scolding, no lost progress beyond that session |
+| **Starting small makes starting easier** (the two-minute rule in *Atomic Habits*). | Reasoning | The quiet timer (§2): a short timer you're free to run past |
+| **People keep at things they chose themselves; pressure from outside wears that down** (self-determination theory, Ryan & Deci, 2000). | Strong (a large body of work) | Lock In observes and never interjects (§7); every default is editable |
+
+### New, from the research (decided October 2026)
+- **Five minutes first** (§3), the new default redirect page.
+- **If-then plans** (§3, §6). Deciding ahead of time "when X happens, I'll do Y" had a medium-to-large effect on reaching goals across 94 tests (Gollwitzer & Sheeran, 2006), one of the strongest results in the field. Since few people know the term, the app explains it where you write one.
+- **Session intention + reflection** (§7), a switch on each profile. A specific goal beats a vague "do your best" (Locke & Latham, 2002), and the "did you do it?" afterwards is progress tracking.
+
+### Considered and left out
+- **Planning the week at a fresh start** (a Monday, a new month): Lock In isn't a planning app.
+- **Break timers between sessions:** short breaks help with tiredness more than with output; not worth the extra settings.
+- **A separate rule for forgiving slips:** Lock In already doesn't punish them (above).
+- **Habit goals** (§7) stay parked for their own planning session. Temptation bundling works, but a larger follow-up found a smaller effect than the first study (Milkman, Minson & Volpp, 2014).
+
+### What hasn't held up (don't design on it)
+- **Willpower as a fuel tank that runs out** ("ego depletion"): a 23-lab replication found an effect of about zero (Hagger et al., 2016).
+- **"21 days to form a habit":** not from research (above).
+- **Self-imposed deadlines beating procrastination** (Ariely & Wertenbroch, 2002, often cited for commitment devices): a replication didn't find it, and the authors have asked for the paper to be retracted. Cite Allcott et al. for limits you set yourself instead.
+
+### What to keep out
+- **Points, badges and leaderboards.** Expected, tangible rewards can wear down people's own motivation (Deci, Koestner & Ryan, 1999; still debated). The sky reflects what you did; it isn't a currency to chase.
+- **Streaks you're afraid to lose.** Show the current and longest streak, never a broken one (§5).
+- **Nudges and nagging.** Lock In only acts on what you set up (§7).
+- **Variable rewards** (the slot-machine pull) only for focusing, never for visiting a site, and never something you can chase (§5, Comets and Rare events).
+
+---
+
 ## Sources
 - Freedom: [free vs premium](https://support.freedom.to/en/articles/13764747-what-s-included-in-free-and-premium-plans), [features](https://api.freedom.to/features)
 - Focus Friend: [App Store](https://apps.apple.com/US/app/id6742278016), [review](https://makeheadway.com/blog/focus-friend-app-review/)
@@ -504,3 +564,18 @@ Built in slices, one PR each:
 - Open-source prior art: [Focuser (Rust/Tauri)](https://github.com/aadeshrao123/Focuser/)
 - iOS limits (deferred): [Screen Time API in 2026](https://dev.to/twillywill/the-ios-screen-time-api-in-2026-what-apples-docs-dont-tell-you-151e), [Personal Team can't use Family Controls](https://hsb.horse/en/blog/personal-team-family-controls-limitation/)
 - Tauri 2: [roadmap / plugins](https://v2.tauri.app/blog/roadmap-to-tauri-2-0/)
+- Research (§12):
+  - Allcott, Gentzkow & Song (2022), [Digital Addiction](https://www.nber.org/papers/w28936), *American Economic Review*
+  - Deci, Koestner & Ryan (1999), [extrinsic rewards and intrinsic motivation](https://doi.org/10.1037/0033-2909.125.6.627), *Psychological Bulletin*
+  - Gollwitzer & Sheeran (2006), [implementation intentions and goal achievement](https://doi.org/10.1016/S0065-2601(06)38002-1), *Advances in Experimental Social Psychology*
+  - Grüning, Riedel & Lorenz-Spreen (2023), [directing smartphone use through the self-nudge app one sec](https://doi.org/10.1073/pnas.2213114120), *PNAS*
+  - Hagger et al. (2016), [a multilab preregistered replication of the ego-depletion effect](https://doi.org/10.1177/1745691616652873), *Perspectives on Psychological Science*
+  - Harkin et al. (2016), [does monitoring goal progress promote goal attainment?](https://doi.org/10.1037/bul0000025), *Psychological Bulletin*
+  - Lally et al. (2010), [how are habits formed](https://doi.org/10.1002/ejsp.674), *European Journal of Social Psychology*
+  - Locke & Latham (2002), [a practically useful theory of goal setting](https://doi.org/10.1037/0003-066X.57.9.705), *American Psychologist*
+  - Masicampo & Baumeister (2011), [plan making can eliminate the cognitive effects of unfulfilled goals](https://doi.org/10.1037/a0024192), *Journal of Personality and Social Psychology*
+  - Milkman, Minson & Volpp (2014), [temptation bundling at the gym](https://repository.upenn.edu/oid_papers/150), *Management Science*; the larger follow-up: [Wharton working paper](https://faculty.wharton.upenn.edu/wp-content/uploads/2017/07/TemptationBundling.pdf)
+  - Ryan & Deci (2000), [self-determination theory](https://doi.org/10.1037/0003-066X.55.1.68), *American Psychologist*
+  - Wohl, Pychyl & Bennett (2010), [self-forgiveness for procrastinating](https://doi.org/10.1016/j.paid.2010.01.029), *Personality and Individual Differences*
+  - Wood & Rünger (2016), [psychology of habit](https://dornsife.usc.edu/wendy-wood/wp-content/uploads/sites/183/2023/10/wood.runger.2016.pdf), *Annual Review of Psychology*
+  - On Ariely & Wertenbroch (2002): [Data Colada on the failed replication](https://datacolada.org/138)
