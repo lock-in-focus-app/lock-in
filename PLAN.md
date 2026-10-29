@@ -143,7 +143,7 @@ Links to a redirected site can come from anywhere (a search result, a chat), and
 
 Every trip is logged the same way (site, time, attempt #, why-tap, typed reason, whether you went on to the site) for the weekly report and comets.
 
-**Quotes & privacy:** quotes show only in the app, as the Sky's quote for the day. They come only from the bundled pack and your own; nothing is fetched. The bundled pack is public domain only (texts and translations published before 1931), with each quote's source noted in `packages/quotes` so it can be checked. A daily fetch from a public quote API was considered and dropped: it meant a network request, a third party's terms and adding TLS to the app. Your own quotes are added in the app's Settings. The extension no longer shows or edits them, but still keeps them in step with the app (newest change wins), so quotes added in the extension before reach the app when it links. Redirect events (site, time, attempt #, why-tap, intention text) are sent to the desktop app over Native Messaging for stats and insights.
+**Quotes & privacy:** quotes show only in the app, as the Sky's quote for the day. They come only from the bundled pack and your own; nothing is fetched. The bundled pack is public domain only (texts and translations published before 1931), with each quote's source noted in `packages/quotes` so it can be checked. A daily fetch from a public quote API was considered and dropped: it meant a network request, a third party's terms and adding TLS to the app. Your own quotes are added in the app's Settings. The extension has no quotes at all: it used to show them and sync your own with the app, and both were taken out in Phase 5. Redirect events (site, time, attempt #, why-tap, intention text) are sent to the desktop app over Native Messaging for stats and insights.
 
 ---
 
@@ -463,7 +463,7 @@ Built in slices, one PR each:
 - From the research (§12): **one predictable redirect page** with Five minutes first, replacing the four random pages (§3); **if-then plans** on profiles, shown on the redirect page (extension settings first, the app's Profiles later) and suggested by the weekly report (§3, §6); and **session intention + reflection** as a switch on each profile (§7).
 - Recipe live mode + element picker.
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
-- ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and they sync with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
+- ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and (until the extension dropped quotes) they synced with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
 - ✅ The support link (§8): "Support Lock In on Ko-fi" at the very bottom of the app's Settings and of the extension's settings page, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
 - Export/import.
 - ✅ Blocking without the extension, macOS first (§8). Windows and Linux later.

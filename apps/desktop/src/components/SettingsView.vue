@@ -82,7 +82,7 @@ function save(patch: Partial<Settings>) {
   emit('update:settings', { ...props.settings, ...patch });
 }
 
-// Quotes of the user's own, for the Sky's quote for the day. They sync with the extension's.
+// Quotes of the user's own, for the Sky's quote for the day.
 const quoteText = ref('');
 const quoteAuthor = ref('');
 const quotesFull = computed(() => props.ownQuotes.length >= maxOwnQuotes);

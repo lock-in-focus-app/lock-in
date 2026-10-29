@@ -77,8 +77,4 @@ describe('settings page', () => {
       .poll(async () => (await deepWork())?.links)
       .toMatchObject([{ title: 'Draft', url: 'https://docs.example.com/draft' }]);
   });
-
-  it("doesn't show quotes", async () => {
-    expect(await page.$eval('main', (main) => main.textContent)).not.toContain('Your quotes');
-  });
 });

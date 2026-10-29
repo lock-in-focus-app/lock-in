@@ -7,7 +7,6 @@ import {
   desktopHostName,
   starterProfiles,
   type GateVisit,
-  type OwnQuote,
   type PageWait,
   type Profile,
   type Session,
@@ -138,9 +137,8 @@ export interface Stored {
   activeSession?: Session | null;
   profiles?: Profile[];
   gateVisits?: GateVisit[];
-  ownQuotes?: OwnQuote[];
   pageWaits?: Record<string, PageWait>;
-  syncedAt?: { profiles: number; activeSession: number; ownQuotes?: number };
+  syncedAt?: { profiles: number; activeSession: number };
   tourOffered?: boolean;
 }
 
