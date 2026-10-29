@@ -5,8 +5,10 @@ import type {
   ConstellationName,
   GateVisitRecord,
   GlowColor,
+  ImportReport,
   InstalledApp,
   SatelliteAction,
+  SavedBackup,
   SessionRecord,
   Settings,
   SiteRule,
@@ -123,6 +125,12 @@ export const skyState = () => invoke<SkyState>('sky_state');
 
 /** Notes that the Sky has shown everything up to `at` (epoch ms), so each plays once. */
 export const skySeen = (at: number) => invoke<void>('sky_seen', { at });
+
+// Backups of everything (backup.rs): saved to the Downloads folder, and brought in from a file's
+// text, adding to what's here.
+export const exportBackup = (day: string) => invoke<SavedBackup>('export_backup', { day });
+export const showBackup = () => invoke<void>('show_backup');
+export const importBackup = (json: string) => invoke<ImportReport>('import_backup', { json });
 
 /** Notes that the tour for new users has been offered, so the Sky doesn't offer it again. */
 export const markTourOffered = () => invoke<void>('tour_offered');

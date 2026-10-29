@@ -2,12 +2,14 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::apps::{self, AppRule};
+use crate::backup::{Backup, History, ImportReport};
 use crate::browsers::KnownBrowser;
 use crate::error::{Error, Result};
 use crate::quotes::{MAX_OWN_QUOTES, OwnQuote};
 use crate::satellites::{self, DONE_TASKS_SHOWN_MS, Satellite, SatelliteAction, SatelliteRecord, SatelliteState};
 use crate::session::{
-    EndReason, GateVisit, Profile, Session, SessionGoal, SessionRecord, is_star_color, starter_profiles, truncate,
+    EndReason, GateVisit, MAX_GOAL_LENGTH, Profile, Session, SessionGoal, SessionRecord, is_star_color,
+    starter_profiles, truncate,
 };
 use crate::settings::Settings;
 use crate::sites::{self, SiteRule};
@@ -112,7 +114,7 @@ pub struct ProfileSummary {
 
 /// A name someone gave a constellation (PLAN §5). The constellations themselves are worked out
 /// from the session log in the UI; `id` is the id of its first star, which is a session's id.
-#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct ConstellationName {
@@ -889,6 +891,204 @@ impl Engine {
             first_logged_at: self.store.first_logged_at()?,
         })
     }
+
+    /// Everything the app keeps, for a backup file (backup.rs). This computer's browsers and
+    /// whatever's running stay out.
+    pub fn backup(&self, now: i64) -> Result<Backup> {
+        let mut backup = Backup::new(now);
+        backup.profiles = self.profiles.value.clone();
+        backup.settings = Some(self.settings.clone());
+        backup.own_quotes = self.own_quotes.value.clone();
+        backup.sky = self.store.load::<SkyState>(SKY)?.map(|s| s.value);
+        backup.history = self.store.history()?;
+        Ok(backup)
+    }
+
+    /// Brings in a backup, adding to what's here and taking nothing away. A profile in the file
+    /// replaces the one here with the same id, and the file's settings replace these, except the
+    /// hotkey and blocking without the extension, which are set up on each computer. Only
+    /// between sessions, so an import can't loosen a session or change its profile under it.
+    pub fn import(&mut self, backup: Backup, now: i64) -> Result<ImportReport> {
+        if self.session().is_some() {
+            return Err(Error::SessionRunning);
+        }
+        let mut state = vec![];
+
+        let mut profiles = self.profiles.value.clone();
+        let (mut new_profiles, mut updated_profiles) = (0, 0);
+        for profile in backup.profiles.into_iter().take(MAX_IMPORTED_PROFILES) {
+            let Some(profile) = imported_profile(profile) else {
+                continue;
+            };
+            match profiles.iter_mut().find(|p| p.id == profile.id) {
+                Some(here) if *here == profile => {}
+                Some(here) => {
+                    *here = profile;
+                    updated_profiles += 1;
+                }
+                None => {
+                    profiles.push(profile);
+                    new_profiles += 1;
+                }
+            }
+        }
+        // Newer than anything the extension has, so it takes them on too.
+        let profiles = Synced {
+            value: profiles,
+            updated_at: now.max(self.profiles.updated_at + 1),
+        };
+        if new_profiles + updated_profiles > 0 {
+            state.push((PROFILES, json(&profiles)?));
+        }
+
+        let mut quotes = self.own_quotes.value.clone();
+        let mut new_quotes = 0;
+        for quote in backup.own_quotes.into_iter().filter_map(OwnQuote::cleaned) {
+            let known = quotes.iter().any(|q| q.id == quote.id || q.text == quote.text);
+            if !known && quotes.len() < MAX_OWN_QUOTES {
+                quotes.push(quote);
+                new_quotes += 1;
+            }
+        }
+        let quotes = Synced {
+            value: quotes,
+            updated_at: now.max(self.own_quotes.updated_at + 1),
+        };
+        if new_quotes > 0 {
+            state.push((OWN_QUOTES, json(&quotes)?));
+        }
+
+        let settings = backup.settings.map_or_else(
+            || self.settings.clone(),
+            |settings| Settings {
+                satellite_hotkey: self.settings.satellite_hotkey.clone(),
+                block_without_extension: self.settings.block_without_extension,
+                ..settings.clamped()
+            },
+        );
+        if settings != self.settings {
+            let synced = Synced {
+                value: &settings,
+                updated_at: now,
+            };
+            state.push((SETTINGS, json(&synced)?));
+        }
+
+        // The same log and secret draw the same sky, so a computer with nothing logged of its own
+        // takes the backup's secret. One that has its own sky keeps it, so its stars don't change.
+        // Either way, everything brought in counts as seen, so it doesn't all play at once.
+        let here = self.store.load::<SkyState>(SKY)?.map(|s| s.value);
+        let fresh = self
+            .store
+            .sessions()?
+            .iter()
+            .all(|s| s.id.starts_with(crate::samples::SAMPLE_PREFIX));
+        let theirs = backup
+            .sky
+            .map(|sky| sky.secret)
+            .filter(|secret| !secret.is_empty() && secret.len() <= 64);
+        let secret = match (theirs, &here) {
+            (Some(theirs), _) if fresh => theirs,
+            (_, Some(here)) => here.secret.clone(),
+            (theirs, None) => theirs.unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string()),
+        };
+        let sky = SkyState {
+            secret,
+            seen_at: here.map_or(now, |here| here.seen_at.max(now)),
+        };
+        state.push((
+            SKY,
+            json(&Synced {
+                value: sky,
+                updated_at: now,
+            })?,
+        ));
+
+        let report = self.store.import(&imported_history(backup.history), &state)?;
+        if new_profiles + updated_profiles > 0 {
+            self.profiles = profiles;
+        }
+        if new_quotes > 0 {
+            self.own_quotes = quotes;
+        }
+        self.settings = settings;
+        self.pass_uses = self.store.pass_uses()?;
+        self.satellites = self.store.shown_satellites(now - DONE_TASKS_SHOWN_MS)?;
+        Ok(ImportReport {
+            new_profiles,
+            updated_profiles,
+            quotes: new_quotes,
+            ..report
+        })
+    }
+}
+
+/// The most profiles brought in from one backup.
+const MAX_IMPORTED_PROFILES: usize = 100;
+
+/// The longest profile name, as in packages/core (edits.ts).
+const MAX_PROFILE_NAME: usize = 40;
+
+/// The longest id kept from a backup. Lock In's own ids are far shorter.
+const MAX_ID: usize = 100;
+
+/// A profile from a backup with a sensible id and name, or None. The rest is kept as it is, as
+/// it is from the extension; reading it skips anything that can't be right.
+fn imported_profile(mut profile: Profile) -> Option<Profile> {
+    let mut name = profile.name.split_whitespace().collect::<Vec<_>>().join(" ");
+    truncate(&mut name, MAX_PROFILE_NAME);
+    if profile.id.is_empty() || profile.id.len() > MAX_ID || name.is_empty() {
+        return None;
+    }
+    profile.name = name;
+    if profile.rest.contains_key("starColor") && profile.star_color().is_none() {
+        profile.rest.remove("starColor");
+    }
+    Some(profile)
+}
+
+/// A backup's history with its text cut down to the usual limits, and anything without a
+/// sensible id left out.
+fn imported_history(mut history: History) -> History {
+    let usable = |id: &str| !id.is_empty() && id.len() <= MAX_ID;
+    history.sessions.retain(|s| usable(&s.id));
+    for session in &mut history.sessions {
+        truncate(&mut session.profile_name, MAX_PROFILE_NAME * 2);
+        if let Some(goal) = &mut session.goal {
+            truncate(goal, MAX_GOAL_LENGTH);
+        }
+        if session.goal.is_none() {
+            session.goal_met = None;
+        }
+    }
+    history.gate_visits.retain(|v| usable(&v.visit.id));
+    for logged in &mut history.gate_visits {
+        logged.visit = logged.visit.clone().trimmed();
+        logged.session_id = logged.session_id.take().filter(|id| usable(id));
+    }
+    history.satellites.retain(|s| usable(&s.id));
+    for satellite in &mut history.satellites {
+        if satellite.state == SatelliteState::Deleted {
+            satellite.text.clear();
+        }
+        truncate(&mut satellite.text, satellites::MAX_TEXT);
+        satellite.session_id = satellite.session_id.take().filter(|id| usable(id));
+    }
+    history.constellation_names = history
+        .constellation_names
+        .into_iter()
+        .filter(|c| usable(&c.id))
+        .filter_map(|c| cleaned_name(&c.name).map(|name| ConstellationName { name, ..c }))
+        .collect();
+    history
+}
+
+/// A value as it's saved, for `Store::import`.
+fn json<T: Serialize>(synced: &Synced<T>) -> Result<Synced<serde_json::Value>> {
+    Ok(Synced {
+        value: serde_json::to_value(&synced.value)?,
+        updated_at: synced.updated_at,
+    })
 }
 
 /// A constellation's name worth keeping from what was typed: on one line, trimmed and cut down to
@@ -1892,5 +2092,128 @@ mod tests {
         );
         // The end is left out, so weeks side by side don't share anything.
         assert_eq!(engine.activity(0, 100 * MIN).unwrap().sessions.len(), 1);
+    }
+
+    /// A computer with a bit of everything: a session with a goal, a trip to a site, a
+    /// satellite on the task list, a named constellation, a quote and its own settings.
+    fn used_engine() -> Engine {
+        let mut engine = engine();
+        engine.set_profile_asks_goal("writing", true, 0).unwrap();
+        engine.start_session("writing", MIN).unwrap();
+        engine.set_session_goal("Draft the intro", MIN).unwrap();
+        engine
+            .record_gate_visit(GateVisit {
+                id: "visit".into(),
+                recipe_id: "reddit".into(),
+                at: 2 * MIN,
+                destination: Some("page".into()),
+                why: Some("stuck".into()),
+                intention: None,
+                continued: false,
+            })
+            .unwrap();
+        engine.launch_satellite("reply to Sam", 3 * MIN).unwrap();
+        let session = engine.session().unwrap().id.clone();
+        engine.end_session(50 * MIN, EndReason::Stopped).unwrap();
+        engine.answer_goal(&session, true, 51 * MIN).unwrap();
+        let id = satellite_id(&engine, "reply to Sam");
+        engine.act_on_satellite(&id, SatelliteAction::Task, 52 * MIN).unwrap();
+        engine.name_constellation(&session, "Orion").unwrap();
+        engine.add_own_quote("Ship it.", "Me", 53 * MIN).unwrap();
+        let settings = Settings {
+            passes_per_week: 5,
+            glow: "aurora".into(),
+            satellite_hotkey: "Shift+Super+KeyK".into(),
+            ..Settings::default()
+        };
+        engine.save_settings(settings, 54 * MIN).unwrap();
+        engine.sky_state(54 * MIN).unwrap();
+        engine
+    }
+
+    /// Writes a backup the way a file holds it and reads it back.
+    fn through_a_file(backup: &Backup) -> Backup {
+        Backup::read(&serde_json::to_string(backup).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn a_backup_brings_everything_to_another_computer() {
+        let old = used_engine();
+        let backup = through_a_file(&old.backup(60 * MIN).unwrap());
+        let mut new = engine();
+        new.set_satellite_hotkey("Alt+KeyL".into(), 0).unwrap();
+
+        let report = new.import(backup, 100 * MIN).unwrap();
+        assert_eq!(
+            report,
+            ImportReport {
+                new_profiles: 0,
+                updated_profiles: 1,
+                sessions: 1,
+                gate_visits: 1,
+                satellites: 1,
+                quotes: 1,
+            }
+        );
+        assert_eq!(new.session_log().unwrap(), old.session_log().unwrap());
+        assert_eq!(new.session_log().unwrap()[0].goal_met, Some(true));
+        assert_eq!(new.store.gate_visits().unwrap(), old.store.gate_visits().unwrap());
+        assert_eq!(new.store.history().unwrap(), old.store.history().unwrap());
+        assert_eq!(satellites(&new), vec![("reply to Sam", SatelliteState::Task)]);
+        assert_eq!(new.constellation_names().unwrap(), old.constellation_names().unwrap());
+        assert_eq!(new.snapshot(0).own_quotes, old.snapshot(0).own_quotes);
+        assert!(new.snapshot(0).profiles.iter().any(|p| p.id == "writing" && p.ask_goal));
+        // Newer than the extension's copy, so the extension takes the profiles too.
+        assert_eq!(new.profiles.updated_at, 100 * MIN);
+        // The hotkey and blocking are set up on each computer.
+        assert_eq!(
+            (new.settings.passes_per_week, new.settings.glow.as_str()),
+            (5, "aurora")
+        );
+        assert_eq!(new.settings.satellite_hotkey, "Alt+KeyL");
+        // Nothing was logged here, so the sky is drawn as it was, with what came in already seen.
+        let sky = new.sky_state(0).unwrap();
+        assert_eq!(sky.secret, old.sky_state(0).unwrap().secret);
+        assert_eq!(sky.seen_at, 100 * MIN);
+
+        // The same file again adds nothing.
+        let again = through_a_file(&old.backup(60 * MIN).unwrap());
+        assert_eq!(new.import(again, 110 * MIN).unwrap(), ImportReport::default());
+    }
+
+    #[test]
+    fn an_import_adds_to_whats_here_and_takes_nothing_away() {
+        let mut backup = used_engine().backup(60 * MIN).unwrap();
+        let mut theirs = backup.profiles[0].clone();
+        theirs.id = "theirs".into();
+        theirs.name = "  Their   profile ".into();
+        theirs.rest.insert("starColor".into(), "red; display: none".into());
+        backup.profiles.push(theirs);
+
+        let mut here = engine();
+        here.start_session("deep-work", 0).unwrap();
+        assert!(matches!(
+            here.import(through_a_file(&backup), MIN),
+            Err(Error::SessionRunning)
+        ));
+        here.end_session(30 * MIN, EndReason::Stopped).unwrap();
+        here.launch_satellite("mine", 31 * MIN).unwrap();
+        here.add_own_quote("Ship it.", "", 31 * MIN).unwrap();
+        let secret = here.sky_state(31 * MIN).unwrap().secret;
+
+        let report = here.import(through_a_file(&backup), 100 * MIN).unwrap();
+        assert_eq!((report.new_profiles, report.updated_profiles), (1, 1));
+        assert_eq!(report.quotes, 0, "the same quote isn't added twice");
+        let names: Vec<_> = here.snapshot(0).profiles.into_iter().map(|p| p.name).collect();
+        assert_eq!(names, ["Writing", "Deep Work", "Wind Down", "Their profile"]);
+        let theirs = here.profile("theirs").unwrap();
+        assert!(
+            !theirs.rest.contains_key("starColor"),
+            "a star color that isn't one is dropped"
+        );
+        assert_eq!(here.session_log().unwrap().len(), 2);
+        assert_eq!(satellites(&here).len(), 2);
+        // This computer has its own sky, which stays as it is.
+        assert_eq!(here.sky_state(0).unwrap().secret, secret);
     }
 }

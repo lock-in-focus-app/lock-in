@@ -1,4 +1,5 @@
 mod apps;
+mod backup;
 pub mod blocker;
 pub mod bridge;
 mod browsers;
@@ -534,6 +535,7 @@ pub fn run() {
             app.manage(IdleTask::default());
             app.manage(WatchTask::default());
             app.manage(BlockerTask::default());
+            app.manage(backup::LastBackup::default());
             let wake = WatchWake::default();
             launches::listen(Arc::clone(&wake.0));
             app.manage(wake);
@@ -620,6 +622,9 @@ pub fn run() {
             commands::sky_state,
             commands::sky_seen,
             commands::tour_offered,
+            commands::export_backup,
+            commands::show_backup,
+            commands::import_backup,
             commands::add_own_quote,
             commands::remove_own_quote,
             commands::turned_back,

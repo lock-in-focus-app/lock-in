@@ -2,7 +2,10 @@ use std::path::Path;
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_json::Value;
 
+use crate::backup::{History, ImportReport, LoggedSatellite, LoggedVisit};
+use crate::engine::ConstellationName;
 use crate::error::Result;
 use crate::satellites::{Satellite, SatelliteRecord, SatelliteState};
 use crate::session::{EndReason, GateVisit, SessionRecord};
@@ -396,6 +399,115 @@ impl Store {
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Everything logged, for a backup. Sample data stays out.
+    pub fn history(&self) -> Result<History> {
+        let sample = |id: &str| id.starts_with(crate::samples::SAMPLE_PREFIX);
+        let mut statement = self.db.prepare(
+            "SELECT id, text, launched_at, session_id, state, state_at, snoozes, tasked_at
+             FROM satellites ORDER BY launched_at",
+        )?;
+        let satellites = statement.query_map([], |row| {
+            Ok(LoggedSatellite {
+                id: row.get(0)?,
+                text: row.get(1)?,
+                launched_at: row.get(2)?,
+                session_id: row.get(3)?,
+                state: SatelliteState::parse(&row.get::<_, String>(4)?).unwrap_or(SatelliteState::Back),
+                state_at: row.get(5)?,
+                snoozes: row.get(6)?,
+                tasked_at: row.get(7)?,
+            })
+        })?;
+        Ok(History {
+            sessions: self.sessions()?.into_iter().filter(|s| !sample(&s.id)).collect(),
+            gate_visits: self
+                .gate_visits()?
+                .into_iter()
+                .filter(|(_, visit)| !sample(&visit.id))
+                .map(|(session_id, visit)| LoggedVisit { session_id, visit })
+                .collect(),
+            satellites: satellites.collect::<rusqlite::Result<_>>()?,
+            constellation_names: self
+                .constellation_names()?
+                .into_iter()
+                .filter(|(id, _)| !sample(id))
+                .map(|(id, name)| ConstellationName { id, name })
+                .collect(),
+        })
+    }
+
+    /// Brings in a backup's history and saves `state` (key, value), all in one go, so an import
+    /// that fails part way changes nothing. What's here already wins over the backup's copy.
+    pub fn import(&mut self, history: &History, state: &[(&str, Synced<Value>)]) -> Result<ImportReport> {
+        let tx = self.db.transaction()?;
+        let mut report = ImportReport::default();
+        for record in &history.sessions {
+            report.sessions += tx.execute(
+                "INSERT OR IGNORE INTO sessions (id, profile_id, profile_name, started_at, ended_at, timer_minutes,
+                    focused_ms, overtime_ms, idle_tail_ms, end_reason, broken, goal, goal_met)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                params![
+                    record.id,
+                    record.profile_id,
+                    record.profile_name,
+                    record.started_at,
+                    record.ended_at,
+                    record.timer_minutes,
+                    record.focused_ms,
+                    record.overtime_ms,
+                    record.idle_tail_ms,
+                    record.end_reason.as_str(),
+                    record.broken,
+                    record.goal,
+                    record.goal_met,
+                ],
+            )? as u32;
+        }
+        for LoggedVisit { session_id, visit } in &history.gate_visits {
+            report.gate_visits += tx.execute(
+                "INSERT OR IGNORE INTO gate_visits (id, session_id, recipe_id, at, destination, why, intention, continued)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    visit.id,
+                    session_id,
+                    visit.recipe_id,
+                    visit.at,
+                    visit.destination,
+                    visit.why,
+                    visit.intention,
+                    visit.continued,
+                ],
+            )? as u32;
+        }
+        for satellite in &history.satellites {
+            report.satellites += tx.execute(
+                "INSERT OR IGNORE INTO satellites (id, text, launched_at, session_id, state, state_at, snoozes, tasked_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    satellite.id,
+                    satellite.text,
+                    satellite.launched_at,
+                    satellite.session_id,
+                    satellite.state.as_str(),
+                    satellite.state_at,
+                    satellite.snoozes,
+                    satellite.tasked_at,
+                ],
+            )? as u32;
+        }
+        for name in &history.constellation_names {
+            tx.execute(
+                "INSERT OR IGNORE INTO constellation_names (id, name) VALUES (?1, ?2)",
+                params![name.id, name.name],
+            )?;
+        }
+        for (key, synced) in state {
+            save(&tx, key, synced)?;
+        }
+        tx.commit()?;
+        Ok(report)
     }
 
     /// When the first session, gate visit or satellite was logged (epoch ms), if anything has

@@ -21,6 +21,8 @@ pub enum Error {
     TooManyQuotes,
     /// Installing, removing or reaching the blocker's helper went wrong.
     Blocker(String),
+    /// A backup couldn't be saved or brought in.
+    Backup(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -47,7 +49,7 @@ impl fmt::Display for Error {
                 crate::quotes::MAX_OWN_QUOTES
             ),
             Error::Hotkey(problem) => write!(f, "{problem}"),
-            Error::Blocker(problem) => f.write_str(problem),
+            Error::Blocker(problem) | Error::Backup(problem) => f.write_str(problem),
         }
     }
 }

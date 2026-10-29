@@ -89,7 +89,7 @@ A profile bundles:
 - timer settings
 - the redirect page's settings (wait, if-then plan, pass, links)
 
-You can create, edit, duplicate, delete, reorder, and import/export (JSON) profiles. The app ships with **starter profiles that show what's possible**. They're ordinary editable profiles, and "Reset starter profiles" restores them:
+You can create, edit, duplicate, delete and reorder profiles, and take them to another computer in the app's backup file (§7). The app ships with **starter profiles that show what's possible**. They're ordinary editable profiles, and "Reset starter profiles" restores them:
 - *Writing*: Reddit and YouTube tamed + grayscale (YouTube Shorts redirected); X, Instagram, TikTok and Facebook redirected; Discord closed
 - *Deep Work*: all social redirected (five minutes first), chat apps closed
 - *Wind Down*: Reddit, YouTube and Instagram tamed (no feeds or recommendations; Shorts and Reels redirected), nothing else
@@ -314,6 +314,9 @@ Insights are all computed locally.
 - **Session intention + reflection**: a one-line goal at the start, and "did you do it?" on the page that waits after the session ends (never a pop-up). It's a switch on each profile, off by default, so people who don't want to give a reason never see it (e.g. on for Deep Work, off for Writing). The goal can be skipped even when it's on. Answers feed the weekly report (§6).
   - Built in the app only: the extension's settings stay about what happens on each site. The switch is "Ask for a goal" in Profiles › Timer. Pressing that profile's start button on the Sky turns the row into one line, "What will you get done?", with ‹ Back and a button that reads "Start without a goal" until something's typed. The goal shows under the session's clock. Afterwards, a strip at the top of the Sky (in place of the day's quote) shows it with "Did you do it?" and Yes, I did / Not this time; it waits until it's answered or the next session starts. Sessions started from the menu bar or the extension don't ask.
   - The goal and the answer are kept in the session log (`goal`, `goal_met`), not synced with the extension. Your week's focus section counts them: "3 of 5 goals done · 1 unanswered".
+- **Backup (export/import)**, in the app's Settings › Backup. Export saves everything in one JSON file in the Downloads folder ("Lock In backup 2026-10-29.json", only readable by you, never over an earlier one): profiles as they're saved (sites, page rules, redirect settings and plan, timer, app rules, star color, the goal switch), settings, your quotes, the sky's secret, and the whole log (sessions with goals, trips to sites, satellites with what they say, constellation names). Sample data stays out. The file says `"lockIn": "backup"` and a `version`; a newer version than the app knows is turned away.
+  - Import adds what's in the file to what's here and never removes anything, so the same file twice changes nothing the second time. A profile in the file replaces the one here with the same id, others are added; its settings replace these except the satellite hotkey and blocking without the extension, which are set up on each computer. A computer with nothing logged takes the backup's sky secret, so the same sky comes back; one with its own sky keeps it. Everything brought in counts as seen, so it doesn't all play at once.
+  - Only between sessions, so an import can't loosen a running session (Hard or not) or change its profile under it. The extension takes the imported profiles through the usual sync. The extension itself has no export, since its settings are about each site.
 - **Allowlist-only mode**: block everything except the listed sites.
 - **Earn your scroll** (opt-in): focus time earns a guilt-free budget of tamed-site time.
 
@@ -410,7 +413,7 @@ lock-in/
 **Phase 0: Setup** (you scaffold)
 - ✅ pnpm monorepo, AGPL-3.0 license, shared types in `packages/core`, unit tests, in-repo browser tests, CI on every push.
 - ✅ Lint (ESLint with typescript-eslint and eslint-plugin-vue) and format (Prettier), checked in CI.
-- JSON schemas for recipes and profiles (still to do; they matter once import/export lands).
+- JSON schemas for recipes and profiles (still to do, for the recipe editor). Backups don't need one: the app's Rust types define the file and check it on import (§7).
 
 **Phase 1: Extension MVP** *(replaces your manual SocialFocus toggling first)*
 - ✅ Standalone: sessions run from the extension popup, with no desktop app needed (the app plugs in later via Native Messaging).
@@ -469,7 +472,7 @@ Built in slices, one PR each:
 - More built-in recipes as people ask for them (e.g. Twitch, Threads, Bluesky).
 - ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and (until the extension dropped quotes) they synced with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
 - ✅ The support link (§8): "Support Lock In on Ko-fi" at the very bottom of the app's Settings and of the extension's settings page, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
-- Export/import.
+- ✅ Export/import: Settings › Backup in the app, everything in one file, imported by adding to what's here, between sessions only (§7).
 - ✅ Blocking without the extension, macOS first (§8). Windows and Linux later.
 - Signed builds: macOS notarization requires a paid Apple account, while unsigned builds work with a Gatekeeper warning. Also publish to the Chrome Web Store and Firefox Add-ons.
 
