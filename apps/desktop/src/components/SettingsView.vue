@@ -162,7 +162,7 @@ const glowHelp = computed(() => {
 </script>
 
 <template>
-  <section class="settings">
+  <section class="settings card panel">
     <section class="read" aria-labelledby="sessions">
       <h2 id="sessions" class="mono">{{ numbered('sessions') }} — Sessions</h2>
       <div class="field">
@@ -455,6 +455,11 @@ const glowHelp = computed(() => {
 </template>
 
 <style scoped>
+/* Everything sits in one dark frame, so it reads well over a busy part of the sky. */
+.settings {
+  padding: 0 14px 12px;
+}
+
 /* Numbered sections with hairlines between them, like the weekly report. */
 .read {
   padding: 14px 0 4px;

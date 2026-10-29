@@ -96,6 +96,31 @@ button.card:hover::before {
   background-color: rgb(20 26 48 / 0.66);
 }
 
+/*
+ * A frame a whole page of reading sits in, like Settings: darker than the others, so paragraphs
+ * stay easy to read over the planets and nebulae, with a glassy sheen and lit top edge drawn
+ * the same way as the session's frame (SessionView.vue).
+ */
+.card.panel::before {
+  background-color: rgb(8 11 22 / 0.82);
+  box-shadow:
+    inset 0 1px 0 rgb(220 228 255 / 0.12),
+    inset 0 0 32px rgb(220 228 255 / 0.03),
+    0 12px 32px rgb(0 0 0 / 0.3);
+}
+
+.card.panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgb(220 228 255 / 0.06), transparent 160px),
+    linear-gradient(115deg, transparent 30%, rgb(220 228 255 / 0.025) 42%, transparent 54%);
+}
+
 /* A small uppercase monospace readout, with the figures in it brighter. */
 .mono {
   font: 10px/1.5 var(--mono);
