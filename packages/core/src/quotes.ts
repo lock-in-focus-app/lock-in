@@ -1,4 +1,3 @@
-import { pickQuote } from './destinations';
 import { seeded } from './sky';
 import type { OwnQuote, Quote } from './types';
 
@@ -8,6 +7,9 @@ import type { OwnQuote, Quote } from './types';
 export const maxOwnQuotes = 200;
 export const maxQuoteLength = 280;
 export const maxQuoteAuthorLength = 80;
+
+/** How much more likely each of the user's own quotes is than a bundled one. */
+const ownQuoteWeight = 3;
 
 /** The list with a new quote added, or the same list if there's no quote to add or no room. */
 export function withOwnQuote(list: readonly OwnQuote[], id: string, text: string, author: string): OwnQuote[] {
@@ -24,4 +26,14 @@ export function withOwnQuoteRemoved(list: readonly OwnQuote[], id: string): OwnQ
 /** The quote for a day, like "2026-10-28": the same one all that day, favoring the user's own. */
 export function quoteForDay(bundled: readonly Quote[], own: readonly OwnQuote[], day: string): Quote | undefined {
   return pickQuote(bundled, own, seeded(`quote:${day}`));
+}
+
+/** A random quote, favoring the user's own. */
+export function pickQuote(
+  bundled: readonly Quote[],
+  own: readonly OwnQuote[],
+  random: () => number = Math.random,
+): Quote | undefined {
+  const weighted = [...bundled, ...own.flatMap((quote) => Array<Quote>(ownQuoteWeight).fill(quote))];
+  return weighted[Math.floor(random() * weighted.length)];
 }

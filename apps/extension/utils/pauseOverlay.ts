@@ -86,7 +86,7 @@ export interface PauseOverlayOptions {
 const copy = {
   expired: (o: PauseOverlayOptions) => ({
     title: `Your pass for ${o.siteName} ran out`,
-    body: "Still need it? You'll go back through the gate first.",
+    body: "Still need it? You'll go back through the redirect page's wait first.",
   }),
   'open-before': (o: PauseOverlayOptions) => ({
     title: `${o.siteName} is paused for now`,

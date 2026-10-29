@@ -47,7 +47,7 @@ describe('restricted sites', () => {
     const text = await pageText();
     expect(text).toContain('Reddit is off for now');
     expect(text).toContain('First try at Reddit today');
-    expect(text).not.toContain('Still need Reddit?');
+    expect(text).not.toContain('Go to Reddit');
     expect(await tab.$('button.continue')).toBeNull();
     await expect
       .poll(async () => (await stored(control)).gateVisits?.at(-1))
@@ -61,7 +61,7 @@ describe('restricted sites', () => {
     expect(tab.url()).toBe(redirectPage(t, urls.reddit));
   });
 
-  it('still lets redirected sites through the gate', async () => {
+  it('still gives redirected sites the redirect page', async () => {
     await tab.goto(urls.x);
     await tab.waitForSelector('.badge');
     expect(await pageText()).not.toContain('is off for now');

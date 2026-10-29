@@ -71,15 +71,18 @@ export {
 export {
   defaultRedirectSettings,
   defaultWaits,
-  redirectDestinations,
+  maxPlanLength,
+  pageWaitFor,
   redirectSettingsFor,
+  waitLabel,
   waitSecondsFor,
+  waitSecondsLeft,
 } from './settings';
-export { pickDestination, pickLink, pickQuote } from './destinations';
 export {
   maxOwnQuotes,
   maxQuoteAuthorLength,
   maxQuoteLength,
+  pickQuote,
   quoteForDay,
   withOwnQuote,
   withOwnQuoteRemoved,

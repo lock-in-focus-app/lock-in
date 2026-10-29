@@ -6,35 +6,11 @@ describe('settings page', () => {
   let t: TestBrowser;
   let page: Page;
 
-  const deepWork = async () => (await stored(page)).profiles!.find((p) => p.id === 'deep-work')!.redirect!;
-  // Each click works from what's on screen, so tests wait for one change to be saved (and
-  // drawn) before the next, as a person would. A slow CI runner can take a while.
-  const savedDestinations = (expected: string[]) =>
-    expect.poll(async () => (await deepWork()).destinations).toEqual(expected);
-  const clickDestination = (label: string) =>
-    page.$$eval(
-      '.destinations label',
-      (labels, wanted) =>
-        labels
-          .find((l) => l.querySelector('.name')!.textContent === wanted)!
-          .querySelector('input')!
-          .click(),
-      label,
-    );
-
+  const deepWork = async () => (await stored(page)).profiles?.find((p) => p.id === 'deep-work')?.redirect;
   const clickSwitch = (label: string) =>
     page.$$eval(
       '[role=switch]',
       (els, wanted) => (els.find((el) => el.querySelector('.label')!.textContent === wanted) as HTMLElement).click(),
-      label,
-    );
-  const switchState = (label: string) =>
-    page.$$eval(
-      '[role=switch]',
-      (els, wanted) => {
-        const el = els.find((e) => e.querySelector('.label')!.textContent === wanted) as HTMLButtonElement;
-        return { on: el.getAttribute('aria-checked') === 'true', disabled: el.disabled };
-      },
       label,
     );
 
@@ -61,56 +37,31 @@ describe('settings page', () => {
     expect(link).toEqual({ text: 'SUPPORT LOCK IN ON KO-FI ↗', href: 'https://ko-fi.com/sortelone', target: '_blank' });
   });
 
-  it("shows the profile's redirect pages, and the gate on its own", async () => {
-    const checked = await page.$$eval('.destinations label', (labels) =>
-      labels.filter((l) => l.querySelector('input')!.checked).map((l) => l.querySelector('.name')!.textContent),
-    );
-    expect(checked).toEqual(['Quote', "I'm stuck"]);
-    expect(await switchState('Show the gate right away')).toEqual({ on: true, disabled: false });
+  it('saves the if-then plan when you leave the field', async () => {
+    await page.type('input[aria-label="Your if-then plan"]', "  When I want Reddit, I'll write one paragraph first. ");
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await deepWork())?.plan).toBe("When I want Reddit, I'll write one paragraph first.");
   });
 
-  it('turns pages on and off', async () => {
-    await clickDestination('Quote');
-    await savedDestinations(['gate', 'stuck']);
-    await clickDestination('Your links');
-    await savedDestinations(['gate', 'link', 'stuck']);
-    expect(await page.$eval('main', (main) => main.textContent)).toContain('Your links is skipped for now');
-  });
-
-  it('always leaves somewhere to land', async () => {
-    await clickSwitch('Show the gate right away');
-    await savedDestinations(['link', 'stuck']);
-    await clickDestination('Your links');
-    await savedDestinations(['stuck']);
-    expect(await page.$$eval('.destinations input:disabled', (inputs) => inputs.length)).toBe(1);
-
-    // With the gate as the only choice, it's the switch that can't be turned off.
-    await clickSwitch('Show the gate right away');
-    await savedDestinations(['gate', 'stuck']);
-    await clickDestination("I'm stuck");
-    await savedDestinations(['gate']);
-    expect(await switchState('Show the gate right away')).toEqual({ on: true, disabled: true });
-    expect(await page.$eval('main', (main) => main.textContent)).toContain('every redirected visit goes straight to');
-  });
-
-  it('saves gate settings', async () => {
-    await clickSwitch('Require a reason to continue');
+  it('saves the wait and pass settings', async () => {
+    await clickSwitch('Require a reason to go on');
     await page.select('select[aria-label="When a pass runs out"]', 'redirect');
-    await page.select('select[aria-label="Wait before Continue"]', 'fixed');
-    // The seconds field shows up once the change to a fixed wait has saved.
+    // Five minutes by default, said in words.
+    expect(await page.$eval('main', (main) => main.textContent)).toContain('Focus for 5 minutes first');
     const seconds = await page.waitForSelector('input[aria-label="Wait in seconds"]');
     await seconds!.click({ count: 3 });
     await seconds!.type('999');
     await page.keyboard.press('Tab');
 
     await expect
-      .poll(async () => (await deepWork()).gate)
+      .poll(async () => (await deepWork())?.gate)
       .toMatchObject({
         requireReason: true,
         onPassExpiry: 'redirect',
-        wait: { mode: 'fixed', seconds: 300 },
+        wait: { mode: 'fixed', seconds: 600 },
       });
-    expect(await page.$eval('input[aria-label="Wait in seconds"]', (input) => input.value)).toBe('300');
+    expect(await page.$eval('input[aria-label="Wait in seconds"]', (input) => input.value)).toBe('600');
+    expect(await page.$eval('main', (main) => main.textContent)).toContain('Focus for 10 minutes first');
   });
 
   it('adds links, assuming https', async () => {
@@ -123,7 +74,7 @@ describe('settings page', () => {
     await page.type('input[aria-label="Link address"]', 'docs.example.com/draft');
     await page.click('form.add:has(input[aria-label="Link address"]) button[type=submit]');
     await expect
-      .poll(async () => (await deepWork()).links)
+      .poll(async () => (await deepWork())?.links)
       .toMatchObject([{ title: 'Draft', url: 'https://docs.example.com/draft' }]);
   });
 

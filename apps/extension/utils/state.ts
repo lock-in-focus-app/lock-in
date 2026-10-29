@@ -1,4 +1,11 @@
-import { starterProfiles, type GateVisit, type OwnQuote, type Profile, type Session } from '@lock-in/core';
+import {
+  starterProfiles,
+  type GateVisit,
+  type OwnQuote,
+  type PageWait,
+  type Profile,
+  type Session,
+} from '@lock-in/core';
 
 /** The running session, shared by the popup and every content script. */
 export const activeSession = storage.defineItem<Session | null>('local:activeSession', {
@@ -15,7 +22,15 @@ export const gateVisits = storage.defineItem<GateVisit[]>('local:gateVisits', {
   fallback: [],
 });
 
-/** Quotes the user added. They show up on the quote card alongside the bundled ones, and sync with the app. */
+/**
+ * The redirect page's running wait for each site, keyed by recipe id, so leaving the page to
+ * work and coming back picks the countdown back up.
+ */
+export const pageWaits = storage.defineItem<Record<string, PageWait>>('local:pageWaits', {
+  fallback: {},
+});
+
+/** Quotes the user added. They show up on the redirect page alongside the bundled ones, and sync with the app. */
 export const ownQuotes = storage.defineItem<OwnQuote[]>('local:ownQuotes', {
   fallback: [],
 });

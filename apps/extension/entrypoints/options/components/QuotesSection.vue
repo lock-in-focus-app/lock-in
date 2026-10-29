@@ -17,8 +17,9 @@ async function addQuote() {
 <template>
   <h2>Your quotes</h2>
   <p class="help">
-    Shown on the Quote page, mixed in with the built-in ones and picked more often. Every profile shares them, and the
-    Lock In app shows them too once it's linked. Pick lines that get you back to work, not just ones that sound nice.
+    Shown on the redirect page when a profile has no if-then plan, mixed in with the built-in ones and picked more
+    often. Every profile shares them, and the Lock In app shows them too once it's linked. Pick lines that get you back
+    to work, not just ones that sound nice.
   </p>
   <ul v-if="quoteList?.length" class="list items">
     <li v-for="quote in quoteList" :key="quote.id">

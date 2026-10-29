@@ -92,7 +92,7 @@ const tourSteps: TourStep[] = [
   {
     target: 'redirect',
     title: 'The redirect page',
-    text: 'A redirected site shows one of these Lock In pages instead. If you really need the site, the intention gate asks what you came for, then lets you through for a few minutes.',
+    text: 'A redirected site shows a Lock In page first: focus for a few minutes, and if you still want the site after that, go right ahead. Your if-then plan, written here, shows on that page.',
   },
   {
     title: 'The Lock In app',
