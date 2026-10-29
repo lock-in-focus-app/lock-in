@@ -4,6 +4,7 @@
 use tauri::{AppHandle, Manager};
 
 use crate::apps::{AppRule, InstalledApp};
+use crate::backup::{Backup, ImportReport, LastBackup, SavedBackup};
 use crate::blocker::BlockerStatus;
 use crate::engine::{Activity, ConstellationName, SkyState, Snapshot};
 use crate::error::{Error, Result};
@@ -248,6 +249,47 @@ pub fn sky_state(app: AppHandle) -> Result<SkyState> {
 #[tauri::command]
 pub fn sky_seen(app: AppHandle, at: i64) -> Result<()> {
     crate::engine(&app).sky_seen(at, crate::now_ms())
+}
+
+/// Saves a backup of everything in the Downloads folder. `day` is today's local date, like
+/// "2026-10-29", for the file's name.
+#[tauri::command]
+pub fn export_backup(app: AppHandle, day: String) -> Result<SavedBackup> {
+    // Let go of the engine before writing the file.
+    let backup = crate::engine(&app).backup(crate::now_ms())?;
+    let path = crate::backup::save(&backup, &day)?;
+    let name = |p: Option<&std::ffi::OsStr>| p.map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let saved = SavedBackup {
+        file_name: name(path.file_name()),
+        folder: name(path.parent().and_then(|p| p.file_name())),
+    };
+    *app.state::<LastBackup>()
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(path);
+    Ok(saved)
+}
+
+/// Shows the last backup saved in Finder (or the system's file manager).
+#[tauri::command]
+pub fn show_backup(app: AppHandle) -> Result<()> {
+    let path = app
+        .state::<LastBackup>()
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone();
+    let path = path.ok_or_else(|| Error::Backup("there's no backup to show yet".into()))?;
+    tauri_plugin_opener::reveal_item_in_dir(path).map_err(|error| Error::Backup(error.to_string()))
+}
+
+/// Brings in a backup file's contents, adding to what's here. Only between sessions.
+#[tauri::command]
+pub fn import_backup(app: AppHandle, json: String) -> Result<ImportReport> {
+    let backup = Backup::read(&json)?;
+    let report = crate::engine(&app).import(backup, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(report)
 }
 
 /// Notes that the tour for new users has been offered, taken or turned down.

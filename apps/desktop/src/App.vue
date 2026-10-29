@@ -361,6 +361,16 @@ const sampleData = (action: 'add' | 'remove') =>
     await loadSky();
   });
 
+// A backup brings in more of the log, and maybe the sky's secret (on a computer with no sky of its
+// own yet), so the sky is read again.
+const imported = () =>
+  run(async () => {
+    sky.value = undefined;
+    await loadLog();
+    await loadNames();
+    await loadSky();
+  });
+
 const inState = (state: SatelliteState) => snapshot.value?.satellites.filter((s) => s.state === state) ?? [];
 const satellites = computed(() => ({
   back: inState('back'),
@@ -548,6 +558,7 @@ async function run(action: () => Promise<void>) {
           @update:settings="(settings: Settings) => run(() => setSettings(settings))"
           @forget-browser="(path: string) => run(() => forgetBrowser(path))"
           @sample-data="sampleData"
+          @imported="imported"
           @tour="takeTour()"
           @close="view = 'sky'"
         />

@@ -1,9 +1,19 @@
 <script setup lang="ts">
-import type { BlockerStatus, KnownBrowser, OwnQuote, Settings } from '@lock-in/core';
-import { glowFor, maxOwnQuotes, maxQuoteAuthorLength, maxQuoteLength, nextGlow, unlockedGlows } from '@lock-in/core';
+import type { BlockerStatus, KnownBrowser, OwnQuote, SavedBackup, Settings } from '@lock-in/core';
+import {
+  backupDay,
+  glowFor,
+  importSummary,
+  maxBackupBytes,
+  maxOwnQuotes,
+  maxQuoteAuthorLength,
+  maxQuoteLength,
+  nextGlow,
+  unlockedGlows,
+} from '@lock-in/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, onMounted, ref } from 'vue';
-import { blockerStatus, installBlocker, mac, removeBlocker } from '../app';
+import { blockerStatus, exportBackup, importBackup, installBlocker, mac, removeBlocker, showBackup } from '../app';
 import GlowPicker from './GlowPicker.vue';
 import HotkeyField from './HotkeyField.vue';
 import NumberField from './NumberField.vue';
@@ -26,6 +36,8 @@ const emit = defineEmits<{
   'remove-quote': [id: string];
   /** Take the tour for new users again. */
   tour: [];
+  /** A backup was brought in, so the log is read again. */
+  imported: [];
   close: [];
 }>();
 // Sample data is for trying the app while developing it, so release builds don't offer it.
@@ -42,6 +54,7 @@ const sections = computed(() => [
   'quotes',
   'glow',
   'tour',
+  'backup',
   ...(development ? ['sample'] : []),
 ]);
 const numbered = (section: string) => String(sections.value.indexOf(section) + 1).padStart(2, '0');
@@ -90,6 +103,45 @@ function addQuote() {
   emit('add-quote', quoteText.value, quoteAuthor.value);
   quoteText.value = '';
   quoteAuthor.value = '';
+}
+
+// Backups of everything, saved to the Downloads folder and brought in from a file picked here.
+// What happened stays on one line under the keys until the next try.
+const saved = ref<SavedBackup>();
+const backupBusy = ref(false);
+const backupNote = ref('');
+const backupProblem = ref('');
+const picker = ref<HTMLInputElement>();
+
+async function withBackup(action: () => Promise<void>) {
+  backupBusy.value = true;
+  backupNote.value = '';
+  backupProblem.value = '';
+  try {
+    await action();
+  } catch (reason) {
+    backupProblem.value = `That didn't work: ${String(reason)}`;
+  } finally {
+    backupBusy.value = false;
+  }
+}
+
+const saveBackup = () =>
+  withBackup(async () => {
+    saved.value = await exportBackup(backupDay(new Date()));
+  });
+
+function bringIn(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  // Cleared, so picking the same file again still counts as a change.
+  input.value = '';
+  if (!file) return;
+  void withBackup(async () => {
+    if (file.size > maxBackupBytes) throw 'that file is too big to be a Lock In backup';
+    backupNote.value = importSummary(await importBackup(await file.text()));
+    emit('imported');
+  });
 }
 
 // The one place the app asks for support: a quiet line at the very bottom (PLAN.md §8).
@@ -338,6 +390,45 @@ const glowHelp = computed(() => {
       </div>
     </section>
 
+    <section class="read" aria-labelledby="backup">
+      <h2 id="backup" class="mono">{{ numbered('backup') }} — Backup</h2>
+      <div class="field">
+        <div class="line">
+          Everything in one file
+          <button class="key" type="button" :disabled="backupBusy" @click="saveBackup">Export</button>
+        </div>
+        <p class="help">
+          Your profiles, settings and quotes, and everything your sky and weekly report are made from: sessions, goals,
+          trips to sites and satellites, with what they say. Keep it somewhere only you can open.
+        </p>
+        <p v-if="saved" class="status-line">
+          <span class="dot" aria-hidden="true" />
+          <span class="saved"
+            >Saved in {{ saved.folder || 'your home folder' }} as <b>{{ saved.fileName }}</b></span
+          >
+          <button class="key" type="button" @click="withBackup(showBackup)">
+            Show in {{ mac ? 'Finder' : 'its folder' }}
+          </button>
+        </p>
+      </div>
+      <div class="field">
+        <div class="line">
+          Bring in a backup
+          <button class="key" type="button" :disabled="backupBusy || sessionRunning" @click="picker?.click()">
+            Import…
+          </button>
+          <input ref="picker" type="file" accept=".json,application/json" hidden @change="bringIn" />
+        </div>
+        <p class="help">
+          Adds what's in the file to what's here, so nothing here is lost. Profiles in it replace the same ones here,
+          and its settings replace these, but the satellite hotkey and blocking stay as they're set on this computer.
+          {{ sessionRunning ? 'Importing waits until this session ends.' : '' }}
+        </p>
+      </div>
+      <p v-if="backupNote" class="help note" role="status">{{ backupNote }}</p>
+      <p v-if="backupProblem" class="help problem" role="alert">{{ backupProblem }}</p>
+    </section>
+
     <section v-if="development" class="read" aria-labelledby="sample">
       <h2 id="sample" class="mono">{{ numbered('sample') }} — Sample data <span class="faint">· dev builds</span></h2>
       <div class="field">
@@ -459,6 +550,19 @@ h2 {
 .problem {
   margin-bottom: 10px;
   color: var(--glint);
+}
+
+/* What the last export or import did. The file's name keeps its own capitals, unlike mono text. */
+.saved {
+  flex: 1;
+  font-size: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  margin-bottom: 10px;
+  color: var(--dim);
 }
 
 .none {

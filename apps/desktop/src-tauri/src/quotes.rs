@@ -34,7 +34,7 @@ impl OwnQuote {
     }
 
     /// Trimmed and cut down to the limits, or None if the text is empty.
-    fn cleaned(mut self) -> Option<Self> {
+    pub fn cleaned(mut self) -> Option<Self> {
         self.text = trimmed(&self.text, MAX_TEXT)?;
         self.author = self.author.and_then(|author| trimmed(&author, MAX_AUTHOR));
         (!self.id.is_empty()).then_some(self)

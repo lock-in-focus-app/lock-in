@@ -216,7 +216,7 @@ impl SessionGoal {
 
 /// A finished session, as kept in the session log. It holds everything the night sky will
 /// need later, so stars and stardust can be worked out from past sessions.
-#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct SessionRecord {
