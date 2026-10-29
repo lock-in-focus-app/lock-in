@@ -49,6 +49,13 @@ pub fn set_profile_star_color(app: AppHandle, profile_id: String, color: String)
     Ok(())
 }
 
+#[tauri::command]
+pub fn set_profile_plan(app: AppHandle, profile_id: String, plan: String) -> Result<()> {
+    crate::engine(&app).set_profile_plan(&profile_id, &plan, crate::now_ms())?;
+    crate::changed(&app);
+    Ok(())
+}
+
 /// Changes the satellite box's hotkey, once the new one is registered. Empty turns it off.
 #[tauri::command]
 pub fn set_satellite_hotkey(app: AppHandle, hotkey: String) -> Result<()> {

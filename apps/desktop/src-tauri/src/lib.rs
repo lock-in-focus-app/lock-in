@@ -589,6 +589,7 @@ pub fn run() {
             commands::end_session,
             commands::set_profile_timer,
             commands::set_profile_star_color,
+            commands::set_profile_plan,
             commands::use_emergency_pass,
             commands::set_settings,
             commands::set_satellite_hotkey,

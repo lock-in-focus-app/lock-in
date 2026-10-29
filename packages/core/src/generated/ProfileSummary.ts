@@ -11,4 +11,8 @@ sites: Array<SiteRule>,
 /**
  * The color of its stars, if it was given one.
  */
-starColor: string | null, };
+starColor: string | null, 
+/**
+ * The if-then plan its redirect page shows, or "" if it has none.
+ */
+plan: string, };

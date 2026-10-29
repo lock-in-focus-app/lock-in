@@ -170,6 +170,7 @@ export {
   weekStart,
   type DistractionSummary,
   type FocusSummary,
+  type PlanIdea,
   type SatelliteSummary,
   type SiteDistractions,
   type WeeklyReport,

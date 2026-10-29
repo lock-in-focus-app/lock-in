@@ -6,6 +6,9 @@ use crate::apps::AppRule;
 use crate::sites::SiteRule;
 use crate::timer::{Strictness, TimerSettings};
 
+/// The longest if-then plan, in characters, the same as `maxPlanLength` in core's settings.ts.
+pub const MAX_PLAN_LENGTH: usize = 140;
+
 /// A profile, as the extension saves it. The app only reads a few fields; everything else
 /// (site levels, redirect settings) is kept as it is, so nothing is lost when it's saved back.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -66,6 +69,26 @@ impl Profile {
 
     pub fn set_star_color(&mut self, color: &str) {
         self.rest.insert("starColor".into(), color.to_ascii_lowercase().into());
+    }
+
+    /// The if-then plan the redirect page shows, or "" if it has none (PLAN §3).
+    pub fn plan(&self) -> String {
+        let plan = self.rest.get("redirect").and_then(|r| r.get("plan"));
+        let mut plan = plan.and_then(Value::as_str).unwrap_or_default().trim().to_owned();
+        truncate(&mut plan, MAX_PLAN_LENGTH);
+        plan
+    }
+
+    /// Changes the plan, trimmed and cut to length, leaving the rest of the redirect settings
+    /// (the wait and links) as they are.
+    pub fn set_plan(&mut self, plan: &str) {
+        let mut plan = plan.trim().to_owned();
+        truncate(&mut plan, MAX_PLAN_LENGTH);
+        let redirect = self.rest.entry("redirect").or_insert_with(|| Value::Object(Map::new()));
+        if !redirect.is_object() {
+            *redirect = Value::Object(Map::new());
+        }
+        redirect["plan"] = plan.into();
     }
 
     /// Whether the profile tames, redirects or restricts any site or page, so it needs the
@@ -318,6 +341,35 @@ mod tests {
         let no_sites: Profile = serde_json::from_value(json!({ "id": "p", "name": "P" })).unwrap();
         assert!(!no_sites.tames_sites());
         assert!(starter_profiles().iter().all(Profile::tames_sites));
+    }
+
+    #[test]
+    fn sets_the_plan_and_keeps_the_rest_of_the_redirect_settings() {
+        let mut profile: Profile = serde_json::from_value(json!({
+            "id": "p",
+            "name": "P",
+            "redirect": { "gate": { "passMinutes": 10 }, "links": [] }
+        }))
+        .unwrap();
+        assert_eq!(profile.plan(), "");
+
+        profile.set_plan("  When I want Reddit, I'll write one paragraph first. ");
+        assert_eq!(profile.plan(), "When I want Reddit, I'll write one paragraph first.");
+        assert_eq!(profile.rest["redirect"]["gate"], json!({ "passMinutes": 10 }));
+        assert_eq!(profile.rest["redirect"]["links"], json!([]));
+
+        profile.set_plan(&"é".repeat(MAX_PLAN_LENGTH + 10));
+        assert_eq!(profile.plan().chars().count(), MAX_PLAN_LENGTH);
+
+        // A profile without redirect settings, or with ones that can't be read, gets them.
+        for redirect in [json!(null), json!("x")] {
+            let mut profile: Profile = serde_json::from_value(json!({ "id": "p", "name": "P" })).unwrap();
+            if !redirect.is_null() {
+                profile.rest.insert("redirect".into(), redirect);
+            }
+            profile.set_plan("Plan");
+            assert_eq!(profile.rest["redirect"], json!({ "plan": "Plan" }));
+        }
     }
 
     #[test]
