@@ -48,7 +48,7 @@ The app and the extension each work on their own. Install both and they link up 
 apps/
   extension/   Browser extension (WXT + Vue). Chrome, Brave, Edge, Arc, Firefox, Zen.
   desktop/     Desktop app (Tauri 2 + Vue). macOS and Linux.
-  website/     Product website (Nuxt). Scaffolded.
+  website/     Product website (Nuxt, static, on Cloudflare Workers).
 packages/
   core/        Shared types and logic: matching, recipes, profiles, sessions.
   recipes/     Built-in site recipes.

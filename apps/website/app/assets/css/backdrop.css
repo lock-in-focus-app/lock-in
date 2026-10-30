@@ -1,0 +1,245 @@
+/* Nebulae: big soft glows drifting slowly. Light pollution hides them; a clear sky shows them. */
+.nebulae {
+  position: fixed;
+  inset: -40vh 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.08;
+  transition: opacity 2.4s var(--drift);
+}
+
+.locked .nebulae {
+  opacity: 1;
+}
+
+.nebulae i {
+  position: absolute;
+  width: 80vmax;
+  height: 52vmax;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--c), transparent);
+  animation: nebula var(--t) ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.nebulae i:nth-child(1) {
+  --c: rgb(120 92 150 / 0.34);
+  --t: 70s;
+  left: -20vmax;
+  top: 10vh;
+}
+
+.nebulae i:nth-child(2) {
+  --c: rgb(59 79 176 / 0.26);
+  --t: 90s;
+  right: -30vmax;
+  top: -18vmax;
+  animation-delay: -30s;
+}
+
+.nebulae i:nth-child(3) {
+  --c: rgb(232 165 176 / 0.14);
+  --t: 80s;
+  left: 20vw;
+  bottom: -30vmax;
+  animation-delay: -12s;
+}
+
+.nebulae i:nth-child(4) {
+  --c: rgb(245 200 107 / 0.07);
+  --t: 110s;
+  left: 35vw;
+  top: 5vh;
+  width: 50vmax;
+  height: 30vmax;
+  animation-delay: -50s;
+}
+
+@keyframes nebula {
+  from {
+    transform: translate(-4vmax, 0) rotate(-6deg) scale(1);
+  }
+  to {
+    transform: translate(5vmax, 3vmax) rotate(8deg) scale(1.12);
+  }
+}
+
+/* Planets and satellites, nearer than the stars, so they move a little more as you scroll.
+   The haze nearly hides them; a clear sky shows them. Satellites are steady points gliding
+   across the sky, as real ones do. */
+.bodies {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.07;
+  transition: opacity 2.4s var(--drift);
+}
+
+.locked .bodies {
+  opacity: 1;
+}
+
+/* Past the hero they step back a little, so they don't compete with the text over them. */
+.locked.past-hero .bodies {
+  opacity: 0.5;
+}
+
+.world {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  rotate: var(--tilt, -16deg);
+}
+
+.world .ball {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--base);
+  box-shadow: 0 0 calc(var(--size) * 0.4) var(--halo);
+}
+
+/* The surface turning: level bands with a few storms in them, on a strip two planets wide
+   made of two identical halves, so sliding it one half along loops without a seam. */
+.world .bands {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse 13% 7% at 28% 37%, var(--storm-a), transparent 70%),
+    radial-gradient(ellipse 9% 5% at 70% 63%, var(--storm-b), transparent 70%),
+    radial-gradient(ellipse 6% 4% at 52% 22%, var(--storm-a), transparent 70%), var(--bands);
+  background-size: 50% 100%;
+  opacity: 0.75;
+  animation: world-turn var(--spin, 60s) linear infinite;
+}
+
+/* Night side: a shadow over the lower left, the sun up and to the right. */
+.world .ball::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset calc(var(--size) * -0.2) calc(var(--size) * 0.14) calc(var(--size) * 0.28) rgb(6 8 22 / 0.88);
+}
+
+@keyframes world-turn {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.world .w-ring {
+  position: absolute;
+  left: -48%;
+  right: -48%;
+  top: 50%;
+  height: 34%;
+  margin-top: -17%;
+  border-radius: 50%;
+  border: calc(var(--size) * 0.03) solid rgb(245 200 107 / 0.5);
+  box-shadow:
+    0 0 14px rgb(245 200 107 / 0.2),
+    inset 0 0 0 calc(var(--size) * 0.025) rgb(232 165 176 / 0.18);
+}
+
+/* The back half of the ring goes behind the planet, the front half over it. */
+.world .w-ring.back {
+  z-index: -1;
+}
+
+.world .w-ring.front {
+  clip-path: inset(50% 0 0 0);
+}
+
+.world.big {
+  --size: clamp(90px, 11vw, 150px);
+  --base: #6d5aa8;
+  --halo: rgb(185 167 245 / 0.28);
+  --bands: repeating-linear-gradient(180deg, #b9a7f5 0 7%, #7d68c0 7% 12%, #e3d9ff 12% 15%, #5d4a9c 15% 23%);
+  --storm-a: rgb(255 248 235 / 0.55);
+  --storm-b: rgb(40 28 90 / 0.55);
+  left: -1vw;
+  top: 66vh;
+}
+
+.world.small {
+  --size: clamp(30px, 3.4vw, 46px);
+  --base: #5b8fb0;
+  --halo: rgb(207 224 255 / 0.25);
+  --bands: repeating-linear-gradient(180deg, #cfe0ff 0 10%, #7fb0cf 10% 18%, #9cc4dd 18% 30%);
+  --storm-a: rgb(255 255 255 / 0.5);
+  --storm-b: rgb(40 80 120 / 0.45);
+  --spin: 40s;
+  --tilt: 10deg;
+  right: 5vw;
+  top: 44vh;
+}
+
+/* A moon going round the big planet: a flattened circle, so it passes in front and behind. */
+.world .moons {
+  position: absolute;
+  inset: -60%;
+  transform: scaleY(0.3);
+}
+
+.world .moons i {
+  position: absolute;
+  inset: 0;
+  animation: moon-orbit 34s linear infinite;
+}
+
+.world .moons i::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #d9d3c4;
+  box-shadow: inset -2px -2px 3px rgb(6 8 22 / 0.7);
+  transform: scaleY(3.3);
+}
+
+@keyframes moon-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sky-sat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: var(--starlight);
+  box-shadow: 0 0 6px rgb(220 228 255 / 0.9);
+  animation:
+    cross var(--t) linear infinite var(--d),
+    glint 5s ease-in-out infinite var(--d);
+}
+
+@keyframes cross {
+  from {
+    transform: translate(-4vw, var(--y0));
+  }
+  to {
+    transform: translate(104vw, var(--y1));
+  }
+}
+
+@keyframes glint {
+  50% {
+    opacity: 0.45;
+  }
+}

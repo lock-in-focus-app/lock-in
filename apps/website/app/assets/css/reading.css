@@ -1,0 +1,214 @@
+/* ── Pages ─────────────────────────────────────────────────────────────────── */
+
+/* A page's wrapper adds no box, so its sections sit straight in the scroller. */
+.site-page {
+  display: contents;
+}
+
+/* The page you're on, in the top nav. */
+.topnav a[aria-current='page'] {
+  color: var(--glow);
+}
+
+/* ── Reading pages: Why it works, Privacy ──────────────────────────────────── */
+
+.page-head {
+  padding-top: clamp(56px, 12vh, 120px);
+}
+
+.page-head h1 {
+  margin: 0 0 18px;
+  font-weight: 400;
+  font-size: clamp(36px, 5vw, 68px);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  max-width: 16ch;
+  text-wrap: balance;
+  text-shadow: 0 2px 28px rgb(8 11 22 / 0.85);
+}
+
+.page-head h1.reveal {
+  filter: blur(8px);
+}
+
+.page-head.seen h1.reveal {
+  filter: none;
+}
+
+.reading .lede a,
+.reading .aside a,
+.plain a {
+  color: var(--glow);
+  text-underline-offset: 3px;
+}
+
+.reading .lede {
+  max-width: 64ch;
+}
+
+/* What the strength labels mean. */
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 8px 0 0;
+}
+
+.key div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.key dd {
+  margin: 0;
+  color: #ccd2e4;
+  font-size: 14px;
+  text-shadow:
+    0 0 2px rgb(8 11 22 / 0.9),
+    0 2px 12px rgb(8 11 22 / 0.9);
+}
+
+/* How strong the evidence is: a dot and a word, never color alone. */
+.strength {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font: 600 10px var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c);
+}
+
+.strength::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c);
+}
+
+.strength span {
+  color: var(--faint);
+  letter-spacing: 0.1em;
+}
+
+.strength.strong {
+  --c: var(--glow);
+}
+
+.strength.modest {
+  --c: var(--deep);
+}
+
+.strength.reasoning {
+  --c: var(--lavender);
+}
+
+.strength.reasoning::before {
+  background: transparent;
+  border: 1px solid var(--c);
+  box-shadow: none;
+}
+
+.findings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+}
+
+.finding h3 {
+  margin: 2px 0 0;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.finding p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 14.5px;
+}
+
+.finding .in-lock-in {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--starlight);
+}
+
+.finding .in-lock-in .mono {
+  margin-right: 6px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--glow);
+}
+
+.finding .cite {
+  margin-top: auto;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+}
+
+.finding .cite a {
+  color: var(--faint);
+  text-underline-offset: 3px;
+}
+
+.finding .cite a:hover {
+  color: var(--starlight);
+}
+
+/* Short lists straight on the sky. */
+.plain {
+  display: grid;
+  gap: 14px;
+  max-width: 68ch;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.plain li {
+  position: relative;
+  padding-left: 22px;
+  color: #ccd2e4;
+  font-size: clamp(15px, 1.25vw, 17px);
+  text-shadow:
+    0 0 2px rgb(8 11 22 / 0.9),
+    0 1px 4px rgb(8 11 22 / 0.8),
+    0 2px 18px rgb(8 11 22 / 0.9);
+}
+
+.plain li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  top: 0.15em;
+  font-size: 11px;
+  color: var(--glow);
+}
+
+.plain strong {
+  font-weight: 500;
+  color: var(--starlight);
+}
+
+@media (max-width: 900px) {
+  .findings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

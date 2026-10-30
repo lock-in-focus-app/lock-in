@@ -1,0 +1,153 @@
+/* ── The night sky, in the app ──────────────────────────────────────────────── */
+
+.orrery {
+  position: relative;
+  width: min(340px, 80vw);
+  aspect-ratio: 1;
+  justify-self: center;
+}
+
+.planet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.planet .globe {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 34% 30%, #f7dcae, #d59a6a 38%, #7a4a5a 72%, #24182c);
+  box-shadow:
+    0 0 50px rgb(245 200 107 / 0.25),
+    inset -14px -10px 30px rgb(10 8 20 / 0.6);
+}
+
+/* Bands that turn slowly with the planet. */
+.planet .globe::before {
+  content: '';
+  position: absolute;
+  inset: 0 -100% 0 0;
+  /* Level bands and a storm, in two identical halves, so the loop has no seam. */
+  background:
+    radial-gradient(ellipse 12% 7% at 34% 58%, rgb(120 50 60 / 0.35), transparent 70%),
+    radial-gradient(ellipse 8% 4% at 74% 34%, rgb(255 240 220 / 0.25), transparent 70%),
+    repeating-linear-gradient(
+      180deg,
+      rgb(255 240 220 / 0.1) 0 7px,
+      transparent 7px 13px,
+      rgb(90 40 60 / 0.16) 13px 17px,
+      transparent 17px 24px
+    );
+  background-size: 50% 100%;
+  animation: spin 40s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 190%;
+  height: 44%;
+  margin: -22% 0 0 -95%;
+  border-radius: 50%;
+  border: 2px solid rgb(220 228 255 / 0.32);
+  box-shadow: 0 0 12px rgb(220 228 255 / 0.12);
+  transform: rotate(-18deg);
+}
+
+.ring.front {
+  clip-path: inset(50% 0 0 0);
+  z-index: 1;
+}
+
+.orbit {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  border: 1px dashed rgb(220 228 255 / 0.08);
+  animation: orbit var(--t) linear infinite;
+}
+
+.orbit::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: var(--s, 7px);
+  height: var(--s, 7px);
+  border-radius: 50%;
+  background: var(--c, var(--glint));
+  box-shadow: 0 0 10px var(--c, var(--glint));
+}
+
+.orbit.moon {
+  --t: 24s;
+  --s: 10px;
+  --c: #c9c3d8;
+}
+
+.orbit.sat {
+  inset: -2%;
+  --t: 46s;
+  --s: 5px;
+  --c: var(--glow);
+  animation-direction: reverse;
+}
+
+@keyframes orbit {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts li {
+  padding: 16px 18px;
+}
+
+.facts h3 {
+  margin: 0 0 6px;
+  font: 600 11px var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--glow);
+}
+
+.facts p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 14.5px;
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font: 12px var(--mono);
+  color: var(--starlight);
+}
+
+.aside {
+  margin: 16px 0 0;
+  color: var(--dim);
+  font-size: 14px;
+}

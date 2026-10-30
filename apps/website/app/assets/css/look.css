@@ -1,0 +1,51 @@
+/* How the light pollution looks, in the top margin: city lights or a sunset-like glow. */
+.look {
+  position: fixed;
+  top: 3px;
+  left: 50%;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgb(4 6 13 / 0.8);
+  font: 10px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--faint);
+  transform: translateX(-50%);
+}
+
+.look button {
+  padding: 0 5px;
+  border-radius: 2px;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--faint);
+}
+
+.look button:hover {
+  color: var(--starlight);
+}
+
+.look button[aria-pressed='true'] {
+  background: var(--starlight);
+  color: var(--sky);
+}
+
+/* On a phone there's no room in the margin: the switch sits in the nav band, left of the mark. */
+@media (max-width: 700px) {
+  .look {
+    top: 2px;
+    left: 16px;
+    transform: none;
+  }
+
+  .look-label {
+    display: none;
+  }
+}
