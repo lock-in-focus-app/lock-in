@@ -188,13 +188,15 @@
         ctx.globalAlpha = 1;
       }
 
-      // Stars. Haze hides the faint ones first; the brightest few always get through.
+      // Stars. Haze hides the faint ones first and dims the rest; only the brightest few get
+      // through, and faintly.
       const time = t / 1000;
+      const veil = 1 - s.haze * 0.5;
       for (const star of stars) {
-        const seen = star.b - s.haze * 0.55;
+        const seen = star.b - s.haze * 0.72;
         if (seen <= 0) continue;
         const twinkle = reduce ? 1 : 0.75 + 0.25 * Math.sin(time * star.speed + star.phase);
-        const a = Math.min(1, (0.25 + seen * 1.6) * twinkle);
+        const a = Math.min(1, (0.25 + seen * 1.6) * twinkle * veil);
         const y = (((star.y * h - s.shift * star.depth) % h) + h) % h;
         const x = star.x * w;
         ctx.fillStyle = rgb(star.color, a);
