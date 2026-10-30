@@ -11,9 +11,7 @@
           macOS asks you to allow it once: open it, click Done, then System Settings › Privacy &amp; Security › Open
           Anyway.
         </p>
-        <a class="btn primary" href="https://github.com/lock-in-focus-app/lock-in/releases/latest"
-          >Download from GitHub</a
-        >
+        <a class="btn primary" href="https://github.com/seiza-app/seiza/releases/latest">Download from GitHub</a>
       </div>
       <div class="hud glass reveal" style="--d: 300ms">
         <span class="mono status">In review</span>
@@ -22,9 +20,7 @@
           For Chrome, Brave, Edge, Arc, Firefox and Zen. It's in review at the Chrome Web Store and Firefox Add-ons.
           Until it's listed, you can build it from source.
         </p>
-        <a class="btn ghost" href="https://github.com/lock-in-focus-app/lock-in#getting-started"
-          >Build it from source</a
-        >
+        <a class="btn ghost" href="https://github.com/seiza-app/seiza#getting-started">Build it from source</a>
       </div>
     </div>
     <p class="both reveal" style="--d: 380ms">

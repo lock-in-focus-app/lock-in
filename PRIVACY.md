@@ -34,10 +34,10 @@ Neither the app nor the extension makes network requests. The quotes are bundled
 
 ## Changes
 
-If this ever changes, this page changes first, with the date below. The source code is public at <https://github.com/lock-in-focus-app/lock-in>, so you can check any of it.
+If this ever changes, this page changes first, with the date below. The source code is public at <https://github.com/seiza-app/seiza>, so you can check any of it.
 
 ## Contact
 
-Questions go to the repository's issues: <https://github.com/lock-in-focus-app/lock-in/issues>.
+Questions go to the repository's issues: <https://github.com/seiza-app/seiza/issues>.
 
 Last updated: 30 October 2026.

@@ -1,6 +1,6 @@
 <template>
   <footer class="site-footer mono">
-    <a href="https://github.com/lock-in-focus-app/lock-in">GitHub</a>
+    <a href="https://github.com/seiza-app/seiza">GitHub</a>
     <span>AGPL-3.0</span>
     <NuxtLink to="/privacy">Privacy</NuxtLink>
     <NuxtLink to="/why-it-works">Why it works</NuxtLink>

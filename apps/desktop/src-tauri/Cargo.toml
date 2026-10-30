@@ -5,7 +5,7 @@ description = "Seiza — a free, open-source focus app"
 authors = ["SortelOne"]
 edition = "2024"
 license = "AGPL-3.0-only"
-repository = "https://github.com/lock-in-focus-app/lock-in"
+repository = "https://github.com/seiza-app/seiza"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

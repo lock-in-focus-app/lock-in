@@ -238,7 +238,7 @@ it('makes the store listing images', async () => {
     for (const [name, { size, body }] of Object.entries(images)) {
       await page.setViewport({ width: size[0], height: size[1] });
       await page.setContent(`<!doctype html><meta charset="utf-8"><style>${style}</style><body>${body}</body>`);
-      await page.screenshot({ path: join(out, `lock-in-${name}.png`) as `${string}.png` });
+      await page.screenshot({ path: join(out, `seiza-${name}.png`) as `${string}.png` });
     }
   } finally {
     await t.close();

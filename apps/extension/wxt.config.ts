@@ -17,7 +17,7 @@ export default defineConfig({
   // Mozilla reviews the code it's given against the sources it was built from, so the Firefox
   // zip comes with the parts of the repo the extension is built from (SOURCES.md says how).
   zip: {
-    name: 'lock-in',
+    name: 'seiza',
     sourcesRoot: '../..',
     includeSources: [
       'apps/extension/**',
@@ -38,7 +38,7 @@ export default defineConfig({
   manifest: ({ browser, manifestVersion }) => ({
     name: 'Seiza',
     description: 'Tame, block, or redirect distracting sites during focus sessions.',
-    homepage_url: 'https://github.com/lock-in-focus-app/lock-in',
+    homepage_url: 'https://github.com/seiza-app/seiza',
     // "WithHostAccess" limits redirects to the recipe sites below, so the browser doesn't
     // warn that Seiza can block content on every page.
     // nativeMessaging links the extension to the desktop app, when it's installed.

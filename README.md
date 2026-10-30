@@ -2,9 +2,11 @@
 
 A free, open-source focus app. Social media is light pollution: when you lock in, the noise fades and you can finally see the stars.
 
+**Website:** [getseiza.app](https://getseiza.app)
+
 ![YouTube's video page before and after Seiza tames it: the recommendations and Shorts are gone, and the video and its comments stay.](.github/readme/tamed.png)
 
-> **Status:** 0.1.0, the first release. The desktop app for macOS and Linux is on [Releases](https://github.com/lock-in-focus-app/lock-in/releases/latest), and the browser extension is in review at the Chrome Web Store and Firefox Add-ons. See [PLAN.md](PLAN.md) for the roadmap.
+> **Status:** 0.1.0, the first release. The desktop app for macOS and Linux is on [Releases](https://github.com/seiza-app/seiza/releases/latest), and the browser extension is in review at the Chrome Web Store and Firefox Add-ons. See [PLAN.md](PLAN.md) for the roadmap.
 
 ## Tame, don't just block
 
@@ -37,7 +39,7 @@ Seiza has no accounts and no telemetry. Everything stays on your device. See [PR
 
 ## Install
 
-- **Desktop app:** download it from the [latest release](https://github.com/lock-in-focus-app/lock-in/releases/latest): a `.dmg` for macOS, or a `.deb` or `.AppImage` for Linux. On macOS, it isn't signed with a paid Apple Developer account, so macOS asks you to allow it once: open it, click **Done**, then **System Settings › Privacy & Security › Open Anyway**. The release notes walk through it.
+- **Desktop app:** download it from the [latest release](https://github.com/seiza-app/seiza/releases/latest): a `.dmg` for macOS, or a `.deb` or `.AppImage` for Linux. On macOS, it isn't signed with a paid Apple Developer account, so macOS asks you to allow it once: open it, click **Done**, then **System Settings › Privacy & Security › Open Anyway**. The release notes walk through it.
 - **Browser extension:** in review at the Chrome Web Store and Firefox Add-ons. Until it's listed, build it from source (below).
 
 The app and the extension each work on their own. Install both and they link up by themselves.
