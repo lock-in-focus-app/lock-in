@@ -48,7 +48,7 @@ const typedRight = computed(() => typed.value.trim().replace(/\s+/g, ' ') === ta
 
     <template v-else>
       <p>This session is in Hard mode, so it can't end until the timer is done.</p>
-      <p v-if="passesLeft === undefined" class="help">An emergency pass in the Lock In app can end it.</p>
+      <p v-if="passesLeft === undefined" class="help">An emergency pass in the Seiza app can end it.</p>
       <template v-else-if="passesLeft > 0">
         <button class="confirm" type="button" @click="emit('pass')">Use an emergency pass</button>
         <p class="help">{{ passesLeft }} left this week. Each one comes back 7 days after it's used.</p>

@@ -34,7 +34,7 @@ const listed = computed(() => {
 
 const settingsOf = (recipe: SiteRecipe) => siteSettingsFor(sites.value ?? [], recipe.id);
 
-// An added site needs the browser's OK before Lock In can reach it.
+// An added site needs the browser's OK before Seiza can reach it.
 const reach = useReachable(() => listed.value.filter((r) => ownSiteDomain(r.id)).map((r) => r.name));
 const needsReach = (recipe: SiteRecipe) => !!ownSiteDomain(recipe.id) && !!reach.value && !reach.value.has(recipe.name);
 function setAlways(recipe: SiteRecipe, on: boolean) {
@@ -61,8 +61,8 @@ function setAlways(recipe: SiteRecipe, on: boolean) {
       <template v-if="settingsOf(recipe)?.allTheTime">
         <p class="help small">{{ allTheTimeNote(recipe.name, true) }}</p>
         <p v-if="needsReach(recipe)" class="reach">
-          <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
-          <button type="button" class="text-button" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+          <span>Seiza can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
+          <button type="button" class="text-button" @click="askToReach([recipe.name])">Let Seiza reach it</button>
         </p>
         <div v-if="recipe.toggles.length" class="toggles">
           <RecipePreview

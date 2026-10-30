@@ -34,7 +34,7 @@ describe('settings page', () => {
       href: a.getAttribute('href'),
       target: a.getAttribute('target'),
     }));
-    expect(link).toEqual({ text: 'SUPPORT LOCK IN ON KO-FI ↗', href: 'https://ko-fi.com/sortelone', target: '_blank' });
+    expect(link).toEqual({ text: 'SUPPORT SEIZA ON KO-FI ↗', href: 'https://ko-fi.com/sortelone', target: '_blank' });
   });
 
   it('saves the if-then plan when you leave the field', async () => {

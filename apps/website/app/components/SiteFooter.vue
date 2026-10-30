@@ -4,6 +4,6 @@
     <span>AGPL-3.0</span>
     <NuxtLink to="/privacy">Privacy</NuxtLink>
     <NuxtLink to="/why-it-works">Why it works</NuxtLink>
-    <a class="support" href="https://ko-fi.com/sortelone">Support Lock In</a>
+    <a class="support" href="https://ko-fi.com/sortelone">Support Seiza</a>
   </footer>
 </template>

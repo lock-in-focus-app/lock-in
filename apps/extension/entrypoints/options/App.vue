@@ -82,21 +82,21 @@ const tourSteps: TourStep[] = [
   {
     target: 'profiles',
     title: 'Profiles',
-    text: "A profile is a set of rules for a focus session. Start one from Lock In's button in your browser's toolbar (pin it to keep it a click away), and pick one here to change its rules.",
+    text: "A profile is a set of rules for a focus session. Start one from Seiza's button in your browser's toolbar (pin it to keep it a click away), and pick one here to change its rules.",
   },
   {
     target: 'sites',
     title: 'Sites',
-    text: 'Each site gets a level for this profile. Allowed leaves it alone, Tamed hides the distracting parts, Redirected sends you to a Lock In page first, and Restricted keeps it closed until the session ends.',
+    text: 'Each site gets a level for this profile. Allowed leaves it alone, Tamed hides the distracting parts, Redirected sends you to a Seiza page first, and Restricted keeps it closed until the session ends.',
   },
   {
     target: 'redirect',
     title: 'The redirect page',
-    text: 'A redirected site shows a Lock In page first: focus for a few minutes, and if you still want the site after that, go right ahead. Your if-then plan, written here, shows on that page.',
+    text: 'A redirected site shows a Seiza page first: focus for a few minutes, and if you still want the site after that, go right ahead. Your if-then plan, written here, shows on that page.',
   },
   {
-    title: 'The Lock In app',
-    text: 'With the Lock In app on your computer too, the extension links to it by itself, and the popup says App linked. Sessions and profiles stay in step, and the app adds a timer, a sky of your focus, and satellites: a hotkey to set a passing thought aside from any app. The tour is at the top of this page whenever you want it again.',
+    title: 'The Seiza app',
+    text: 'With the Seiza app on your computer too, the extension links to it by itself, and the popup says App linked. Sessions and profiles stay in step, and the app adds a timer, a sky of your focus, and satellites: a hotkey to set a passing thought aside from any app. The tour is at the top of this page whenever you want it again.',
   },
 ];
 function takeTour() {
@@ -114,7 +114,7 @@ onMounted(() => {
 <template>
   <main>
     <header>
-      <p class="brand mono"><span class="star" aria-hidden="true">✦ </span>Lock In</p>
+      <p class="brand mono"><span class="star" aria-hidden="true">✦ </span>Seiza</p>
       <h1>Settings</h1>
       <p class="help intro">
         A profile is a set of rules for a focus session: which sites stay as they are, which are tamed, and which are
@@ -276,7 +276,7 @@ onMounted(() => {
       <!-- The one place the extension asks for support, like the app's Settings (PLAN.md §8). -->
       <p class="support">
         <a class="mono" href="https://ko-fi.com/sortelone" target="_blank" rel="noopener noreferrer"
-          >Support Lock In on Ko-fi ↗</a
+          >Support Seiza on Ko-fi ↗</a
         >
       </p>
     </footer>

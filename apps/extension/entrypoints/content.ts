@@ -22,7 +22,7 @@ import { recipes } from '@lock-in/recipes';
 import type { Picker } from '@/utils/picker';
 
 // Listed here for the built-in sites. The background adds sites people add themselves, once
-// they've let Lock In reach them (ownSites.ts).
+// they've let Seiza reach them (ownSites.ts).
 export default defineContentScript({
   matches: recipes.flatMap((recipe) => recipe.matches),
   runAt: 'document_start',

@@ -81,8 +81,8 @@ function start(profile: Profile) {
 <template>
   <main>
     <header>
-      <h1 class="mono"><span aria-hidden="true">✦ </span>Lock In</h1>
-      <span v-if="linked" class="linked mono" title="Sessions stay in step with the Lock In app">
+      <h1 class="mono"><span aria-hidden="true">✦ </span>Seiza</h1>
+      <span v-if="linked" class="linked mono" title="Sessions stay in step with the Seiza app">
         <span class="dot" aria-hidden="true" />App linked
       </span>
       <button class="key settings" type="button" @click="openSettings">Settings</button>
@@ -102,7 +102,7 @@ function start(profile: Profile) {
     <!-- Only once storage says there's no session, so a running one doesn't flash this first. -->
     <template v-else-if="session === null && profileList">
       <div v-if="offeredTour === false" class="card offer">
-        <p><span class="star" aria-hidden="true">✦</span> New here? A quick tour of what Lock In does.</p>
+        <p><span class="star" aria-hidden="true">✦</span> New here? A quick tour of what Seiza does.</p>
         <span class="offer-buttons">
           <button class="key lit" type="button" @click="takeTour">Take the tour</button>
           <button class="key" type="button" @click="tourOffered.setValue(true)">No thanks</button>

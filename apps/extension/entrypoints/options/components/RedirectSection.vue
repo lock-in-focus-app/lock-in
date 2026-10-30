@@ -77,7 +77,7 @@ function removeLink(id: string) {
 <template>
   <h2>Redirected sites</h2>
   <p class="help">
-    When {{ profile.name }} redirects a site, you land on a Lock In page first. It asks you to focus for a little while,
+    When {{ profile.name }} redirects a site, you land on a Seiza page first. It asks you to focus for a little while,
     and once the wait is up you can go on to the site with a short pass. The wait keeps counting if you leave the page
     to work. Restricted sites have no way through.
   </p>

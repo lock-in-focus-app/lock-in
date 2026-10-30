@@ -108,7 +108,7 @@ export function showPauseOverlay(options: PauseOverlayOptions): () => void {
   card.setAttribute('aria-modal', 'true');
   card.setAttribute('aria-labelledby', 'title');
 
-  const brand = element('p', 'brand', `Lock In · ${options.profileName}`);
+  const brand = element('p', 'brand', `Seiza · ${options.profileName}`);
   brand.prepend(element('span', 'star', '✦ '));
   const text = copy[options.reason](options);
   const title = element('h1', '', text.title);

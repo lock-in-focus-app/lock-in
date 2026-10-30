@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Lock In's star on a clear night sky. Used for 48px and up; 16px of padding per side
+  <!-- Seiza's star on a clear night sky. Used for 48px and up; 16px of padding per side
        follows the Chrome Web Store's guidance for 128px icons. -->
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">

@@ -29,7 +29,7 @@ pub fn plugin() -> TauriPlugin<Wry> {
                 && event.state() == ShortcutState::Pressed
                 && let Err(error) = open(app)
             {
-                eprintln!("Lock In: couldn't open the satellite box: {error}");
+                eprintln!("Seiza: couldn't open the satellite box: {error}");
             }
         })
         .build()
@@ -45,7 +45,7 @@ pub fn listen(app: &AppHandle) {
     let registered =
         hotkey::parse(&saved).and_then(|shortcut| app.global_shortcut().register(shortcut).map_err(|_| Problem::Taken));
     if let Err(problem) = registered {
-        eprintln!("Lock In: couldn't set up {saved} for satellites: {problem}");
+        eprintln!("Seiza: couldn't set up {saved} for satellites: {problem}");
     }
 }
 

@@ -140,7 +140,7 @@ fn state_line(app: &AppHandle) -> Option<Arc<str>> {
     .ok()?;
     if line.len() > MAX_MESSAGE {
         eprintln!(
-            "Lock In: profiles are too big to send to the browser ({} bytes)",
+            "Seiza: profiles are too big to send to the browser ({} bytes)",
             line.len()
         );
         return None;
@@ -152,12 +152,12 @@ fn state_line(app: &AppHandle) -> Option<Arc<str>> {
 pub async fn serve(app: AppHandle) {
     let listener = match socket_name().and_then(|name| {
         // A socket file left behind by a crash would otherwise block this one. The single
-        // instance plugin makes sure it isn't another copy of Lock In that's still running.
+        // instance plugin makes sure it isn't another copy of Seiza that's still running.
         ListenerOptions::new().name(name).try_overwrite(true).create_tokio()
     }) {
         Ok(listener) => listener,
         Err(error) => {
-            eprintln!("Lock In: couldn't listen for the browser extension: {error}");
+            eprintln!("Seiza: couldn't listen for the browser extension: {error}");
             return;
         }
     };
@@ -166,7 +166,7 @@ pub async fn serve(app: AppHandle) {
             Ok(stream) => {
                 tauri::async_runtime::spawn(handle(app.clone(), stream));
             }
-            Err(error) => eprintln!("Lock In: a browser couldn't connect: {error}"),
+            Err(error) => eprintln!("Seiza: a browser couldn't connect: {error}"),
         }
     }
 }
@@ -218,14 +218,14 @@ fn on_message(app: &AppHandle, link_id: u64, line: &str) {
     let message = match serde_json::from_str::<FromExtension>(line) {
         Ok(message) => message,
         Err(error) => {
-            eprintln!("Lock In: couldn't read a message from the browser: {error}");
+            eprintln!("Seiza: couldn't read a message from the browser: {error}");
             return;
         }
     };
     match message {
         FromExtension::Hello { protocol, browser } => {
             if protocol != PROTOCOL {
-                eprintln!("Lock In: {browser} speaks link protocol {protocol}, the app speaks {PROTOCOL}");
+                eprintln!("Seiza: {browser} speaks link protocol {protocol}, the app speaks {PROTOCOL}");
             }
         }
         FromExtension::State {
@@ -244,12 +244,12 @@ fn on_message(app: &AppHandle, link_id: u64, line: &str) {
                 Ok(true) => crate::changed(app),
                 // Sends the app's newer state back, in case the browser's was out of date.
                 Ok(false) => broadcast(app),
-                Err(error) => eprintln!("Lock In: couldn't save the browser's changes: {error}"),
+                Err(error) => eprintln!("Seiza: couldn't save the browser's changes: {error}"),
             }
         }
         FromExtension::GateVisit { visit } => {
             if let Err(error) = crate::engine(app).record_gate_visit(visit) {
-                eprintln!("Lock In: couldn't log a gate visit: {error}");
+                eprintln!("Seiza: couldn't log a gate visit: {error}");
             }
         }
         FromExtension::Bridge { browser_pid } => {
@@ -278,7 +278,7 @@ fn remember_browser(app: &AppHandle, pid: u32) {
     match remembered {
         Ok(true) => crate::changed(app),
         Ok(false) => {}
-        Err(error) => eprintln!("Lock In: couldn't remember a browser: {error}"),
+        Err(error) => eprintln!("Seiza: couldn't remember a browser: {error}"),
     }
 }
 

@@ -1,8 +1,8 @@
 # Privacy
 
-Lock In collects nothing. It has no accounts, no analytics, no ads, and no servers of its own. Nothing you do in it is sent to us or anyone else.
+Seiza collects nothing. It has no accounts, no analytics, no ads, and no servers of its own. Nothing you do in it is sent to us or anyone else.
 
-This covers the Lock In desktop app and the Lock In browser extension.
+This covers the Seiza desktop app and the Seiza browser extension.
 
 ## What stays on your computer
 

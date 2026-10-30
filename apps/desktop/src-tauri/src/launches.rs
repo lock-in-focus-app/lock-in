@@ -3,7 +3,7 @@
 //! for an ordinary program to hear about new processes, so there the session checks every
 //! few seconds instead (`POLL_EVERY_MS`).
 //!
-//! This is the one place Lock In talks to macOS through `unsafe` code: the compiler can't
+//! This is the one place Seiza talks to macOS through `unsafe` code: the compiler can't
 //! check the promises Apple's API asks for, so each one is written down where it's kept.
 
 use std::sync::Arc;

@@ -45,7 +45,7 @@ impl fmt::Display for Error {
             Error::DevelopmentOnly => f.write_str("that's only in development builds"),
             Error::TooManyQuotes => write!(
                 f,
-                "that's the most quotes Lock In keeps ({}); remove one first",
+                "that's the most quotes Seiza keeps ({}); remove one first",
                 crate::quotes::MAX_OWN_QUOTES
             ),
             Error::Hotkey(problem) => write!(f, "{problem}"),

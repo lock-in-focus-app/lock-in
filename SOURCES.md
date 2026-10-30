@@ -1,4 +1,4 @@
-# Building the Lock In extension from source
+# Building the Seiza extension from source
 
 For Firefox Add-ons reviewers, and anyone checking a release against its source. This zip has the parts of the repository the extension is built from: `apps/extension`, `packages/` and the workspace files. The full repository is at <https://github.com/lock-in-focus-app/lock-in>.
 
@@ -26,4 +26,4 @@ The built extension is in `apps/extension/.output/firefox-mv2`, and matches the 
 - `packages/recipes`: the CSS selectors that tame each built-in site, as JSON.
 - `packages/quotes`: bundled public-domain quotes. The extension doesn't use them; they're in the workspace the build installs.
 
-The minified chunk `_plugin-vue_export-helper` is Vue's own runtime, where web-ext lint warns about `innerHTML`. Lock In's code doesn't set `innerHTML`.
+The minified chunk `_plugin-vue_export-helper` is Vue's own runtime, where web-ext lint warns about `innerHTML`. Seiza's code doesn't set `innerHTML`.

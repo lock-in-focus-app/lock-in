@@ -15,7 +15,7 @@ pub fn create(app: &AppHandle, snapshot: &Snapshot) -> tauri::Result<()> {
         .icon(Image::from_bytes(include_bytes!("../icons/tray.png"))?)
         // On macOS a template icon is drawn in the menu bar's own colors, light or dark.
         .icon_as_template(true)
-        .tooltip("Lock In")
+        .tooltip("Seiza")
         .menu(&menu(app, snapshot)?)
         .on_menu_event(on_menu_event)
         .build(app)?;
@@ -66,8 +66,8 @@ fn menu(app: &AppHandle, snapshot: &Snapshot) -> tauri::Result<Menu<Wry>> {
     builder
         .separator()
         .item(&launch)
-        .text("open", "Open Lock In…")
-        .text("quit", "Quit Lock In")
+        .text("open", "Open Seiza…")
+        .text("quit", "Quit Seiza")
         .build()
 }
 
@@ -99,6 +99,6 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
         },
     };
     if let Err(error) = result {
-        eprintln!("Lock In: {error}");
+        eprintln!("Seiza: {error}");
     }
 }

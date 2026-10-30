@@ -12,12 +12,12 @@ const LEVELS: Record<Level, { name: string; url: string; says: string }> = {
   },
   redirected: {
     name: 'Redirected',
-    url: 'Lock In · videos.example',
-    says: 'visits go to a calm Lock In page first. Focus for five minutes, read your if-then plan, or open one of your own links.',
+    url: 'Seiza · videos.example',
+    says: 'visits go to a calm Seiza page first. Focus for five minutes, read your if-then plan, or open one of your own links.',
   },
   restricted: {
     name: 'Restricted',
-    url: 'Lock In · videos.example',
+    url: 'Seiza · videos.example',
     says: 'blocked, with no way through until the session ends.',
   },
 };
@@ -45,7 +45,7 @@ onBeforeUnmount(() => clearInterval(countdown));
     <p class="kicker mono reveal"><b>01</b> · The extension</p>
     <h2 class="reveal" style="--d: 80ms">Tame, don't just block.</h2>
     <p class="lede reveal" style="--d: 160ms">
-      Most blockers treat a site as all or nothing. Lock In gives every site one of four levels, chosen per profile. Try
+      Most blockers treat a site as all or nothing. Seiza gives every site one of four levels, chosen per profile. Try
       them on this made-up video site.
     </p>
     <div class="demo hud glass reveal" style="--d: 220ms" :data-level="level">
@@ -116,7 +116,7 @@ onBeforeUnmount(() => clearInterval(countdown));
           </div>
 
           <div class="page wait" aria-hidden="true">
-            <div class="brand"><span>✦</span> Lock In</div>
+            <div class="brand"><span>✦</span> Seiza</div>
             <h4>Focus for 5 minutes first</h4>
             <p class="lead">If you still want videos.example after that, go right ahead.</p>
             <p class="clock">{{ clock }}</p>
@@ -136,7 +136,7 @@ onBeforeUnmount(() => clearInterval(countdown));
           </div>
 
           <div class="page off" aria-hidden="true">
-            <div class="brand"><span>✦</span> Lock In</div>
+            <div class="brand"><span>✦</span> Seiza</div>
             <h4>videos.example is off for now</h4>
             <p>It's restricted during Deep Work and will be back when the session ends.</p>
             <div class="do"><span class="yes">Back to focus</span></div>

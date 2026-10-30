@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Lock In",
+  "productName": "Seiza",
   "version": "0.1.0",
   "identifier": "io.github.lock-in-focus-app.lock-in",
   "build": {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 useSeoMeta({
-  title: 'Lock In · Tame distractions, watch your sky fill with stars',
+  title: 'Seiza · Tame distractions, watch your sky fill with stars',
   description:
     'A free, open-source focus app. Block, tame or redirect distracting sites and apps, and watch your night sky fill with stars as you focus.',
 });

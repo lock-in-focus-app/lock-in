@@ -1075,7 +1075,7 @@ const MAX_IMPORTED_PROFILES: usize = 100;
 /// The longest profile name, as in packages/core (edits.ts).
 const MAX_PROFILE_NAME: usize = 40;
 
-/// The longest id kept from a backup. Lock In's own ids are far shorter.
+/// The longest id kept from a backup. Seiza's own ids are far shorter.
 const MAX_ID: usize = 100;
 
 /// A profile from a backup with a sensible id and name, or None. The rest is kept as it is, as
