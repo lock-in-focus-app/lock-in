@@ -38,7 +38,7 @@
       /* Nebulae: big soft glows drifting slowly. Light pollution hides them; a clear sky shows them. */
       .nebulae {
         position: fixed;
-        inset: 0;
+        inset: -40vh 0;
         z-index: -1;
         overflow: hidden;
         pointer-events: none;
@@ -192,7 +192,8 @@
         color: var(--glint);
       }
 
-      /* The frame's own Lock In switch, a readout you can press. */
+      /* The session readout: whether you're locked in and for how long, with the action spelled out
+         ("Lock in ›" or "End ›"). */
       .session {
         display: inline-flex;
         align-items: center;
@@ -204,34 +205,34 @@
         color: var(--faint);
       }
 
-      .session:hover {
-        color: var(--dim);
-      }
-
-      .mini-track {
-        position: relative;
-        width: 24px;
-        height: 12px;
-        border: 1px solid var(--line-strong);
-        border-radius: 6px;
-      }
-
-      .mini-track::after {
-        content: '';
-        position: absolute;
-        top: 2px;
-        left: 2px;
+      .session .dot {
         width: 6px;
         height: 6px;
         border-radius: 50%;
         background: var(--sodium);
-        transition: transform 500ms var(--spring);
+        transition:
+          background-color 600ms,
+          box-shadow 600ms;
       }
 
-      .locked .mini-track::after {
-        transform: translateX(12px);
+      .locked .session .dot {
         background: var(--glow);
         box-shadow: 0 0 6px var(--glow);
+      }
+
+      .session .act {
+        padding: 2px 7px;
+        border: 1px solid var(--line-strong);
+        border-radius: 3px;
+        color: var(--dim);
+        transition:
+          color 200ms,
+          border-color 200ms;
+      }
+
+      .session:hover .act {
+        color: var(--starlight);
+        border-color: rgb(220 228 255 / 0.4);
       }
 
       /* ── Top nav: links with dot separators and the mark in the middle ─────────── */
@@ -412,7 +413,6 @@
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
-        scroll-snap-type: y proximity;
         scrollbar-width: none;
         mask-image: linear-gradient(transparent, #000 36px, #000 calc(100% - 36px), transparent);
       }
@@ -428,7 +428,13 @@
         flex-direction: column;
         justify-content: center;
         padding: 40px clamp(16px, 6vw, 96px);
-        scroll-snap-align: start;
+      }
+
+      /* The last section is only as tall as its content, so the page ends with the footer. */
+      section:last-child {
+        min-height: 0;
+        padding-top: 72px;
+        padding-bottom: 28px;
       }
 
       /* Text straight on the sky gets a soft dark shadow, so it reads over the haze too. */
@@ -1916,9 +1922,10 @@
       <p class="readout mono tr">Seeing · <b class="warn state" id="seeing">Hazy</b></p>
       <p class="readout mono bl">Sky · <b class="warn state" id="skystate">Light-polluted</b></p>
       <p class="readout mono br">
-        <button class="session" role="switch" aria-checked="false" data-switch>
-          <span class="mini-track" aria-hidden="true"></span>
-          <span>Session · <b class="state" id="session">Off</b></span>
+        <button class="session" type="button" id="session-button">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="session">No session</span>
+          <span class="act" id="session-act">Lock in ›</span>
         </button>
       </p>
 
@@ -2356,9 +2363,20 @@
         tick();
       }
 
+      // Scrolling past the hero locks in once by itself (see onScroll). After that, or once you've
+      // used a switch yourself, only you start and end it.
+      let autoLock = true;
+      const isLocked = () => document.body.classList.contains('locked');
       for (const s of switches) {
-        s.addEventListener('click', () => setLocked(s.getAttribute('aria-checked') !== 'true'));
+        s.addEventListener('click', () => {
+          autoLock = false;
+          setLocked(!isLocked());
+        });
       }
+      document.getElementById('session-button').addEventListener('click', () => {
+        autoLock = false;
+        setLocked(!isLocked());
+      });
 
       // The corner readouts: local time, and how long you've been locked in.
       const pad = (n) => String(n).padStart(2, '0');
@@ -2367,9 +2385,11 @@
         text('clock', `${pad(now.getHours())}:${pad(now.getMinutes())}`);
         if (lockedAt) {
           const s = Math.floor((Date.now() - lockedAt) / 1000);
-          text('session', `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`);
+          text('session', `Locked in · ${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`);
+          text('session-act', 'End ›');
         } else {
-          text('session', 'Off');
+          text('session', 'No session');
+          text('session-act', 'Lock in ›');
         }
       }
       setInterval(tick, 1000);
@@ -2450,10 +2470,13 @@
           seg.firstChild.style.transform = `scaleX(${p})`;
         });
         // Scrolling on past the hero locks in too (as in A), so the rest sits under a clear sky.
-        if (top > view * 0.45 && !document.body.classList.contains('locked')) setLocked(true);
+        if (autoLock && top > view * 0.45) {
+          autoLock = false;
+          if (!isLocked()) setLocked(true);
+        }
         if (!reduce) {
           sky.set({ shift: top * 0.25 });
-          nebulae.style.transform = `translateY(${(-top * 0.06).toFixed(1)}px)`;
+          nebulae.style.transform = `translateY(${(-Math.min(top * 0.06, innerHeight * 0.35)).toFixed(1)}px)`;
         }
       }
       scroller.addEventListener('scroll', () => {
