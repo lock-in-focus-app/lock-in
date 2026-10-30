@@ -4,6 +4,9 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  // Set explicitly: in Cloudflare's builds Nitro would pick its Worker preset, which points Wrangler
+  // at a server entry this static site doesn't have.
+  nitro: { preset: 'static' },
   // In cascade order: the apps' look, then the frame round the window, then each section.
   css: [
     '~/assets/css/theme.css',
