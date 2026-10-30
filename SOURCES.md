@@ -1,6 +1,6 @@
 # Building the Seiza extension from source
 
-For Firefox Add-ons reviewers, and anyone checking a release against its source. This zip has the parts of the repository the extension is built from: `apps/extension`, `packages/` and the workspace files. The full repository is at <https://github.com/lock-in-focus-app/lock-in>.
+For Firefox Add-ons reviewers, and anyone checking a release against its source. This zip has the parts of the repository the extension is built from: `apps/extension`, `packages/` and the workspace files. The full repository is at <https://github.com/seiza-app/seiza>.
 
 ## Needs
 

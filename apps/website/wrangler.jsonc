@@ -2,6 +2,8 @@
   // The website: static files only, prerendered by `nuxt generate`. No Worker script runs.
   "name": "lock-in-website",
   "compatibility_date": "2026-10-30",
+  // Deploying attaches the domain to the Worker, so it doesn't need setting in the dashboard.
+  "routes": [{ "pattern": "getseiza.app", "custom_domain": true }],
   "assets": {
     "directory": "./.output/public",
     // Unknown addresses get the 404 page with a 404 status.

@@ -43,4 +43,4 @@ To deploy from GitHub with Workers Builds, in the Cloudflare dashboard go to **W
 
 The build needs Node 22 or later. If the first build uses an older one, add a `NODE_VERSION` variable set to `22` under the Worker's build settings.
 
-Then add the domain under the Worker's **Settings › Domains & Routes › Custom domain**.
+The domain, `getseiza.app`, is set in `wrangler.jsonc`, so the first deploy attaches it to the Worker. It needs to be a zone on the same Cloudflare account, which it is when it was bought through Cloudflare.

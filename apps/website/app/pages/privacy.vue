@@ -101,9 +101,9 @@ useSeoMeta({
       <h2 class="reveal" style="--d: 80ms">This page changes first</h2>
       <p class="lede reveal" style="--d: 160ms">
         If this ever changes, this page changes first, with the date below. The source code is public at
-        <a href="https://github.com/lock-in-focus-app/lock-in">github.com/lock-in-focus-app/lock-in</a>, so you can
+        <a href="https://github.com/seiza-app/seiza">github.com/seiza-app/seiza</a>, so you can
         check any of it. Questions go to the repository's
-        <a href="https://github.com/lock-in-focus-app/lock-in/issues">issues</a>.
+        <a href="https://github.com/seiza-app/seiza/issues">issues</a>.
       </p>
       <p class="aside mono reveal" style="--d: 220ms">Last updated: 30 October 2026</p>
       <SiteFooter class="reveal" style="--d: 280ms" />

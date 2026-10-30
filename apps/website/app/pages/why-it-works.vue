@@ -268,7 +268,7 @@ const FINDINGS: Finding[] = [
       </ul>
       <p class="aside reveal" style="--d: 300ms">
         Each finding was checked against its paper in October 2026. If you know of research that changes any of this,
-        <a href="https://github.com/lock-in-focus-app/lock-in/issues">open an issue</a>.
+        <a href="https://github.com/seiza-app/seiza/issues">open an issue</a>.
       </p>
       <SiteFooter class="reveal" style="--d: 360ms" />
     </section>

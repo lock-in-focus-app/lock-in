@@ -1,6 +1,6 @@
 # Store listings
 
-What to paste into the Chrome Web Store and Firefox Add-ons forms, kept here so the listings change with the code. The privacy policy both stores ask for is [PRIVACY.md](../../PRIVACY.md), linked as <https://github.com/lock-in-focus-app/lock-in/blob/main/PRIVACY.md>.
+What to paste into the Chrome Web Store and Firefox Add-ons forms, kept here so the listings change with the code. The privacy policy both stores ask for is [PRIVACY.md](../../PRIVACY.md), linked as <https://getseiza.app/privacy> once the website is live (until then, <https://github.com/seiza-app/seiza/blob/main/PRIVACY.md>).
 
 ## Building the zips
 
@@ -13,9 +13,9 @@ pnpm --filter @lock-in/extension zip:firefox  # Firefox Add-ons, with the source
 
 They land in `apps/extension/.output/`:
 
-- `lock-in-<version>-chrome.zip`: for the Chrome Web Store. It's built without the manifest's `key` (the store won't take one), into `.output/chrome-mv3-store`, so a copy loaded unpacked from `.output/chrome-mv3` keeps its id.
-- `lock-in-<version>-firefox.zip`: for Firefox Add-ons.
-- `lock-in-<version>-sources.zip`: Firefox Add-ons asks for it with the Firefox zip, since the code is bundled. `SOURCES.md` inside says how to build it.
+- `seiza-<version>-chrome.zip`: for the Chrome Web Store. It's built without the manifest's `key` (the store won't take one), into `.output/chrome-mv3-store`, so a copy loaded unpacked from `.output/chrome-mv3` keeps its id.
+- `seiza-<version>-firefox.zip`: for Firefox Add-ons.
+- `seiza-<version>-sources.zip`: Firefox Add-ons asks for it with the Firefox zip, since the code is bundled. `SOURCES.md` inside says how to build it.
 
 Raise `version` in `package.json` before each upload; both stores refuse a version they've already had.
 
@@ -42,7 +42,7 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 >
 > Seiza works on its own. With the Seiza desktop app installed, the two stay in step, and your focus time fills a night sky with stars.
 >
-> No accounts, no analytics, no ads. Nothing leaves your computer. The source code is public: https://github.com/lock-in-focus-app/lock-in
+> No accounts, no analytics, no ads. Nothing leaves your computer. The source code is public: https://github.com/seiza-app/seiza
 
 ## Chrome Web Store
 
@@ -77,9 +77,9 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 
 **License:** GNU Affero General Public License v3.0
 
-**Support site:** https://github.com/lock-in-focus-app/lock-in/issues
+**Support site:** https://github.com/seiza-app/seiza/issues
 
-**Homepage:** https://github.com/lock-in-focus-app/lock-in
+**Homepage:** https://getseiza.app (until the website is live, https://github.com/seiza-app/seiza)
 
 **Data collection:** none (declared in the manifest as `data_collection_permissions: { required: ["none"] }`).
 
