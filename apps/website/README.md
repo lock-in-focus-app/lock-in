@@ -34,7 +34,7 @@ This writes the static site to `.output/public`, including a `404.html` for unkn
 
 `wrangler.jsonc` describes a Worker that only serves the files in `.output/public` (static assets, no script) and answers unknown addresses with the 404 page.
 
-To deploy from GitHub with Workers Builds, in the Cloudflare dashboard go to **Workers & Pages › Create › Import a repository**, pick this repository, name the Worker `seiza-website` (it has to match `name` in `wrangler.jsonc`), and set:
+To deploy from GitHub with Workers Builds, in the Cloudflare dashboard go to **Workers & Pages › Create › Import a repository**, pick this repository, name the Worker `seiza` (it has to match `name` in `wrangler.jsonc`), and set:
 
 - **Root directory:** `apps/website`
 - **Build command:** `cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @lock-in/website generate`
