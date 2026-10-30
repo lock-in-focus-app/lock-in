@@ -1,16 +1,21 @@
 import {
+  allTheTimeToggles,
   buildRecipeCss,
   checkOpenPage,
   cssForPage,
   endLock,
   findRecipe,
+  findRule,
+  levelFor,
   maxHiddenParts,
   pagePathAttribute,
+  resolveToggles,
   siteAccess,
   siteRecipes,
   siteSettingsFor,
   type Profile,
   type Session,
+  type SiteRecipe,
   type SiteSettings,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
@@ -37,8 +42,9 @@ export default defineContentScript({
     let url = new URL(location.href);
 
     // While the element picker is open (from the popup), it decides what's hidden of the parts
-    // picked on this site, in a session or not, so you see what Done would save before saving it.
-    let picking: { recipeId: string } | undefined;
+    // picked on this site, in a session or not, and which of its toggles are flipped, so you see
+    // what Done would save before saving it.
+    let picking: { recipeId: string; toggles: Record<string, boolean> } | undefined;
     let picker: Picker | undefined;
     const pickStyle = document.createElement('style');
     pickStyle.dataset.lockInPicker = '';
@@ -48,27 +54,90 @@ export default defineContentScript({
     let recheck: number | undefined;
 
     const savedWhilePicking = () => (picking && siteSettingsFor(sites, picking.recipeId)?.hidden) ?? [];
-    // The site settings as the page's own stylesheet sees them: while picking, without the parts
-    // the picker is showing or hiding itself.
+    // The site settings and session as the page's own stylesheet sees them: while picking,
+    // without the parts the picker is showing or hiding itself, and with its toggles flipped.
+    // Flips go to whichever of the two tames the page (pickerToggles), the other ignores them.
     const tamingSites = () =>
       picking
-        ? sites.map((site) => (site.recipeId === picking!.recipeId ? { ...site, hidden: undefined } : site))
+        ? sites.map((site) =>
+            site.recipeId === picking!.recipeId
+              ? { ...site, hidden: undefined, toggles: { ...site.toggles, ...picking!.toggles } }
+              : site,
+          )
         : sites;
+    const tamingSession = (): Session | null => {
+      if (!picking || !session || !Object.keys(picking.toggles).length) return session;
+      const id = picking.recipeId;
+      return {
+        ...session,
+        overrides: { ...session.overrides, [id]: { ...session.overrides?.[id], ...picking.toggles } },
+      };
+    };
 
-    const apply = (navigated = false) => {
-      picker?.refresh();
+    /** The toggles taming this page right now, for the picker: the session's, or the site's own. */
+    const pickerToggles = (recipe: SiteRecipe) => {
+      const list = (values: Record<string, boolean>) =>
+        recipe.toggles.map((toggle) => ({ id: toggle.id, label: toggle.label, on: values[toggle.id] ?? false }));
+      if (session) {
+        const profile = profileList.find((p) => p.id === session!.profileId);
+        if (levelFor(profile, recipe.id, url.pathname) !== 'tamed') return undefined;
+        const values = resolveToggles(recipe, findRule(profile, recipe.id), session.overrides?.[recipe.id]);
+        return { when: 'this session', list: list(values) };
+      }
+      const settings = siteSettingsFor(sites, recipe.id);
+      return settings?.allTheTime
+        ? { when: 'all the time', list: list(allTheTimeToggles(recipe, settings)) }
+        : undefined;
+    };
+
+    // Hiding a playing video doesn't stop its sound (Twitch's front page plays a stream), so
+    // anything hidden here is paused too: when it's hidden, and whenever it starts playing.
+    const hiddenSelector = () =>
+      [style, pickStyle]
+        .flatMap((element) => [...(element.sheet?.cssRules ?? [])])
+        .flatMap((rule) =>
+          'selectorText' in rule && (rule as CSSStyleRule).style.display === 'none'
+            ? [(rule as CSSStyleRule).selectorText]
+            : [],
+        )
+        .join(', ');
+    const quiet = (media: HTMLMediaElement, selector = hiddenSelector()) => {
+      if (selector && !media.paused && media.closest(selector)) media.pause();
+    };
+    const quietHidden = () => {
+      const selector = hiddenSelector();
+      if (!selector) return;
+      for (const media of document.querySelectorAll<HTMLMediaElement>('video, audio')) quiet(media, selector);
+    };
+    // Media events don't bubble, so this listens on the way down.
+    ctx.addEventListener(
+      document,
+      'play',
+      (event) => {
+        if (event.target instanceof HTMLMediaElement) quiet(event.target);
+      },
+      { capture: true },
+    );
+
+    const restyle = () => {
       style.textContent = cssForPage({
         url,
-        session,
+        session: tamingSession(),
         profiles: profileList,
         recipes: known,
         siteSettings: tamingSites(),
       });
+      quietHidden();
 
       // Recipes can hide things on some pages only by matching the path kept on <html>.
       // It's only there while the page is tamed.
       if (style.textContent) document.documentElement.setAttribute(pagePathAttribute, url.pathname);
       else document.documentElement.removeAttribute(pagePathAttribute);
+    };
+
+    const apply = (navigated = false) => {
+      picker?.refresh();
+      restyle();
 
       // Single-page apps change pages without loading one, so the browser's redirect rules
       // never see it. Moving onto a redirected or restricted page is caught here instead.
@@ -121,7 +190,7 @@ export default defineContentScript({
       picker?.close();
       document.documentElement.append(pickStyle);
       // The page's own stylesheet leaves the saved parts to the picker's preview from here on.
-      picking = { recipeId };
+      picking = { recipeId, toggles: {} };
       picker = showPicker({
         siteName: recipe.name,
         saved: savedWhilePicking,
@@ -129,11 +198,23 @@ export default defineContentScript({
         maxParts: maxHiddenParts,
         partFor: hiddenPartFor,
         pickable,
-        preview: (parts) => {
+        toggles: () => pickerToggles(recipe),
+        preview: (parts, toggles) => {
           pickStyle.textContent = buildRecipeCss({ ...recipe, toggles: [] }, {}, parts);
+          if (picking && JSON.stringify(toggles) !== JSON.stringify(picking.toggles)) {
+            picking.toggles = toggles;
+            restyle();
+          } else {
+            quietHidden();
+          }
         },
         onDone: async (change) => {
           await changeHiddenParts(recipeId, change);
+          // Flips are saved where they were made: to the session, or to the site tamed all the time.
+          for (const [toggleId, value] of Object.entries(change.toggles)) {
+            if (session) await setSessionToggle(recipe, toggleId, value);
+            else await setAllTheTimeToggle(recipeId, toggleId, value);
+          }
           stopPicking();
         },
         onCancel: stopPicking,

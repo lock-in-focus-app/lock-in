@@ -228,4 +228,61 @@ describe('the element picker', () => {
       .toContain('grayscale');
     await reddit.close();
   });
+
+  it("flips a site's toggles from the picker, showing them before Done saves them", async () => {
+    const reddit = await t.browser.newPage();
+    await reddit.goto(urls.reddit);
+    const gray = () => reddit.evaluate(() => getComputedStyle(document.documentElement).filter.includes('grayscale'));
+    const feedSwitch = 'lock-in-picker >>> button[data-toggle="hideFeeds"]';
+    const savedToggles = async () =>
+      (await stored(control)).siteSettings?.find((s) => s.recipeId === 'reddit')?.toggles ?? {};
+
+    /** Opens the picker from the popup's tab that applies now. */
+    async function pickOnReddit() {
+      const earlier = new Set(t.browser.targets());
+      await reddit.bringToFront();
+      await reddit.triggerExtensionAction(t.extension);
+      const target = await t.browser.waitForTarget((x) => x.url().endsWith('/popup.html') && !earlier.has(x));
+      const popup = (await target.asPage())!;
+      await popup.waitForSelector('main > .site .pick button');
+      await popup.click('main > .site .pick button');
+      await reddit.waitForSelector(feedSwitch, { visible: true });
+    }
+
+    // Tamed all the time (from the test before), so these are the site's own toggles.
+    await pickOnReddit();
+    expect(await reddit.$eval('lock-in-picker >>> .list .mono', (e) => e.textContent)).toBe('Toggles · all the time');
+    expect(await reddit.$eval(feedSwitch, (e) => e.getAttribute('aria-checked'))).toBe('true');
+    await reddit.click(feedSwitch);
+    await expect.poll(() => shown(reddit, '#feed')).toBe(true);
+    expect(await reddit.$eval(feedSwitch, (e) => e.getAttribute('aria-checked'))).toBe('false');
+    expect(await savedToggles()).not.toHaveProperty('hideFeeds');
+    await reddit.click('lock-in-picker >>> button.done');
+    await expect.poll(async () => (await savedToggles()).hideFeeds).toBe(false);
+    expect(await shown(reddit, '#feed')).toBe(true);
+
+    // Cancel puts a flip back.
+    await pickOnReddit();
+    await reddit.click('lock-in-picker >>> button[data-toggle="grayscale"]');
+    await expect.poll(gray).toBe(false);
+    await reddit.click('lock-in-picker >>> button.cancel');
+    await expect.poll(gray).toBe(true);
+    expect((await savedToggles()).grayscale).toBe(true);
+
+    // In a session, they're the session's, and the site's own are left alone.
+    const own = await savedToggles();
+    await startSession(control, profileId);
+    await expect.poll(() => shown(reddit, '#feed')).toBe(false);
+    await pickOnReddit();
+    expect(await reddit.$eval('lock-in-picker >>> .list .mono', (e) => e.textContent)).toBe('Toggles · this session');
+    await reddit.click(feedSwitch);
+    await expect.poll(() => shown(reddit, '#feed')).toBe(true);
+    await reddit.click('lock-in-picker >>> button.done');
+    await expect
+      .poll(async () => (await stored(control)).activeSession?.overrides?.reddit)
+      .toEqual({ hideFeeds: false });
+    expect(await savedToggles()).toEqual(own);
+    await setStored(control, { activeSession: null });
+    await reddit.close();
+  });
 });

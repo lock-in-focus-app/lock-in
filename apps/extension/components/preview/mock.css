@@ -176,3 +176,15 @@
 .mock.pinterest {
   --accent: #f0334a;
 }
+
+.mock.twitch {
+  --accent: #a970ff;
+}
+
+.mock.threads {
+  --accent: #d6d9de;
+}
+
+.mock.bluesky {
+  --accent: #1185fe;
+}

@@ -1,0 +1,33 @@
+{
+  "id": "bluesky",
+  "name": "Bluesky",
+  "matches": ["*://*.bsky.app/*"],
+  "pages": [{ "label": "Feeds", "paths": ["/feeds"] }],
+  "source": "Feed and count test ids from Bluesky's own app (MIT), https://github.com/bluesky-social/social-app",
+  "toggles": [
+    {
+      "id": "hideHomeFeed",
+      "label": "Hide home feeds",
+      "selectors": ["html[data-lock-in-path=\"/\"] [data-testid$=\"FeedPage-feed\"]"],
+      "default": true
+    },
+    {
+      "id": "hideTrending",
+      "label": "Hide trending",
+      "selectors": ["div:has(> div > a[aria-label^=\"Browse topic\"])"],
+      "default": true
+    },
+    {
+      "id": "hideCounts",
+      "label": "Hide like and repost counts",
+      "selectors": ["[data-testid=\"likeCount\"]", "[data-testid=\"repostCount\"]"],
+      "default": false
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

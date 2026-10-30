@@ -1,0 +1,19 @@
+{
+  "id": "threads",
+  "name": "Threads",
+  "matches": ["*://*.threads.com/*", "*://*.threads.net/*"],
+  "toggles": [
+    {
+      "id": "hideHomeFeed",
+      "label": "Hide home feed",
+      "selectors": ["html[data-lock-in-path=\"/\"] [role=\"region\"][aria-label=\"Column body\"]"],
+      "default": true
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

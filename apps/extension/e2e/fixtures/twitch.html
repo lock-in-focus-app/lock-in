@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- A stand-in for Twitch. The front page streams, recommended channels and chat are hidden; followed channels and the stream stay. -->
+<html>
+  <head>
+    <title>Fake Twitch</title>
+    <style>
+      body {
+        font: 16px sans-serif;
+        background: #fff;
+      }
+      body * {
+        display: block;
+        margin: 8px;
+        padding: 12px;
+        background: #9146ff;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <div class="side-nav-section" aria-label="Followed Channels" id="followed">
+        <a data-test-selector="followed-channel" href="/someone">Followed channel (stays)</a>
+      </div>
+      <div class="side-nav-section" aria-label="Live Channels" id="recommended">
+        <a data-test-selector="recommended-channel" href="/someone">Live channel (hidden)</a>
+      </div>
+      <div class="side-nav-section" aria-label="Someone Viewers Also Watch" id="also-watch">
+        <a data-test-selector="similarity-channel" href="/someone">Similar channel (hidden)</a>
+      </div>
+    </nav>
+    <main>
+      <div data-a-target="front-page-carousel" id="carousel"><video id="carousel-video" muted></video></div>
+      <section data-a-target="front-page-main-content" id="shelves">Live on Twitch (hidden)</section>
+      <video id="stream" muted></video>
+    </main>
+    <div data-a-target="right-column-chat-bar" id="chat">Stream chat (hidden)</div>
+  </body>
+</html>
