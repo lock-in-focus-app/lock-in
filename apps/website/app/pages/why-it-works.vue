@@ -3,7 +3,7 @@
 // and how strong the evidence is, and what's been left out or hasn't held up.
 definePageMeta({ lockOnArrival: true });
 
-useSeoMeta({
+usePageSeo({
   title: 'Why it works · Seiza',
   description:
     "The research behind Seiza, in plain words: what each feature rests on, how strong the evidence is, and what has been left out because it didn't hold up.",

@@ -30,6 +30,10 @@ pnpm --filter @lock-in/website generate
 
 This writes the static site to `.output/public`, including a `404.html` for unknown addresses.
 
+## Search engines and link previews
+
+Each page sets its title and description with `usePageSeo`. `app.vue` adds the canonical address and the link preview, whose image is `public/og.jpg` (1200×630): a screenshot of the home page's hero, locked in, with the nav, readouts and navigator hidden. `public/sitemap.xml` lists every page, so add new pages there too. The 404 page is `noindex`.
+
 ## Deploy (Cloudflare Workers)
 
 `wrangler.jsonc` describes a Worker that only serves the files in `.output/public` (static assets, no script) and answers unknown addresses with the 404 page.

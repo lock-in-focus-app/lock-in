@@ -2,7 +2,7 @@
 // The privacy policy, as in PRIVACY.md at the root of the repository. Change both together.
 definePageMeta({ lockOnArrival: true });
 
-useSeoMeta({
+usePageSeo({
   title: 'Privacy · Seiza',
   description:
     'Seiza collects nothing. It has no accounts, no analytics, no ads, and no servers of its own. Nothing you do in it is sent to anyone.',
