@@ -1,0 +1,184 @@
+/* ── The scrolling sections, inside the frame ──────────────────────────────── */
+
+#scroller {
+  position: fixed;
+  top: calc(var(--m) + var(--top));
+  bottom: calc(var(--m) + var(--bottom));
+  left: calc(var(--m) + 1px);
+  right: calc(var(--m) + 1px);
+  z-index: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  mask-image: linear-gradient(transparent, #000 36px, #000 calc(100% - 36px), transparent);
+}
+
+#scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* Only the hero fills the frame; the other sections are as tall as their content, with a
+   modest gap between them. */
+section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(48px, 9vh, 80px) clamp(16px, 6vw, 96px);
+}
+
+/* The page ends right after the footer. */
+section:last-child {
+  padding-bottom: 28px;
+}
+
+/* Text straight on the sky: a soft dark shade behind each section's words, brighter colors, and
+   a layered shadow round every letter, so it reads over the haze and the Milky Way alike. */
+section:not(.hero)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(85% 75% at 45% 50%, rgb(8 11 22 / 0.42), transparent 80%);
+}
+
+.kicker,
+h2,
+.lede,
+.source,
+.aside,
+.both,
+.tagline,
+.textlink,
+.site-footer {
+  text-shadow:
+    0 0 2px rgb(8 11 22 / 0.9),
+    0 1px 4px rgb(8 11 22 / 0.8),
+    0 2px 18px rgb(8 11 22 / 0.9),
+    0 0 42px rgb(8 11 22 / 0.6);
+}
+
+.lede,
+.source,
+.source b,
+.aside,
+.both {
+  color: #ccd2e4;
+}
+
+.kicker {
+  color: #b9c0d6;
+}
+
+.kicker {
+  margin: 0 0 14px;
+  color: var(--dim);
+}
+
+.kicker b {
+  color: var(--glow);
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-weight: 400;
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  max-width: 20ch;
+}
+
+.lede {
+  margin: 0 0 24px;
+  max-width: 58ch;
+  color: var(--dim);
+  font-size: clamp(16px, 1.4vw, 18px);
+}
+
+/* Section content drifts in the first time you reach it, and headings come into focus. */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 900ms var(--ease) var(--d, 0ms),
+    transform 1100ms var(--ease) var(--d, 0ms),
+    filter 1100ms var(--ease) var(--d, 0ms),
+    letter-spacing 1100ms var(--ease) var(--d, 0ms);
+}
+
+h2.reveal {
+  filter: blur(8px);
+  letter-spacing: 0.01em;
+}
+
+.seen .reveal {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.seen h2.reveal {
+  letter-spacing: -0.015em;
+}
+
+/* ── Layout shared by the sections ───────────────────────────────────────────── */
+
+.two {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
+}
+
+/*
+ * Glass frames that tilt a little under the pointer. Only the frame and its sheen tilt (they're
+ * the ::before and ::after layers); the text stays flat, so it stays sharp.
+ */
+.glass {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  --sheen: 0;
+}
+
+.glass::before,
+.glass::after {
+  transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition:
+    transform 700ms var(--ease),
+    opacity 500ms,
+    border-color 400ms,
+    background-color 400ms;
+}
+
+.glass::before {
+  background-color: rgb(8 11 22 / 0.82);
+  box-shadow:
+    inset 0 1px 0 rgb(220 228 255 / 0.12),
+    0 18px 40px rgb(0 0 0 / 0.35);
+}
+
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--sheen);
+  background:
+    radial-gradient(520px circle at var(--mx) var(--my), rgb(220 228 255 / 0.08), transparent 60%),
+    linear-gradient(180deg, rgb(220 228 255 / 0.05), transparent 140px);
+}
+
+.glass.tilting::before,
+.glass.tilting::after {
+  transition-duration: 160ms, 500ms, 400ms, 400ms;
+}
+
+.glass:hover {
+  --t: var(--tick-bright);
+}

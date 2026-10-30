@@ -1,0 +1,128 @@
+/* ── Privacy ────────────────────────────────────────────────────────────────── */
+
+.promises {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.promises li {
+  padding: 18px 20px;
+}
+
+.promises strong {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.promises p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 14.5px;
+}
+
+/* Sync is planned, not built: a quiet note under the promises, with its fee spelled out. */
+.sync-note {
+  max-width: 760px;
+  margin: 0 0 22px;
+  padding: 16px 20px;
+}
+
+.sync-note .mono {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lavender);
+}
+
+.sync-note p {
+  margin: 6px 0 0;
+  color: var(--dim);
+  font-size: 14.5px;
+}
+
+.textlink {
+  color: var(--glow);
+  text-decoration: none;
+  font: 600 11px var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.textlink:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ── Install (from C) ───────────────────────────────────────────────────────── */
+
+.install {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.install > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 28px;
+}
+
+.install .btn {
+  margin-top: 18px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--glow);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.both {
+  margin: 24px 0 0;
+  color: var(--dim);
+  text-align: center;
+}
+
+.fine {
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  align-items: center;
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.site-footer a {
+  color: var(--faint);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--starlight);
+}
+
+.site-footer .support {
+  margin-left: auto;
+}

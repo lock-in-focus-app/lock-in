@@ -1,0 +1,120 @@
+/* ── Phones: a thin inset frame, no corner readouts, a compact navigator ────── */
+
+@media (max-width: 900px) {
+  .two,
+  .promises {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wide-only {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  :root {
+    --m: 10px;
+    --top: 64px;
+    --bottom: 74px;
+  }
+
+  .topnav ul,
+  .readout.tl,
+  .readout.tr,
+  .readout.bl,
+  .readout.br {
+    display: none;
+  }
+
+  .topnav {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .mark {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .mark svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mark .brand {
+    padding-bottom: 3px;
+  }
+
+  .navigator {
+    bottom: 6px;
+    width: calc(100% - 24px);
+    height: 62px;
+  }
+
+  .navigator button span {
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+  }
+
+  .navigator button.up span {
+    bottom: 30px;
+  }
+
+  .navigator button.down span {
+    top: 30px;
+  }
+
+  section {
+    padding: 44px 18px;
+  }
+
+  .headline {
+    font-size: 10.5vw;
+  }
+
+  .noise {
+    opacity: 0.75;
+  }
+
+  .n {
+    scale: 0.95;
+  }
+
+  /* Out of the way of the tagline on a tall, narrow screen. */
+  .n.m-low {
+    top: 79%;
+    left: 26%;
+  }
+
+  /* The headline is wider than B's wordmark here, so one post steps aside and a badge moves up. */
+  .n.m-hide {
+    display: none;
+  }
+
+  .n.m-badge {
+    top: 22%;
+  }
+
+  .switch {
+    padding-right: 16px;
+  }
+
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .demo,
+  .install > div {
+    padding: 18px;
+  }
+
+  .site-footer .support {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glare .hazy {
+    animation: none;
+  }
+}

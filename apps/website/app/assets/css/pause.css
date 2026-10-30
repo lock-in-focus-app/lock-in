@@ -1,0 +1,123 @@
+/* ── The redirect page ──────────────────────────────────────────────────────── */
+
+.pause-card {
+  padding: 28px;
+  max-width: 460px;
+  width: 100%;
+  justify-self: center;
+}
+
+.pause-card .top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.dest {
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+}
+
+.pause-card h3 {
+  margin: 0 0 6px;
+  font-weight: 400;
+  font-size: 24px;
+}
+
+.pause-card .sub {
+  margin: 0 0 18px;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+.clock {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.clock .time {
+  font: 300 40px var(--mono);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress {
+  height: 2px;
+  margin-bottom: 22px;
+  background: rgb(220 228 255 / 0.1);
+  overflow: hidden;
+}
+
+.progress b {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--glow), var(--rose));
+  transform-origin: 0 50%;
+  transition: transform 1s linear;
+}
+
+.plan {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-left: 1px solid var(--glow);
+  background: rgb(245 200 107 / 0.05);
+  font-size: 15px;
+}
+
+.plan .mono {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.links {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.links li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.actions .btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pause-note {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  color: var(--dim);
+  font-size: 14px;
+  transition: opacity 400ms;
+}
+
+.source {
+  margin: 22px 0 0;
+  max-width: 52ch;
+  color: var(--dim);
+  font-size: 13px;
+}
+
+.source b {
+  color: var(--dim);
+  font-weight: 500;
+}

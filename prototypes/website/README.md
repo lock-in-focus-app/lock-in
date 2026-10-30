@@ -1,6 +1,6 @@
 # Website mock-ups
 
-HTML mock-ups for the Phase 6 website (PLAN §10). They aren't the site; they're directions to react to before building it in `apps/website`. All three share the apps' night-sky colors, HUD frames and the real copy, and each one respects reduced motion.
+HTML mock-ups for the Phase 6 website (PLAN §10). They aren't the site; they were directions to react to. D was picked and built into `apps/website`. All three share the apps' night-sky colors, HUD frames and the real copy, and each one respects reduced motion.
 
 **To view them**, start the static server from the repo root and open <http://localhost:4321>:
 
