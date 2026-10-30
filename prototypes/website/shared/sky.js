@@ -57,6 +57,9 @@
    *   shorter side)
    * - shift: scrolls the stars up by this many pixels, the nearer ones more, for parallax
    * - glow: the dusk glow at the bottom of a clear sky
+   * - city: how the light pollution looks, from a sunset-like glow (0) to city lights (1): a
+   *   skyline along the bottom with lit windows and a dome of orange light over it. Fewer windows
+   *   stay lit as the haze clears.
    * Not eased: `meteors` (shooting stars now and then while the sky is clear), `seed`.
    * Returns { set(options), state }.
    */
@@ -71,6 +74,7 @@
         cs: 0.42,
         shift: 0,
         glow: 1,
+        city: 0,
       },
       options,
     );
@@ -82,6 +86,7 @@
     let dpr = 1;
     let stars = [];
     let band = null;
+    let buildings = [];
     const shooting = [];
     let nextMeteor = 4000;
 
@@ -103,6 +108,7 @@
         };
       });
       band = milkyWay(random(11));
+      buildings = skyline(random(23));
     }
 
     // The Milky Way, drawn once into its own canvas: a diagonal band of soft glow and specks with
@@ -156,6 +162,28 @@
       return off;
     }
 
+    // A city along the bottom: buildings of random widths, taller towards the middle like a
+    // downtown, each with a grid of windows that light up in a random order as the haze thickens.
+    function skyline(rand) {
+      const out = [];
+      const tallest = Math.max(60, h * 0.14);
+      let x = -8;
+      while (x < w + 8) {
+        const bw = 16 + rand() * 44;
+        const downtown = Math.max(0, 1 - Math.abs((x + bw / 2) / w - 0.55) * 1.6);
+        const bh = tallest * (0.2 + rand() * 0.35 + downtown * rand() * 0.6);
+        const windows = [];
+        for (let wy = 6; wy < bh - 6; wy += 7) {
+          for (let wx = 4; wx < bw - 5; wx += 6) {
+            windows.push({ x: wx, y: wy, order: rand(), phase: rand() * Math.PI * 2, warm: rand() < 0.75 });
+          }
+        }
+        out.push({ x, w: bw, h: bh, windows, mast: bh > tallest * 0.62 && rand() < 0.7 });
+        x += bw + (rand() < 0.2 ? 2 + rand() * 10 : 0);
+      }
+      return out;
+    }
+
     function resize() {
       const box = canvas.getBoundingClientRect();
       if (!box.width || !box.height) return;
@@ -172,11 +200,14 @@
       const s = state;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // The sky itself: deep blue when clear, a muddy orange-brown glow when polluted.
+      // The sky itself: deep blue when clear; polluted, a muddy orange-brown glow like a sunset, or
+      // the flat greyish-orange of a city's sky.
       const sky = ctx.createLinearGradient(0, 0, 0, h);
-      sky.addColorStop(0, `rgb(${mix(11, 34, s.haze)} ${mix(16, 28, s.haze)} ${mix(32, 44, s.haze)})`);
-      sky.addColorStop(0.6, `rgb(${mix(13, 58, s.haze)} ${mix(18, 40, s.haze)} ${mix(38, 48, s.haze)})`);
-      sky.addColorStop(1, `rgb(${mix(21, 120, s.haze)} ${mix(20, 70, s.haze)} ${mix(42, 52, s.haze)})`);
+      const hazy = (sunset, city) => mix(sunset, city, s.city);
+      const stop = (clear, sunset, city) => mix(clear, hazy(sunset, city), s.haze);
+      sky.addColorStop(0, `rgb(${stop(11, 34, 36)} ${stop(16, 28, 33)} ${stop(32, 44, 44)})`);
+      sky.addColorStop(0.6, `rgb(${stop(13, 58, 58)} ${stop(18, 40, 48)} ${stop(38, 48, 56)})`);
+      sky.addColorStop(1, `rgb(${stop(21, 120, 112)} ${stop(20, 70, 76)} ${stop(42, 52, 64)})`);
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, h);
 
@@ -191,9 +222,9 @@
       // Stars. Haze hides the faint ones first and dims the rest; only the brightest few get
       // through, and faintly.
       const time = t / 1000;
-      const veil = 1 - s.haze * 0.5;
+      const veil = 1 - s.haze * 0.62;
       for (const star of stars) {
-        const seen = star.b - s.haze * 0.72;
+        const seen = star.b - s.haze * 0.8;
         if (seen <= 0) continue;
         const twinkle = reduce ? 1 : 0.75 + 0.25 * Math.sin(time * star.speed + star.phase);
         const a = Math.min(1, (0.25 + seen * 1.6) * twinkle * veil);
@@ -220,13 +251,16 @@
       if (meteors && !reduce) drawMeteors(t);
 
       // Light pollution: an orange glow rising from the bottom, and a pale veil over all of it.
-      if (s.haze > 0.01) {
+      const sunset = s.haze * (1 - s.city);
+      if (sunset > 0.01) {
         const city = ctx.createRadialGradient(w / 2, h * 1.25, 0, w / 2, h * 1.25, Math.max(w, h) * 1.1);
-        city.addColorStop(0, `rgb(255 154 82 / ${0.55 * s.haze})`);
-        city.addColorStop(0.45, `rgb(214 110 80 / ${0.28 * s.haze})`);
+        city.addColorStop(0, `rgb(255 154 82 / ${0.55 * sunset})`);
+        city.addColorStop(0.45, `rgb(214 110 80 / ${0.28 * sunset})`);
         city.addColorStop(1, 'rgb(120 70 90 / 0)');
         ctx.fillStyle = city;
         ctx.fillRect(0, 0, w, h);
+      }
+      if (s.haze > 0.01) {
         ctx.fillStyle = `rgb(150 120 130 / ${0.1 * s.haze})`;
         ctx.fillRect(0, 0, w, h);
       }
@@ -239,6 +273,71 @@
         glow.addColorStop(1, 'rgb(120 92 150 / 0)');
         ctx.fillStyle = glow;
         ctx.fillRect(0, 0, w, h);
+      }
+
+      if (s.city > 0.01) drawCity(time);
+    }
+
+    function drawCity(time) {
+      const s = state;
+      const c = s.city;
+
+      // The dome of light over the city: wide and low, sodium orange, with whiter LED glows.
+      if (s.haze > 0.01) {
+        ctx.save();
+        ctx.translate(w / 2, h);
+        ctx.scale(1, 0.55);
+        const r = Math.max(w * 0.8, h);
+        const dome = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+        dome.addColorStop(0, `rgb(255 178 98 / ${0.6 * s.haze * c})`);
+        dome.addColorStop(0.3, `rgb(244 140 78 / ${0.32 * s.haze * c})`);
+        dome.addColorStop(0.7, `rgb(190 110 90 / ${0.1 * s.haze * c})`);
+        dome.addColorStop(1, 'rgb(150 100 100 / 0)');
+        ctx.fillStyle = dome;
+        ctx.fillRect(-r, -r, r * 2, r);
+        ctx.restore();
+        for (const [x, color] of [
+          [0.18, '220 228 255'],
+          [0.62, '255 214 150'],
+          [0.86, '220 228 255'],
+        ]) {
+          const rr = Math.max(w, h) * 0.22;
+          const g = ctx.createRadialGradient(x * w, h, 0, x * w, h, rr);
+          g.addColorStop(0, `rgb(${color} / ${0.16 * s.haze * c})`);
+          g.addColorStop(1, `rgb(${color} / 0)`);
+          ctx.fillStyle = g;
+          ctx.fillRect(x * w - rr, h - rr, rr * 2, rr);
+        }
+      }
+
+      // The buildings, dark against the glow.
+      ctx.fillStyle = `rgb(7 8 15 / ${c})`;
+      for (const b of buildings) {
+        ctx.fillRect(b.x, h - b.h, b.w, b.h);
+        if (b.mast) ctx.fillRect(b.x + b.w / 2 - 0.75, h - b.h - 14, 1.5, 14);
+      }
+
+      // Windows: most are lit under the haze, a few stay on under a clear sky. Each one's turn
+      // drifts slowly, so now and then a light goes on or off.
+      const lit = 0.06 + 0.5 * s.haze;
+      const glowA = (0.45 + 0.4 * s.haze) * c;
+      for (const warm of [true, false]) {
+        ctx.fillStyle = warm ? `rgb(255 212 140 / ${glowA})` : `rgb(214 226 255 / ${glowA * 0.85})`;
+        for (const b of buildings) {
+          const top = h - b.h;
+          for (const win of b.windows) {
+            if (win.warm !== warm) continue;
+            const drift = reduce ? 0 : 0.03 * Math.sin(time * 0.12 + win.phase);
+            if (win.order + drift < lit) ctx.fillRect(b.x + win.x, top + win.y, 2.5, 3);
+          }
+        }
+      }
+
+      // A slow red light on top of each mast, for aircraft.
+      const blink = reduce ? 0.8 : 0.35 + 0.65 * Math.max(0, Math.sin(time * 1.6));
+      ctx.fillStyle = `rgb(255 70 60 / ${blink * c})`;
+      for (const b of buildings) {
+        if (b.mast) ctx.fillRect(b.x + b.w / 2 - 1.25, h - b.h - 16, 2.5, 2.5);
       }
     }
 
