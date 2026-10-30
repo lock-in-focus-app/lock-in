@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seiza · Logo and Japanese touches</title>
+    <link rel="stylesheet" href="../website/shared/theme.css" />
+    <style>
+      /*
+       * Logo ideas for Seiza, each at full size, as an app icon and as a 32px and 16px favicon,
+       * then a few places a little Japanese could go. Built from the apps' tokens; nothing here is
+       * final art (the type would be turned into outlines first).
+       */
+      :root {
+        --mincho: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+        --gothic: 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', sans-serif;
+      }
+
+      body {
+        background:
+          radial-gradient(90% 60% at 80% -10%, rgb(120 92 150 / 0.28), transparent 70%),
+          radial-gradient(70% 50% at 0% 110%, rgb(59 79 176 / 0.22), transparent 70%), var(--sky);
+        background-attachment: fixed;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 56px 24px 96px;
+      }
+
+      h1 {
+        margin: 14px 0 8px;
+        font-weight: 400;
+        font-size: clamp(28px, 4vw, 42px);
+        letter-spacing: -0.015em;
+      }
+
+      h2 {
+        margin: 64px 0 6px;
+        font-weight: 400;
+        font-size: clamp(22px, 2.6vw, 30px);
+      }
+
+      .lede {
+        max-width: 64ch;
+        margin: 0 0 28px;
+        color: var(--dim);
+      }
+
+      .lede [lang='ja'],
+      .note [lang='ja'] {
+        font-family: var(--gothic);
+        color: var(--starlight);
+      }
+
+      /* ── Logos ─────────────────────────────────────────────────────────────── */
+
+      .logos {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .logo {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 20px;
+      }
+
+      .logo .stage {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .logo .big {
+        display: grid;
+        place-items: center;
+        height: 180px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: radial-gradient(70% 70% at 50% 45%, rgb(27 35 66 / 0.9), rgb(8 11 22 / 0.9));
+      }
+
+      .logo .big svg {
+        width: 150px;
+        height: 150px;
+      }
+
+      .sizes {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .sizes .tile svg {
+        display: block;
+        width: 72px;
+        height: 72px;
+      }
+
+      .sizes .small {
+        display: flex;
+        align-items: end;
+        gap: 10px;
+      }
+
+      .sizes .small svg {
+        display: block;
+      }
+
+      .sizes .tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 9px 5px 7px;
+        border-radius: 7px 7px 0 0;
+        background: #1c2130;
+        font: 11px var(--sans);
+        color: var(--dim);
+      }
+
+      .logo h3 {
+        margin: 0;
+        font-weight: 500;
+        font-size: 17px;
+      }
+
+      .logo h3 small {
+        margin-left: 6px;
+        font: 600 10px var(--mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--glow);
+      }
+
+      .logo p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 14.5px;
+      }
+
+      .logo .fit {
+        font-size: 13.5px;
+        color: var(--faint);
+      }
+
+      /* The wordmark: lowercase, light, with the star for the dot of the i. */
+      .wordmark {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .wordmark .word {
+        position: relative;
+        font: 300 54px/1 var(--sans);
+        letter-spacing: 0.04em;
+        color: var(--starlight);
+      }
+
+      .wordmark .i {
+        position: relative;
+      }
+
+      .wordmark .i svg {
+        position: absolute;
+        left: 50%;
+        top: -0.06em;
+        width: 0.36em;
+        height: 0.36em;
+        transform: translateX(-50%);
+      }
+
+      .wordmark .kana {
+        font: 13px var(--gothic);
+        letter-spacing: 0.5em;
+        margin-right: -0.5em;
+        color: var(--faint);
+      }
+
+      /* ── Japanese touches ──────────────────────────────────────────────────── */
+
+      .touches {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .touch {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 20px;
+      }
+
+      .touch h3 {
+        margin: 0;
+        font-weight: 500;
+        font-size: 17px;
+      }
+
+      .touch p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 14.5px;
+      }
+
+      .preview {
+        position: relative;
+        height: 170px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: radial-gradient(80% 80% at 70% 20%, rgb(40 36 80 / 0.7), rgb(8 11 22 / 0.95));
+      }
+
+      .preview .mini-frame {
+        position: absolute;
+        inset: 14px;
+        border: 1px solid rgb(185 167 245 / 0.42);
+      }
+
+      .mini-mark {
+        position: absolute;
+        left: 50%;
+        top: 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        transform: translateX(-50%);
+      }
+
+      .mini-mark svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .mini-mark .brand {
+        font-size: 11px;
+        padding-bottom: 5px;
+        border-bottom: 2px solid var(--glow);
+      }
+
+      .mini-mark .reading {
+        font: 10px var(--gothic);
+        letter-spacing: 0.45em;
+        margin-right: -0.45em;
+        color: var(--faint);
+      }
+
+      .mini-mark.under .brand {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .vertical {
+        position: absolute;
+        right: 22px;
+        top: 50%;
+        writing-mode: vertical-rl;
+        white-space: nowrap;
+        transform: translateY(-50%);
+        font: 16px var(--mincho);
+        letter-spacing: 0.5em;
+        color: rgb(185 167 245 / 0.7);
+      }
+
+      .vertical small {
+        margin-top: 0.6em;
+        font: 10px var(--gothic);
+        letter-spacing: 0.4em;
+        color: var(--faint);
+      }
+
+      .gloss {
+        position: absolute;
+        left: 26px;
+        bottom: 24px;
+        font: 10px var(--mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      .gloss [lang='ja'] {
+        font-family: var(--gothic);
+        letter-spacing: 0.2em;
+        color: var(--dim);
+        text-transform: none;
+      }
+
+      .kicker-demo {
+        position: absolute;
+        left: 26px;
+        top: 50px;
+        right: 26px;
+      }
+
+      .kicker-demo .kicker {
+        margin: 0 0 8px;
+        font: 10px var(--mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+
+      .kicker-demo .kicker b {
+        color: var(--glow);
+      }
+
+      .kicker-demo .kicker [lang='ja'] {
+        margin-left: 8px;
+        font-family: var(--gothic);
+        letter-spacing: 0.2em;
+        color: var(--lavender);
+      }
+
+      .kicker-demo h4 {
+        margin: 0;
+        font-weight: 400;
+        font-size: 22px;
+        line-height: 1.15;
+      }
+
+      .app-head {
+        position: absolute;
+        left: 22px;
+        top: 22px;
+        right: 22px;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line);
+        font: 12px var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .app-head .star {
+        color: var(--glow);
+      }
+
+      .app-head [lang='ja'] {
+        font: 11px var(--gothic);
+        letter-spacing: 0.3em;
+        color: var(--faint);
+        text-transform: none;
+      }
+
+      .app-head .time {
+        margin-left: auto;
+        color: var(--faint);
+      }
+
+      .gate {
+        position: absolute;
+        left: 22px;
+        right: 22px;
+        bottom: 22px;
+        font-size: 13px;
+        color: var(--dim);
+      }
+
+      .gate .brandline {
+        margin-bottom: 6px;
+        font: 10px var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      .gate .brandline [lang='ja'] {
+        font-family: var(--gothic);
+        letter-spacing: 0.25em;
+        text-transform: none;
+      }
+
+      .note {
+        max-width: 72ch;
+        margin: 22px 0 0;
+        color: var(--dim);
+        font-size: 14.5px;
+      }
+
+      .note b {
+        font-weight: 500;
+        color: var(--starlight);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="mono"><span class="star" style="color: var(--glow)">✦</span> Seiza · brand mock-ups</p>
+      <h1>A logo, and a little Japanese</h1>
+      <p class="lede">
+        Seiza is <span lang="ja">星座</span>, a constellation, and sounds the same as <span lang="ja">正座</span>, the
+        calm kneeling posture. Written in hiragana, <span lang="ja">せいざ</span> could be either, so it carries both
+        meanings at once. Six logo ideas first, each as an app icon and at favicon sizes, then places the Japanese could
+        go.
+      </p>
+
+      <ul class="logos" id="logos"></ul>
+
+      <h2>Japanese touches</h2>
+      <p class="lede">
+        A light hand: one or two of these, not all. The kanji <span lang="ja">星座</span> says constellation outright;
+        the hiragana <span lang="ja">せいざ</span> is the softer reading and keeps the double meaning.
+      </p>
+
+      <ul class="touches">
+        <li class="touch hud glass">
+          <div class="preview">
+            <div class="mini-frame"></div>
+            <div class="mini-mark under">
+              <svg viewBox="0 0 100 100" aria-hidden="true"><path class="star-path" data-star="50 50 34" /></svg>
+              <span class="brand">Seiza</span>
+              <span class="reading" lang="ja">せいざ</span>
+            </div>
+          </div>
+          <h3>Under the mark</h3>
+          <p>The website's nav mark with its reading in place of the gold underline. Small and always there.</p>
+        </li>
+
+        <li class="touch hud glass">
+          <div class="preview">
+            <div class="mini-frame"></div>
+            <div class="vertical" lang="ja">星座<small>せいざ</small></div>
+            <div class="gloss">Sky · <b style="color: var(--lavender)">Dark</b></div>
+          </div>
+          <h3>Down the frame's edge</h3>
+          <p>
+            On the website, <span lang="ja">星座</span> written top to bottom along the frame's right side, faint
+            lavender, like the side of a poster. The one I'd pick.
+          </p>
+        </li>
+
+        <li class="touch hud glass">
+          <div class="preview">
+            <div class="mini-frame"></div>
+            <div class="gloss"><span lang="ja">星座</span> · seiza · a constellation</div>
+          </div>
+          <h3>A gloss in a corner</h3>
+          <p>
+            A readout in the website's bottom-left corner, or the footer, saying what the name means. It could also
+            mention <span lang="ja">正座</span>, sitting calmly.
+          </p>
+        </li>
+
+        <li class="touch hud glass">
+          <div class="preview">
+            <div class="kicker-demo">
+              <p class="kicker"><b>03</b> · The desktop app <span lang="ja">夜空</span></p>
+              <h4>A night sky that fills with your focus</h4>
+            </div>
+          </div>
+          <h3>One word on a section</h3>
+          <p>
+            <span lang="ja">夜空</span> (yozora, the night sky) beside the Sky section's label. Only there, so it stays
+            special.
+          </p>
+        </li>
+
+        <li class="touch hud glass">
+          <div class="preview">
+            <div class="app-head">
+              <span class="star">✦</span><span>Seiza</span><span lang="ja">せいざ</span><span class="time">16:05</span>
+            </div>
+            <div class="gate">
+              <p class="brandline">✦ Seiza · <span lang="ja">星座</span> · Deep Work</p>
+              Focus for 5 minutes first
+            </div>
+          </div>
+          <h3>In the app and extension</h3>
+          <p>The reading beside the name in the app's header, and on the redirect page's brand line.</p>
+        </li>
+      </ul>
+
+      <p class="note">
+        <b>Before anything ships:</b> it's worth having a native speaker look over any Japanese, and the type in a logo
+        would be turned into outlines so it looks the same everywhere. Japanese on the page gets <code>lang="ja"</code>,
+        so screen readers pronounce it properly and browsers pick a Japanese font.
+      </p>
+    </main>
+
+    <script>
+      // A four-point star like the apps' mark, centered on (cx, cy) with points r away.
+      function starPath(cx, cy, r) {
+        const k = r * 0.103;
+        return `M${cx} ${cy - r} Q${cx + k} ${cy - k} ${cx + r} ${cy} Q${cx + k} ${cy + k} ${cx} ${cy + r} Q${cx - k} ${cy + k} ${cx - r} ${cy} Q${cx - k} ${cy - k} ${cx} ${cy - r} Z`;
+      }
+      const star = (cx, cy, r, fill = '#f5c86b') => `<path d="${starPath(cx, cy, r)}" fill="${fill}" />`;
+      const dot = (cx, cy, r, fill = '#f3f0e6', o = 1) =>
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" opacity="${o}" />`;
+      const lines = (points, pairs) =>
+        pairs
+          .map(
+            ([a, b]) => `<line x1="${points[a][0]}" y1="${points[a][1]}" x2="${points[b][0]}" y2="${points[b][1]}" />`,
+          )
+          .join('');
+
+      document.querySelectorAll('.star-path').forEach((p) => {
+        const [cx, cy, r] = p.dataset.star.split(' ').map(Number);
+        p.setAttribute('d', starPath(cx, cy, r));
+        p.setAttribute('fill', '#f5c86b');
+      });
+
+      // Each mark draws in a 100 × 100 box. `small` is a simpler version for 16px, when it needs one.
+      const LOGOS = [
+        {
+          name: 'The kneeling constellation',
+          tag: 'Both meanings',
+          about:
+            'A constellation in the shape of someone sitting in seiza, seen from the side: head, back, lap, knees, feet. The head is the gold star.',
+          fit: 'The most "Seiza" of the six, and a story to tell. Busier at 16px, so the favicon is just the star.',
+          mark() {
+            // Facing right: neck, shoulder, elbow, hand on the lap, hip, knee, then the shin folded back
+            // under to the heel and toes, on a faint floor line.
+            const p = [
+              [38, 28],
+              [38, 38],
+              [50, 53],
+              [64, 61],
+              [33, 66],
+              [79, 67],
+              [36, 78],
+              [24, 79],
+            ];
+            return `<line x1="14" y1="84" x2="88" y2="84" stroke="#b9a7f5" stroke-opacity="0.35" stroke-width="1.2" /><g stroke="#f3f0e6" stroke-opacity="0.5" stroke-width="1.6" stroke-linecap="round">${lines(
+              p,
+              [
+                [0, 1],
+                [1, 4],
+                [1, 2],
+                [2, 3],
+                [4, 5],
+                [5, 6],
+                [6, 7],
+              ],
+            )}</g>${star(38, 17, 11)}${dot(38, 38, 3, '#cfe0ff')}${dot(50, 53, 2.2)}${dot(64, 61, 2.4)}${dot(33, 66, 2.8, '#cfe0ff')}${dot(79, 67, 3.2)}${dot(36, 78, 2.2, '#b9a7f5')}${dot(24, 79, 1.8, '#b9a7f5')}`;
+          },
+          small: () => star(50, 50, 40),
+        },
+        {
+          name: 'Ensō and star',
+          tag: 'Calm',
+          about:
+            'The Zen brush circle, ensō, left open at the top right, with the star in the gap. Stillness, and a sky to fill.',
+          fit: 'Reads as calm and Japanese at once, and stays clear at every size.',
+          mark() {
+            const c = [50, 53];
+            const r = 31;
+            const at = (deg) => [
+              c[0] + r * Math.cos((deg * Math.PI) / 180),
+              c[1] + r * Math.sin((deg * Math.PI) / 180),
+            ];
+            const [x1, y1] = at(-22);
+            const [x2, y2] = at(-78);
+            const [x3, y3] = at(-60);
+            return `<path d="M${x1} ${y1} A${r} ${r} 0 1 1 ${x2} ${y2}" fill="none" stroke="#f3f0e6" stroke-width="6.5" stroke-linecap="round" /><path d="M${x2} ${y2} A${r} ${r} 0 0 1 ${x3} ${y3}" fill="none" stroke="#f3f0e6" stroke-width="2.4" stroke-linecap="round" opacity="0.7" />${star(76, 27, 12)}`;
+          },
+        },
+        {
+          name: 'Star in orbit',
+          tag: 'Closest to now',
+          about: "Today's gold star with a tilted orbit and one small satellite: focus, and a thought kept for later.",
+          fit: 'The smallest step from what the apps already use. Less of the new name in it.',
+          mark: () =>
+            `<ellipse cx="50" cy="52" rx="42" ry="13" transform="rotate(-18 50 52)" fill="none" stroke="#b9a7f5" stroke-width="1.6" opacity="0.8" />${star(50, 50, 26)}${dot(88, 37, 3.4, '#cfe0ff')}`,
+        },
+        {
+          name: 'An S in the stars',
+          tag: 'Monogram',
+          about:
+            'Five stars joined into an S, the way Cassiopeia makes a W. A constellation that is also the first letter.',
+          fit: 'Bold as an app icon and easy to recognize small.',
+          mark() {
+            const p = [
+              [70, 20],
+              [36, 28],
+              [50, 51],
+              [64, 72],
+              [30, 82],
+            ];
+            return `<g stroke="#f3f0e6" stroke-opacity="0.5" stroke-width="1.8" stroke-linecap="round">${lines(p, [
+              [0, 1],
+              [1, 2],
+              [2, 3],
+              [3, 4],
+            ])}</g>${star(70, 20, 11)}${dot(36, 28, 3.6, '#cfe0ff')}${dot(50, 51, 4.2)}${dot(64, 72, 3.4, '#cfe0ff')}${dot(30, 82, 3, '#b9a7f5')}`;
+          },
+        },
+        {
+          name: 'Seal',
+          tag: 'Japanese',
+          about:
+            'A hanko-style seal with 星座 written top to bottom, in gold rather than the usual red so it belongs to the night sky.',
+          fit: 'Unmistakably Japanese. The kanji need care to stay readable at 16px.',
+          mark: () =>
+            `<rect x="17" y="10" width="66" height="80" rx="9" fill="none" stroke="#f5c86b" stroke-width="3.5" /><text x="50" y="47" text-anchor="middle" font-family="Hiragino Mincho ProN, Yu Mincho, Noto Serif JP, serif" font-size="30" fill="#f5c86b">星</text><text x="50" y="79" text-anchor="middle" font-family="Hiragino Mincho ProN, Yu Mincho, Noto Serif JP, serif" font-size="30" fill="#f5c86b">座</text>`,
+          small: () =>
+            `<rect x="10" y="10" width="80" height="80" rx="14" fill="none" stroke="#f5c86b" stroke-width="8" /><text x="50" y="69" text-anchor="middle" font-family="Hiragino Mincho ProN, Yu Mincho, Noto Serif JP, serif" font-size="52" font-weight="600" fill="#f5c86b">星</text>`,
+        },
+      ];
+
+      const tile = (inner) =>
+        `<svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2342" /><stop offset="1" stop-color="#0b1020" /></linearGradient><radialGradient id="g" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#f5c86b" stop-opacity="0.22" /><stop offset="1" stop-color="#f5c86b" stop-opacity="0" /></radialGradient></defs><rect width="100" height="100" rx="23" fill="url(#t)" /><circle cx="50" cy="50" r="40" fill="url(#g)" /><g transform="translate(14 14) scale(0.72)">${inner}</g></svg>`;
+      const svg = (inner, size) =>
+        `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${inner}</svg>`;
+
+      const list = document.getElementById('logos');
+      for (const logo of LOGOS) {
+        const big = logo.mark();
+        const small = logo.small ? logo.small() : big;
+        const li = document.createElement('li');
+        li.className = 'logo hud glass';
+        li.innerHTML = `
+          <div class="stage">
+            <div class="big">${svg(big, 150)}</div>
+            <div class="sizes">
+              <div class="tile">${tile(big)}</div>
+              <div class="small">${svg(small, 32)}${svg(small, 16)}</div>
+              <div class="tab">${svg(small, 14)}Seiza</div>
+            </div>
+          </div>
+          <h3>${logo.name}<small>${logo.tag}</small></h3>
+          <p>${logo.about}</p>
+          <p class="fit">${logo.fit}</p>`;
+        list.append(li);
+      }
+
+      // The wordmark, last: the name itself, with the star for the dot of the i.
+      const word = document.createElement('li');
+      word.className = 'logo hud glass';
+      word.innerHTML = `
+        <div class="stage">
+          <div class="big">
+            <span class="wordmark">
+              <span class="word">se<span class="i">ı${svg(star(50, 50, 46), 20)}</span>za</span>
+              <span class="kana" lang="ja">せいざ</span>
+            </span>
+          </div>
+          <div class="sizes">
+            <div class="tile">${tile(star(50, 50, 38))}</div>
+            <div class="small">${svg(star(50, 50, 44), 32)}${svg(star(50, 50, 44), 16)}</div>
+            <div class="tab">${svg(star(50, 50, 44), 14)}Seiza</div>
+          </div>
+        </div>
+        <h3>Wordmark<small>Pairs with any</small></h3>
+        <p>The name in light lowercase, the star as the dot of the i, and the reading underneath.</p>
+        <p class="fit">Goes with any of the marks above, for the website and the store listings.</p>`;
+      list.append(word);
+    </script>
+  </body>
+</html>

@@ -71,6 +71,14 @@
   top: calc(100% + 7px);
 }
 
+/* What the name means, between the bottom two readouts. */
+.readout.gloss {
+  left: 50%;
+  top: calc(100% + 7px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
 .readout.br {
   right: 0;
   top: calc(100% + 5px);
@@ -185,23 +193,47 @@
 
 .mark {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
   padding: 0 clamp(16px, 4vw, 56px);
   text-decoration: none;
 }
 
-.mark svg {
-  width: 34px;
-  height: 34px;
-  filter: drop-shadow(0 0 10px rgb(245 200 107 / 0.55));
+/* The wordmark: the name in light lowercase, the gold star for the dot of the i, and the reading
+   underneath. */
+.wordmark {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: var(--starlight);
+  text-transform: none;
 }
 
-.mark .brand {
-  font-size: 11px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--glow);
+.wordmark .word {
+  font: 300 32px/1 var(--sans);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 18px rgb(8 11 22 / 0.9);
+}
+
+.wordmark .i {
+  position: relative;
+}
+
+.wordmark svg {
+  position: absolute;
+  left: 50%;
+  top: 0.02em;
+  width: 0.34em;
+  height: 0.34em;
+  fill: var(--glow);
+  filter: drop-shadow(0 0 5px rgb(245 200 107 / 0.6));
+  transform: translateX(-50%);
+}
+
+.wordmark .kana {
+  font: 10px var(--gothic);
+  letter-spacing: 0.5em;
+  margin-right: -0.5em;
+  color: var(--dim);
 }
 
 /* ── The constellation navigator ───────────────────────────────────────────── */

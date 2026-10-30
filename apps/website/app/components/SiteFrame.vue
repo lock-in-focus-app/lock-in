@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The frame round the window: two hairlines that crossfade as you lock in, bright corner ticks,
-// readouts in the corners (local time, how clear the sky is, and the session), the top nav with
-// the mark, and the constellation navigator along the bottom (the slot).
+// readouts in the corners (local time, how clear the sky is, and the session) and what the name
+// means between the bottom two, the top nav with the wordmark, and the constellation navigator along the bottom (the slot).
 const { locked, lockedAt, toggle } = useLock();
 
 // Filled in once the page is in the browser, so the prerendered page doesn't show a stale time.
@@ -41,6 +41,7 @@ const session = computed(() => {
     <p class="readout mono bl">
       Sky · <b class="warn state">{{ locked ? 'Dark' : 'Light-polluted' }}</b>
     </p>
+    <p class="readout mono gloss"><span lang="ja">星座</span> · seiza · a constellation</p>
     <p class="readout mono br">
       <button class="session" type="button" @click="toggle">
         <span class="dot" aria-hidden="true"></span>
@@ -61,10 +62,7 @@ const session = computed(() => {
       </ul>
       <NuxtLink v-slot="{ href, navigate }" to="/#top" custom>
         <a class="mark" :href="href ?? undefined" aria-label="Seiza, home" @click="navigate">
-          <svg viewBox="28 28 72 72" aria-hidden="true">
-            <path d="M64 30 Q67.5 60.5 98 64 Q67.5 67.5 64 98 Q60.5 67.5 30 64 Q60.5 60.5 64 30 Z" fill="#f5c86b" />
-          </svg>
-          <span class="brand">Seiza</span>
+          <SeizaWordmark />
         </a>
       </NuxtLink>
       <ul>
