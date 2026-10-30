@@ -8,5 +8,8 @@
     "directory": "./.output/public",
     // Unknown addresses get the 404 page with a 404 status.
     "not_found_handling": "404-page",
+    // Pages are served at /privacy rather than /privacy/, matching the site's links and canonical
+    // addresses (search engines treat the two as different pages). /privacy/ redirects.
+    "html_handling": "drop-trailing-slash",
   },
 }

@@ -4,7 +4,10 @@ import type { NuxtError } from '#app';
 const props = defineProps<{ error: NuxtError }>();
 const missing = computed(() => props.error.statusCode === 404);
 
-useSeoMeta({ title: () => (missing.value ? 'Not found · Seiza' : 'Something went wrong · Seiza') });
+useSeoMeta({
+  title: () => (missing.value ? 'Not found · Seiza' : 'Something went wrong · Seiza'),
+  robots: 'noindex',
+});
 </script>
 
 <template>
