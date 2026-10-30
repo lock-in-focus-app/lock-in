@@ -1,0 +1,64 @@
+name: Release
+
+# Pushing a version tag (v0.1.0) builds the desktop app for macOS and puts it on a draft GitHub
+# release, with the install steps from release-notes.md. Nothing is published until someone
+# reads the draft and clicks Publish.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+# Actions are pinned to a commit, as in ci.yml.
+
+env:
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    # About 15 minutes: the Rust core is built twice, once for Apple silicon and once for Intel.
+    timeout-minutes: 60
+    permissions:
+      # Creating the draft release.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The tag names the version, so it has to match the one the app is built with.
+      - name: Tag matches the app's version
+        run: |
+          version=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match tauri.conf.json's version $version"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # One app that runs natively on both kinds of Mac.
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable branch
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      # Not signed with an Apple Developer ID, only ad hoc (tauri.conf.json), which Apple
+      # silicon needs to run it at all. macOS asks people to allow it once, as release-notes.md
+      # explains.
+      - run: pnpm --filter @lock-in/desktop tauri build --target universal-apple-darwin --bundles dmg
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "Lock In ${GITHUB_REF_NAME#v}" \
+            --notes-file .github/release-notes.md \
+            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg

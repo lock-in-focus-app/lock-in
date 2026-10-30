@@ -1,0 +1,43 @@
+# Privacy
+
+Lock In collects nothing. It has no accounts, no analytics, no ads, and no servers of its own. Nothing you do in it is sent to us or anyone else.
+
+This covers the Lock In desktop app and the Lock In browser extension.
+
+## What stays on your computer
+
+- **Your profiles, sessions and settings:** the sites and apps each profile tames, redirects or restricts, the parts of pages you've hidden, and your other settings.
+- **Your history:** when your sessions ran, and each visit to a redirected site: which site, when, how many times today, and the reason you gave, if you gave one. This is what the night sky and the weekly report are drawn from.
+- **Your satellites and your own quotes.**
+
+The extension keeps its copy in your browser's extension storage. The app keeps its copy in its data folder on your computer. Uninstalling either removes its copy. A backup from the app's Settings is a file you save wherever you choose.
+
+## What the extension and the app share
+
+When both are installed, the extension and the app talk to each other over your browser's Native Messaging, which never leaves your computer. They share your profiles, the current session, site settings and visits to redirected sites, so each one shows the same thing.
+
+## What the extension reads
+
+On sites it tames, the extension adds a stylesheet that hides parts of the page, and pauses any video it hides. When you use "Hide parts of this page", it notes which part you clicked so it can hide it again later. It doesn't read or keep what you type or see on any page, and it doesn't keep your browsing history: the popup checks the address of the tab you open it on, so it can show that site's settings.
+
+## What the app reads
+
+- **How long since your last keyboard or mouse input**, so a session left running while you're away ends by itself.
+- **Which programs are running**, only during a session, to close or hide the apps your profile lists and to notice a browser running without the extension.
+- **The first day of the week set on your computer**, for the weekly report.
+
+On macOS, if you turn on blocking sites without the extension, the app lists your session's restricted sites in your computer's hosts file while the session runs, and takes them out after.
+
+## Network
+
+Neither the app nor the extension makes network requests. The quotes are bundled with the app. Links you add yourself, like the support link or your own links on the redirect page, open in your browser like any other link.
+
+## Changes
+
+If this ever changes, this page changes first, with the date below. The source code is public at <https://github.com/lock-in-focus-app/lock-in>, so you can check any of it.
+
+## Contact
+
+Questions go to the repository's issues: <https://github.com/lock-in-focus-app/lock-in/issues>.
+
+Last updated: 30 October 2026.

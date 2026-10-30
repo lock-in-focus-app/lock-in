@@ -1,6 +1,6 @@
 # Lock In — Product & Build Plan
 
-> **Status:** Phase 1 built. The extension works on its own: sessions, profiles (with an editor), all four site levels with page rules, redirects with every destination, and recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest, each with an animated preview in Settings. Left before calling Phase 1 done: checking each recipe on the real site. Then Phase 2, the desktop app.
+> **Status:** Phases 1–4 built and most of Phase 5: the extension and the macOS desktop app both work, with recipes for eleven sites. Next is the first release (Phase 5's last item), which still needs each recipe checked on the real sites while logged in.
 
 ## Context
 
@@ -477,7 +477,10 @@ Built in slices, one PR each:
 - ✅ The support link (§8): "Support Lock In on Ko-fi" at the very bottom of the app's Settings and of the extension's settings page, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
 - ✅ Export/import: Settings › Backup in the app, everything in one file, imported by adding to what's here, between sessions only (§7).
 - ✅ Blocking without the extension, macOS first (§8). Windows and Linux later.
-- Signed builds: macOS notarization requires a paid Apple account, while unsigned builds work with a Gatekeeper warning. Also publish to the Chrome Web Store and Firefox Add-ons.
+- **First release:** the desktop app on GitHub Releases and the extension on the Chrome Web Store and Firefox Add-ons.
+  - ✅ Release prep: pushing a version tag builds the macOS app (one universal build, signed ad hoc only) onto a draft release with install steps (`.github/workflows/release.yml`); `pnpm zip` builds the Chrome store zip without the manifest key; the Firefox zip declares no data collection and comes with a sources zip (`SOURCES.md`); the privacy policy (`PRIVACY.md`) and store listing text (`apps/extension/STORE.md`).
+  - Left: checking each recipe on the real sites while logged in; screenshots and the promo tile; the Chrome store's extension id in `hosts.rs`; submitting to both stores.
+  - Not paying for Apple or Windows code signing for now. Unsigned builds work after **Open Anyway** in macOS's Privacy & Security settings, which the release notes explain.
 
 **Phase 6: Website, community sky & sync**
 - Marketing website (§10) + community-worlds gallery, with the Why it works page (§12).

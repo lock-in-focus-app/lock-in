@@ -2,7 +2,7 @@
 
 A free, open-source focus app. Social media is light pollution: when you lock in, the noise fades and you can finally see the stars.
 
-> **Status:** early development. The browser extension works on its own today (sessions, profiles, recipes for eight sites, page rules and redirects); the desktop app comes next. See [PLAN.md](PLAN.md) for the full roadmap.
+> **Status:** early, and nearly ready for its first release. The browser extension and the desktop app (macOS first) both work. See [PLAN.md](PLAN.md) for the full roadmap.
 
 ## Tame, don't just block
 
@@ -12,26 +12,33 @@ Most blockers treat a site as all or nothing. Lock In gives every site one of fo
 |---|---|
 | **Allowed** | Nothing changes. |
 | **Tamed** | The site still works, but the distracting parts are hidden: feeds, trending, suggested and promoted posts. Optionally grayscale. |
-| **Redirected** | Visits go to a Lock In page instead: a quote, one of your own links, or a 2-minute unstick. To get through anyway, the intention gate asks what you came for, holds Continue for a few seconds, then gives you a few minutes on that site. |
+| **Redirected** | Visits go to a calm Lock In page first: focus for five minutes, read your if-then plan, or open one of your own links. If you still need the site once the wait is up, take a few minutes on it. |
 | **Restricted** | Blocked, with no way through until the session ends. |
 
 **Page rules** give part of a site its own level, like redirecting YouTube Shorts while the rest of YouTube is tamed, or allowing `reddit.com/r/writing` while the rest of Reddit is redirected.
 
 What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. There are built-in recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Twitch, Threads and Bluesky. You can flip toggles from the extension popup for one session or save them to a profile.
 
-Lock In has no accounts and no telemetry. Everything stays on your device.
+Lock In has no accounts and no telemetry. Everything stays on your device. See [PRIVACY.md](PRIVACY.md).
+
+## Install
+
+- **Desktop app (macOS):** download the `.dmg` from [Releases](https://github.com/lock-in-focus-app/lock-in/releases). It isn't signed with a paid Apple Developer account, so macOS asks you to allow it once: open it, click **Done**, then **System Settings › Privacy & Security › Open Anyway**. The release notes walk through it.
+- **Browser extension:** coming to the Chrome Web Store and Firefox Add-ons. Until then, build it from source (below).
+
+The app and the extension each work on their own. Install both and they link up by themselves.
 
 ## What's here
 
 ```
 apps/
   extension/   Browser extension (WXT + Vue). Chrome, Brave, Edge, Arc, Firefox, Zen.
-  desktop/     Desktop app (Tauri 2 + Vue). Scaffolded; not functional yet.
+  desktop/     Desktop app (Tauri 2 + Vue). macOS first; it also builds on Linux.
   website/     Product website (Nuxt). Scaffolded.
 packages/
   core/        Shared types and logic: matching, recipes, profiles, sessions.
   recipes/     Built-in site recipes.
-  quotes/      Bundled quotes for the quote card.
+  quotes/      Bundled public-domain quotes for the app's Sky.
 ```
 
 ## Getting started
