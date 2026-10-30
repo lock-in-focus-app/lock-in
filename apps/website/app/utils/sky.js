@@ -85,6 +85,11 @@ export function createSky(canvas, options = {}) {
   let stars = [];
   let band = null;
   let buildings = [];
+  // Per star color, a bright star drawn once (disc, or disc and halo) to stamp each frame.
+  let sprites = new Map();
+  // The buildings and their windows, drawn now and then rather than every frame.
+  let cityLayer = null;
+  let cityDrawn = { at: -Infinity, haze: -1, city: -1 };
   const shooting = [];
   let nextMeteor = 4000;
 
@@ -105,8 +110,39 @@ export function createSky(canvas, options = {}) {
         depth: 0.15 + rand() * 0.85,
       };
     });
+    // Grouped by color, so each frame sets each color once.
+    stars.sort((a, b) => STAR_COLORS.indexOf(a.color) - STAR_COLORS.indexOf(b.color));
+    sprites = new Map(STAR_COLORS.map((color) => [color, starSprites(color)]));
     band = milkyWay(random(11));
     buildings = skyline(random(23));
+    cityLayer = null;
+  }
+
+  // A bright star at radius SPRITE_R: the disc alone, and the disc with its halo out to six
+  // radii, at full strength. Each frame stamps them scaled to the star and faded by globalAlpha.
+  const SPRITE_R = 4;
+  function starSprites(color) {
+    const make = (halo) => {
+      const size = Math.ceil(SPRITE_R * (halo ? 12 : 2) * dpr) + 2;
+      const off = document.createElement('canvas');
+      off.width = off.height = size;
+      const g = off.getContext('2d');
+      const c = size / 2;
+      const r = SPRITE_R * dpr;
+      if (halo) {
+        const grad = g.createRadialGradient(c, c, 0, c, c, r * 6);
+        grad.addColorStop(0, rgb(color, 0.25));
+        grad.addColorStop(1, rgb(color, 0));
+        g.fillStyle = grad;
+        g.fillRect(0, 0, size, size);
+      }
+      g.fillStyle = color;
+      g.beginPath();
+      g.arc(c, c, r, 0, Math.PI * 2);
+      g.fill();
+      return off;
+    };
+    return { disc: make(false), halo: make(true) };
   }
 
   // The Milky Way, drawn once into its own canvas: a diagonal band of soft glow and specks with
@@ -227,29 +263,25 @@ export function createSky(canvas, options = {}) {
     // through, and faintly.
     const time = t / 1000;
     const veil = 1 - s.haze * 0.62;
+    let color = '';
     for (const star of stars) {
       const seen = star.b - s.haze * 0.8;
       if (seen <= 0) continue;
       const twinkle = reduce ? 1 : 0.75 + 0.25 * Math.sin(time * star.speed + star.phase);
-      const a = Math.min(1, (0.25 + seen * 1.6) * twinkle * veil);
+      ctx.globalAlpha = Math.min(1, (0.25 + seen * 1.6) * twinkle * veil);
       const y = (((star.y * h - s.shift * star.depth) % h) + h) % h;
       const x = star.x * w;
-      ctx.fillStyle = rgb(star.color, a);
       if (star.r < 0.9) {
+        if (star.color !== color) ctx.fillStyle = color = star.color;
         ctx.fillRect(x, y, star.r * 1.6, star.r * 1.6);
       } else {
-        ctx.beginPath();
-        ctx.arc(x, y, star.r, 0, Math.PI * 2);
-        ctx.fill();
-        if (star.b > 0.45) {
-          const halo = ctx.createRadialGradient(x, y, 0, x, y, star.r * 6);
-          halo.addColorStop(0, rgb(star.color, a * 0.25));
-          halo.addColorStop(1, rgb(star.color, 0));
-          ctx.fillStyle = halo;
-          ctx.fillRect(x - star.r * 6, y - star.r * 6, star.r * 12, star.r * 12);
-        }
+        const halo = star.b > 0.45;
+        const sprite = sprites.get(star.color)[halo ? 'halo' : 'disc'];
+        const size = star.r * (halo ? 12 : 2) * (sprite.width / (SPRITE_R * (halo ? 12 : 2) * dpr));
+        ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
       }
     }
+    ctx.globalAlpha = 1;
 
     drawConstellation(time);
     if (meteors && !reduce) drawMeteors(t);
@@ -314,28 +346,17 @@ export function createSky(canvas, options = {}) {
       }
     }
 
-    // The buildings, dark against the glow.
-    ctx.fillStyle = `rgb(7 8 15 / ${c})`;
-    for (const b of buildings) {
-      ctx.fillRect(b.x, h - b.h, b.w, b.h);
-      if (b.mast) ctx.fillRect(b.x + b.w / 2 - 0.75, h - b.h - 14, 1.5, 14);
+    // The buildings and windows change slowly, so they're redrawn only when the haze or the look
+    // has moved on, or every half second for the windows' drift.
+    if (
+      !cityLayer ||
+      Math.abs(s.haze - cityDrawn.haze) > 0.004 ||
+      Math.abs(c - cityDrawn.city) > 0.004 ||
+      time - cityDrawn.at > 0.5
+    ) {
+      drawBuildings(time);
     }
-
-    // Windows: most are lit under the haze, a few stay on under a clear sky. Each one's turn
-    // drifts slowly, so now and then a light goes on or off.
-    const lit = 0.06 + 0.5 * s.haze;
-    const glowA = (0.45 + 0.4 * s.haze) * c;
-    for (const warm of [true, false]) {
-      ctx.fillStyle = warm ? `rgb(255 212 140 / ${glowA})` : `rgb(214 226 255 / ${glowA * 0.85})`;
-      for (const b of buildings) {
-        const top = h - b.h;
-        for (const win of b.windows) {
-          if (win.warm !== warm) continue;
-          const drift = reduce ? 0 : 0.03 * Math.sin(time * 0.12 + win.phase);
-          if (win.order + drift < lit * b.lit) ctx.fillRect(b.x + win.x, top + win.y, 2.5, 3);
-        }
-      }
-    }
+    ctx.drawImage(cityLayer, 0, h - cityLayer.height / dpr, w, cityLayer.height / dpr);
 
     // A slow red light on top of each mast, for aircraft.
     const blink = reduce ? 0.8 : 0.35 + 0.65 * Math.max(0, Math.sin(time * 1.6));
@@ -343,6 +364,43 @@ export function createSky(canvas, options = {}) {
     for (const b of buildings) {
       if (b.mast) ctx.fillRect(b.x + b.w / 2 - 1.25, h - b.h - 16, 2.5, 2.5);
     }
+  }
+
+  // The buildings, dark against the glow, into their own canvas along the bottom.
+  function drawBuildings(time) {
+    const s = state;
+    const c = s.city;
+    const tall = Math.ceil(Math.max(0, ...buildings.map((b) => b.h + 16)));
+    if (!cityLayer || cityLayer.width !== Math.round(w * dpr) || cityLayer.height !== Math.round(tall * dpr)) {
+      cityLayer = document.createElement('canvas');
+      cityLayer.width = Math.round(w * dpr);
+      cityLayer.height = Math.round(tall * dpr);
+    }
+    const g = cityLayer.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, tall);
+    g.fillStyle = `rgb(7 8 15 / ${c})`;
+    for (const b of buildings) {
+      g.fillRect(b.x, tall - b.h, b.w, b.h);
+      if (b.mast) g.fillRect(b.x + b.w / 2 - 0.75, tall - b.h - 14, 1.5, 14);
+    }
+
+    // Windows: most are lit under the haze, a few stay on under a clear sky. Each one's turn
+    // drifts slowly, so now and then a light goes on or off.
+    const lit = 0.06 + 0.5 * s.haze;
+    const glowA = (0.45 + 0.4 * s.haze) * c;
+    for (const warm of [true, false]) {
+      g.fillStyle = warm ? `rgb(255 212 140 / ${glowA})` : `rgb(214 226 255 / ${glowA * 0.85})`;
+      for (const b of buildings) {
+        const top = tall - b.h;
+        for (const win of b.windows) {
+          if (win.warm !== warm) continue;
+          const drift = reduce ? 0 : 0.03 * Math.sin(time * 0.12 + win.phase);
+          if (win.order + drift < lit * b.lit) g.fillRect(b.x + win.x, top + win.y, 2.5, 3);
+        }
+      }
+    }
+    cityDrawn = { at: time, haze: s.haze, city: c };
   }
 
   function drawConstellation(time) {
@@ -426,8 +484,13 @@ export function createSky(canvas, options = {}) {
     }
   }
 
+  // The sky draws at up to 60 frames a second, which its slow twinkle and drift don't need more
+  // than; on a faster screen it keeps up only while the stars are scrolling past.
   let last = performance.now();
   function frame(now) {
+    requestAnimationFrame(frame);
+    const scrolling = Math.abs(target.shift - state.shift) > 0.5;
+    if (!scrolling && now - last < 15) return;
     const dt = Math.min(64, now - last);
     last = now;
     // Ease every option towards its target: haze slowly, scroll quickly.
@@ -436,7 +499,6 @@ export function createSky(canvas, options = {}) {
       state[key] += (target[key] - state[key]) * (1 - Math.exp(-dt / tau));
     }
     draw(now);
-    requestAnimationFrame(frame);
   }
 
   new ResizeObserver(resize).observe(canvas);

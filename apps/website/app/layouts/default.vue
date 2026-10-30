@@ -73,6 +73,8 @@ function go(i: number, smooth = true) {
 // As you scroll, each line draws toward the next star, and the stars light up as you reach their
 // sections. The sky drifts a little slower than the page.
 let queued = false;
+// The section the navigator shows as current, so its stars change only when that does.
+let shownActive = -1;
 function onScroll() {
   queued = false;
   const el = scroller.value;
@@ -87,10 +89,13 @@ function onScroll() {
     if (at >= t) active = i;
   });
   if (atEnd) active = sections.length - 1;
-  starEls().forEach((star, i) => {
-    star.classList.toggle('reached', i <= active);
-    star.setAttribute('aria-current', String(i === active));
-  });
+  if (active !== shownActive) {
+    shownActive = active;
+    starEls().forEach((star, i) => {
+      star.classList.toggle('reached', i <= active);
+      star.setAttribute('aria-current', String(i === active));
+    });
+  }
   segEls().forEach((seg, i) => {
     const p = atEnd || i < active ? 1 : Math.min(1, Math.max(0, (at - tops[i]!) / (tops[i + 1]! - tops[i]!)));
     (seg.firstElementChild as HTMLElement).style.transform = `scaleX(${p})`;
@@ -169,6 +174,8 @@ async function preparePage() {
   const el = scroller.value;
   if (!el) return;
   sections = [...el.querySelectorAll<HTMLElement>('section[data-name]')];
+  // A new page has new navigator stars to light.
+  shownActive = -1;
   names.value = sections.map((s) => s.dataset.name ?? '');
 
   seen?.disconnect();
