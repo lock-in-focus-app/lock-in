@@ -21,6 +21,8 @@ stats-*.json
 
 # Nuxt (website)
 .nuxt/
+# `nuxt generate` links dist to .output/public.
+apps/website/dist
 .nitro/
 .data/
 .cache/
