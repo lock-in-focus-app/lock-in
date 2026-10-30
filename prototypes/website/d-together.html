@@ -487,8 +487,6 @@
         height: 76px;
         transform: translateX(-50%);
         pointer-events: auto;
-        /* A dark edge round the lines and stars, so they stand out from the city's lights. */
-        filter: drop-shadow(0 0 2px rgb(8 11 22 / 0.95)) drop-shadow(0 0 6px rgb(8 11 22 / 0.6));
       }
 
       .navigator .seg {
@@ -598,19 +596,18 @@
         display: none;
       }
 
+      /* Only the hero fills the frame; the other sections are as tall as their content, with a
+         modest gap between them. */
       section {
         position: relative;
-        min-height: 100%;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        padding: 40px clamp(16px, 6vw, 96px);
+        padding: clamp(48px, 9vh, 80px) clamp(16px, 6vw, 96px);
       }
 
-      /* The last section is only as tall as its content, so the page ends with the footer. */
+      /* The page ends right after the footer. */
       section:last-child {
-        min-height: 0;
-        padding-top: 72px;
         padding-bottom: 28px;
       }
 
@@ -707,6 +704,7 @@
       /* ── Hero ──────────────────────────────────────────────────────────────────── */
 
       .hero {
+        min-height: 100%;
         align-items: center;
         text-align: center;
         overflow: hidden;
@@ -2359,7 +2357,7 @@
         }
 
         section {
-          padding: 40px 18px;
+          padding: 44px 18px;
         }
 
         .headline {
