@@ -9,9 +9,9 @@ use serde_json::{Value, json};
 /// The name the extension connects to. Only letters, digits, dots and underscores are allowed.
 pub const HOST_NAME: &str = "io.github.lock_in_focus_app.lock_in";
 
-/// The Chrome-family extension. Its id comes from the public `key` in the extension's manifest,
-/// so unpacked builds always have it. The store build's id joins this list once it's published.
-const CHROME_EXTENSION_IDS: &[&str] = &["nfaamgjiehkppopelaampopbofjoepca"];
+/// The Chrome-family extension: the id unpacked builds get from the public `key` in the
+/// extension's manifest, and the id the Chrome Web Store gave it (its build has no key).
+const CHROME_EXTENSION_IDS: &[&str] = &["nfaamgjiehkppopelaampopbofjoepca", "nencjadggelocffidegejpekamaeopjc"];
 
 /// The Firefox-family extension, from `browser_specific_settings` in its manifest.
 pub const FIREFOX_EXTENSION_ID: &str = "lock-in@lock-in-focus-app.github.io";
@@ -145,8 +145,11 @@ mod tests {
         assert_eq!(chrome["name"], HOST_NAME);
         assert_eq!(chrome["path"], "/Apps/Lock In");
         assert_eq!(
-            chrome["allowed_origins"][0],
-            "chrome-extension://nfaamgjiehkppopelaampopbofjoepca/"
+            chrome["allowed_origins"],
+            json!([
+                "chrome-extension://nfaamgjiehkppopelaampopbofjoepca/",
+                "chrome-extension://nencjadggelocffidegejpekamaeopjc/",
+            ])
         );
         assert_eq!(chrome.get("allowed_extensions"), None);
 

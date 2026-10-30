@@ -23,7 +23,7 @@ Lock In has no accounts and no telemetry. Everything stays on your device. See [
 
 ## Install
 
-- **Desktop app (macOS):** download the `.dmg` from [Releases](https://github.com/lock-in-focus-app/lock-in/releases). It isn't signed with a paid Apple Developer account, so macOS asks you to allow it once: open it, click **Done**, then **System Settings › Privacy & Security › Open Anyway**. The release notes walk through it.
+- **Desktop app:** download it from [Releases](https://github.com/lock-in-focus-app/lock-in/releases): a `.dmg` for macOS, or a `.deb` or `.AppImage` for Linux. On macOS, it isn't signed with a paid Apple Developer account, so macOS asks you to allow it once: open it, click **Done**, then **System Settings › Privacy & Security › Open Anyway**. The release notes walk through it.
 - **Browser extension:** coming to the Chrome Web Store and Firefox Add-ons. Until then, build it from source (below).
 
 The app and the extension each work on their own. Install both and they link up by themselves.
@@ -33,7 +33,7 @@ The app and the extension each work on their own. Install both and they link up 
 ```
 apps/
   extension/   Browser extension (WXT + Vue). Chrome, Brave, Edge, Arc, Firefox, Zen.
-  desktop/     Desktop app (Tauri 2 + Vue). macOS first; it also builds on Linux.
+  desktop/     Desktop app (Tauri 2 + Vue). macOS and Linux.
   website/     Product website (Nuxt). Scaffolded.
 packages/
   core/        Shared types and logic: matching, recipes, profiles, sessions.
