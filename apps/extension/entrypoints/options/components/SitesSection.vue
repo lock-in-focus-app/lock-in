@@ -9,7 +9,6 @@ import {
   resolveToggles,
   siteFor,
   siteLevels,
-  tamedOutsideSessionsBy,
   type Profile,
   type SiteLevel,
   type SiteRecipe,
@@ -19,7 +18,6 @@ import { computed, ref } from 'vue';
 import LevelPicker from '@/components/LevelPicker.vue';
 import RecipePreview from '@/components/preview/RecipePreview.vue';
 import ToggleSwitch from '@/components/ToggleSwitch.vue';
-import HiddenParts from './HiddenParts.vue';
 import PageRules from './PageRules.vue';
 
 const props = defineProps<{ profile: Profile }>();
@@ -49,10 +47,6 @@ const session = useStorageItem(activeSession);
 const locked = computed(
   () => session.value?.profileId === props.profile.id && endLock(session.value, Date.now()) === 'hard',
 );
-
-// A tamed site can stay tamed all the time, with no session running, the way one profile tames it.
-const allProfiles = useStorageItem(profiles);
-const outsideBy = (recipe: SiteRecipe) => tamedOutsideSessionsBy(allProfiles.value ?? [], recipe.id);
 
 // Adding a site by its address. One that's built in is already listed.
 const draft = ref('');
@@ -100,7 +94,7 @@ const point = (recipeId: string, toggleId?: string) => {
       <dd>
         {{
           level.id === 'tamed'
-            ? `${level.detail} You pick what's hidden under each site, or on the page itself from Lock In's popup.`
+            ? `${level.detail} You pick what's hidden under each site, or on the page itself from Lock In's popup. With no session running, a site can be tamed all the time, below.`
             : level.detail
         }}
       </dd>
@@ -135,15 +129,6 @@ const point = (recipeId: string, toggleId?: string) => {
         <button type="button" class="text-button" @click="askToReach([recipe.name])">Let Lock In reach it</button>
       </p>
       <PageRules :profile="profile" :recipe="recipe" />
-      <div v-if="findRule(profile, recipe.id)?.level === 'tamed'" class="outside">
-        <ToggleSwitch
-          :label="`Tame ${recipe.name} all the time`"
-          :model-value="outsideBy(recipe)?.id === profile.id"
-          @update:model-value="setTamedOutsideSessions(profile.id, recipe.id, $event)"
-        />
-        <p class="help small">{{ allTheTimeNote(recipe.name, profile, outsideBy(recipe)) }}</p>
-      </div>
-      <HiddenParts :profile="profile" :recipe="recipe" :locked="locked" />
       <div v-if="showsToggles(recipe.id)" class="toggles">
         <RecipePreview
           :recipe-id="recipe.id"
@@ -226,14 +211,6 @@ const point = (recipeId: string, toggleId?: string) => {
   grid-template-columns: 1fr minmax(0, 340px);
   align-items: center;
   gap: 12px;
-}
-
-.outside {
-  margin-top: 6px;
-}
-
-.outside .help {
-  margin: 0;
 }
 
 .toggles {

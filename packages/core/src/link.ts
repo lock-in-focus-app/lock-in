@@ -1,4 +1,4 @@
-import type { GateVisit, Profile, Session } from './types';
+import type { GateVisit, Profile, Session, SiteSettings } from './types';
 
 // Messages between the extension and the desktop app, which talk over Native Messaging.
 // They mirror the Rust ones in apps/desktop/src-tauri/src/link.rs.
@@ -22,6 +22,7 @@ export type ToDesktop =
       type: 'state';
       profiles?: Synced<Profile[]>;
       activeSession?: Synced<Session | null>;
+      siteSettings?: Synced<SiteSettings[]>;
     }
   | { type: 'gateVisit'; visit: GateVisit };
 
@@ -33,4 +34,6 @@ export type FromDesktop =
       type: 'state';
       profiles: Synced<Profile[]>;
       activeSession: Synced<Session | null>;
+      /** Missing from apps older than site settings. */
+      siteSettings?: Synced<SiteSettings[]>;
     };

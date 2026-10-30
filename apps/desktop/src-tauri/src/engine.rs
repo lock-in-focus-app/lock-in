@@ -12,7 +12,7 @@ use crate::session::{
     starter_profiles, truncate,
 };
 use crate::settings::Settings;
-use crate::sites::{self, SiteRule};
+use crate::sites::{self, SiteRule, SiteSettings};
 use crate::store::{Store, Synced};
 use crate::timer::{Strictness, TimerSettings};
 
@@ -25,6 +25,7 @@ const SKY: &str = "sky";
 const TOUR: &str = "tour";
 const OWN_QUOTES: &str = "ownQuotes";
 const SESSION_GOAL: &str = "sessionGoal";
+const SITE_SETTINGS: &str = "siteSettings";
 
 /// Emergency passes come back a week after they're used.
 const PASS_WEEK_MS: i64 = 7 * 24 * 60 * 60_000;
@@ -51,6 +52,9 @@ pub struct Engine {
     own_quotes: Synced<Vec<OwnQuote>>,
     /// The running session's goal, or the last one's until "Did you do it?" is answered.
     goal: Option<SessionGoal>,
+    /// What's set for sites outside any profile in the extension (hidden parts, taming all the
+    /// time), synced with it.
+    site_settings: Synced<Vec<SiteSettings>>,
 }
 
 /// Everything the UI shows, sent whenever it changes.
@@ -181,6 +185,11 @@ impl Engine {
             updated_at: 0,
         });
         let goal = store.load(SESSION_GOAL)?.and_then(|s| s.value);
+        // None at first counts as never changed, so the extension's own settings win.
+        let site_settings = store.load(SITE_SETTINGS)?.unwrap_or(Synced {
+            value: vec![],
+            updated_at: 0,
+        });
         Ok(Self {
             store,
             profiles,
@@ -193,6 +202,7 @@ impl Engine {
             tour_offered,
             own_quotes,
             goal,
+            site_settings,
         })
     }
 
@@ -598,6 +608,27 @@ impl Engine {
         (&self.profiles, &self.session)
     }
 
+    /// The sites' settings outside any profile, with when they last changed, for the extension.
+    pub fn site_settings(&self) -> &Synced<Vec<SiteSettings>> {
+        &self.site_settings
+    }
+
+    /// Takes the extension's site settings if they're newer than the app's. Returns whether they
+    /// changed. The extension makes sure a Hard session never shows a hidden part again.
+    pub fn apply_remote_site_settings(&mut self, incoming: Synced<Vec<SiteSettings>>, now: i64) -> Result<bool> {
+        let updated_at = incoming.updated_at.min(now);
+        if updated_at <= self.site_settings.updated_at {
+            return Ok(false);
+        }
+        let synced = Synced {
+            value: sites::tidy_settings(incoming.value),
+            updated_at,
+        };
+        self.store.save(SITE_SETTINGS, &synced)?;
+        self.site_settings = synced;
+        Ok(true)
+    }
+
     /// Adds a quote of the user's own. Returns whether there was a quote to add.
     pub fn add_own_quote(&mut self, text: &str, author: &str, now: i64) -> Result<bool> {
         let Some(quote) = OwnQuote::new(text, author) else {
@@ -899,6 +930,7 @@ impl Engine {
         backup.profiles = self.profiles.value.clone();
         backup.settings = Some(self.settings.clone());
         backup.own_quotes = self.own_quotes.value.clone();
+        backup.site_settings = self.site_settings.value.clone();
         backup.sky = self.store.load::<SkyState>(SKY)?.map(|s| s.value);
         backup.history = self.store.history()?;
         Ok(backup)
@@ -958,6 +990,17 @@ impl Engine {
             state.push((OWN_QUOTES, json(&quotes)?));
         }
 
+        // Parts hidden in either are hidden; a site tamed all the time here keeps its toggles.
+        let mut site_settings = self.site_settings.value.clone();
+        let site_settings_changed = sites::merge_settings(&mut site_settings, backup.site_settings);
+        let site_settings = Synced {
+            value: site_settings,
+            updated_at: now.max(self.site_settings.updated_at + 1),
+        };
+        if site_settings_changed {
+            state.push((SITE_SETTINGS, json(&site_settings)?));
+        }
+
         let settings = backup.settings.map_or_else(
             || self.settings.clone(),
             |settings| Settings {
@@ -1010,6 +1053,9 @@ impl Engine {
         }
         if new_quotes > 0 {
             self.own_quotes = quotes;
+        }
+        if site_settings_changed {
+            self.site_settings = site_settings;
         }
         self.settings = settings;
         self.pass_uses = self.store.pass_uses()?;
@@ -1394,6 +1440,35 @@ mod tests {
             engine.own_quotes.updated_at, 1_001,
             "always newer than the last change, even if the clock went back"
         );
+    }
+
+    #[test]
+    fn takes_newer_site_settings_from_the_extension_tidied() {
+        let mut engine = engine();
+        let incoming = |updated_at: i64, id: &str| Synced {
+            value: serde_json::from_value::<Vec<SiteSettings>>(serde_json::json!([
+                { "recipeId": id, "allTheTime": true, "hidden": [{ "selector": "a{}", "label": "Bad" }] },
+                { "recipeId": "Not a site" },
+            ]))
+            .unwrap(),
+            updated_at,
+        };
+        assert!(engine.apply_remote_site_settings(incoming(5, "reddit"), 1_000).unwrap());
+        assert!(
+            !engine
+                .apply_remote_site_settings(incoming(4, "youtube"), 1_000)
+                .unwrap()
+        );
+        let saved = &engine.site_settings().value;
+        assert_eq!(saved.len(), 1);
+        assert_eq!(
+            (saved[0].recipe_id.as_str(), saved[0].all_the_time),
+            ("reddit", Some(true))
+        );
+        assert_eq!(saved[0].hidden, None);
+        // Nothing comes from the future.
+        assert!(engine.apply_remote_site_settings(incoming(9_000, "x"), 1_000).unwrap());
+        assert_eq!(engine.site_settings().updated_at, 1_000);
     }
 
     #[test]
@@ -2128,6 +2203,12 @@ mod tests {
         };
         engine.save_settings(settings, 54 * MIN).unwrap();
         engine.sky_state(54 * MIN).unwrap();
+        let sites = serde_json::json!([{ "recipeId": "reddit", "allTheTime": true, "hidden": [{ "selector": "aside", "label": "Sidebar" }] }]);
+        let sites = Synced {
+            value: serde_json::from_value(sites).unwrap(),
+            updated_at: 55 * MIN,
+        };
+        engine.apply_remote_site_settings(sites, 55 * MIN).unwrap();
         engine
     }
 
@@ -2162,6 +2243,8 @@ mod tests {
         assert_eq!(satellites(&new), vec![("reply to Sam", SatelliteState::Task)]);
         assert_eq!(new.constellation_names().unwrap(), old.constellation_names().unwrap());
         assert_eq!(new.snapshot(0).own_quotes, old.snapshot(0).own_quotes);
+        assert_eq!(new.site_settings().value, old.site_settings().value);
+        assert_eq!(new.site_settings().updated_at, 100 * MIN);
         assert!(new.snapshot(0).profiles.iter().any(|p| p.id == "writing" && p.ask_goal));
         // Newer than the extension's copy, so the extension takes the profiles too.
         assert_eq!(new.profiles.updated_at, 100 * MIN);

@@ -66,6 +66,9 @@ describe('own sites', () => {
     expect(recipes.map((r) => r.id)).toEqual(['reddit', 'site:news.example.com', 'site:example.com']);
     expect(findRecipe(recipes, 'https://news.example.com/')?.id).toBe('site:news.example.com');
     expect(findRecipe(recipes, 'https://www.example.com/a')?.id).toBe('site:example.com');
+    // A site tamed all the time is known even if no profile has it.
+    const always = siteRecipes([reddit], [], [{ recipeId: 'site:calm.org', allTheTime: true }]);
+    expect(always.map((r) => r.id)).toEqual(['reddit', 'site:calm.org']);
   });
 
   it('redirects an added site like any other', () => {
@@ -116,14 +119,6 @@ describe('sitesLooser', () => {
         { recipeId: 'site:new.com', level: 'redirected' },
       ]),
     ).toBe(false);
-  });
-
-  it('catches a hidden part shown again, but not one more hidden', () => {
-    const hiding = (...selectors: string[]): SiteRule[] => [
-      { recipeId: 'site:example.com', level: 'tamed', hidden: selectors.map((selector) => ({ selector, label: '' })) },
-    ];
-    expect(sitesLooser(hiding('aside'), hiding('aside', 'nav'))).toBe(false);
-    expect(sitesLooser(hiding('aside'), hiding())).toBe(true);
   });
 
   it('catches a site loosened or taken off', () => {

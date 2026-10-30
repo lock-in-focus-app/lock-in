@@ -20,9 +20,10 @@ import {
   withGateVisit,
   withGateVisitContinued,
   withGateVisitWhy,
+  withAllTheTime,
+  withAllTheTimeToggle,
   withHiddenPart,
   withHiddenPartRemoved,
-  withTamedOutsideSessions,
   withPass,
   withProfileToggle,
   withSiteRemoved,
@@ -34,6 +35,7 @@ import {
   type HiddenPart,
   type Profile,
   type RedirectSettings,
+  type SiteSettings,
   type SiteLevel,
   type SiteRecipe,
   type WhyReason,
@@ -199,36 +201,49 @@ export async function removePageRule(profileId: string, recipeId: string, path: 
   await editSites(profileId, (list) => withPathRuleRemoved(list, profileId, recipeId, path));
 }
 
+/** Changes what's set for sites outside any profile. */
+function editSiteSettings(edit: (list: SiteSettings[]) => SiteSettings[]): Promise<void> {
+  return inTurn(async () => siteSettings.setValue(edit(await siteSettings.getValue())));
+}
+
+/** Whether a Hard session is running, during which hidden parts can't be shown again. */
+async function hardSession(): Promise<boolean> {
+  const session = await activeSession.getValue();
+  return !!session && endLock(session, Date.now()) === 'hard';
+}
+
 /**
- * Saves what the element picker changed on a site: parts picked to hide while it's tamed, and
- * ones hidden before to show again. During a Hard session of the profile nothing is shown again,
- * and the whole change is refused if it would be. Resolves to whether it saved.
+ * Saves what the element picker changed on a site: parts picked to hide whenever it's tamed, and
+ * ones hidden before to show again. During a Hard session nothing is shown again. Resolves to
+ * whether everything asked for was saved.
  */
-export function changeHiddenParts(
-  profileId: string,
+export async function changeHiddenParts(
   recipeId: string,
   change: { add: HiddenPart[]; remove: string[] },
 ): Promise<boolean> {
-  return editSites(profileId, (list) => {
-    const shown = change.remove.reduce(
-      (edited, selector) => withHiddenPartRemoved(edited, profileId, recipeId, selector),
-      list,
-    );
-    return change.add.reduce((edited, part) => withHiddenPart(edited, profileId, recipeId, part), shown);
+  const remove = (await hardSession()) ? [] : change.remove;
+  await editSiteSettings((list) => {
+    const shown = remove.reduce((edited, selector) => withHiddenPartRemoved(edited, recipeId, selector), list);
+    return change.add.reduce((edited, part) => withHiddenPart(edited, recipeId, part), shown);
   });
+  return remove.length === change.remove.length;
 }
 
-/**
- * Keeps a site tamed the way this profile tames it when no session is running, or stops. Only one
- * profile does this for each site. It never changes a session, so it's fine during a Hard one.
- */
-export async function setTamedOutsideSessions(profileId: string, recipeId: string, on: boolean): Promise<void> {
-  await editProfiles((list) => withTamedOutsideSessions(list, profileId, recipeId, on));
+/** Shows a hidden part of a site's page again. Resolves to false during a Hard session. */
+export async function showPart(recipeId: string, selector: string): Promise<boolean> {
+  if (await hardSession()) return false;
+  await editSiteSettings((list) => withHiddenPartRemoved(list, recipeId, selector));
+  return true;
 }
 
-/** Shows a hidden part of a site's page again. Resolves to false during a Hard session of the profile. */
-export function showPart(profileId: string, recipeId: string, selector: string): Promise<boolean> {
-  return editSites(profileId, (list) => withHiddenPartRemoved(list, profileId, recipeId, selector));
+/** Tames a site all the time, even with no session running, or stops. It never changes a session. */
+export async function setAllTheTime(recipeId: string, on: boolean): Promise<void> {
+  await editSiteSettings((list) => withAllTheTime(list, recipeId, on));
+}
+
+/** Sets a toggle for a site tamed all the time. */
+export async function setAllTheTimeToggle(recipeId: string, toggleId: string, value: boolean): Promise<void> {
+  await editSiteSettings((list) => withAllTheTimeToggle(list, recipeId, toggleId, value));
 }
 
 /** Restores the starter profiles to how they shipped. The user's own profiles are kept. */

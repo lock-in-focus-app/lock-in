@@ -10,6 +10,7 @@ import {
   type PageWait,
   type Profile,
   type Session,
+  type SiteSettings,
 } from '@lock-in/core';
 import puppeteer, { type Browser, type Extension, type Page } from 'puppeteer';
 
@@ -138,7 +139,8 @@ export interface Stored {
   profiles?: Profile[];
   gateVisits?: GateVisit[];
   pageWaits?: Record<string, PageWait>;
-  syncedAt?: { profiles: number; activeSession: number };
+  siteSettings?: SiteSettings[];
+  syncedAt?: { profiles: number; activeSession: number; siteSettings?: number };
   tourOffered?: boolean;
 }
 

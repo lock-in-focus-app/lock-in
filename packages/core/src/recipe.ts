@@ -1,6 +1,6 @@
 import { matchesPattern, parseHttpUrl } from './match';
 import { levelFor } from './paths';
-import type { HiddenPart, Profile, Session, SiteRecipe, SiteRule } from './types';
+import type { HiddenPart, Profile, Session, SiteRecipe, SiteRule, SiteSettings } from './types';
 
 /**
  * While a site is tamed, the extension keeps the page's path in this attribute on
@@ -64,27 +64,36 @@ export function buildRecipeCss(
   return rules.join('\n\n');
 }
 
+/** The toggles for a site tamed all the time: its own, then the recipe's defaults. */
+export function allTheTimeToggles(recipe: SiteRecipe, settings: SiteSettings | undefined): Record<string, boolean> {
+  const toggles = settings?.toggles;
+  return resolveToggles(recipe, toggles ? { recipeId: recipe.id, level: 'tamed', toggles } : undefined);
+}
+
 /**
- * The CSS to inject into a page: for the running session's profile, or with no session, for the
- * profile that keeps the site tamed outside sessions. Empty when the page isn't tamed.
+ * The CSS to inject into a page: for the running session's profile, or with no session, for a
+ * site tamed all the time. Parts picked to hide on the site are hidden either way. Empty when
+ * the page isn't tamed.
  */
 export function cssForPage(options: {
   url: string | URL;
   session: Session | null;
   profiles: readonly Profile[];
   recipes: readonly SiteRecipe[];
+  siteSettings?: readonly SiteSettings[];
 }): string {
-  const { url, session, profiles, recipes } = options;
+  const { url, session, profiles, recipes, siteSettings = [] } = options;
   const recipe = findRecipe(recipes, url);
   if (!recipe) return '';
+  const settings = siteSettings.find((site) => site.recipeId === recipe.id);
 
-  const profile = session
-    ? profiles.find((p) => p.id === session.profileId)
-    : profiles.find((p) => p.sites.some((site) => site.recipeId === recipe.id && site.outsideSessions));
+  if (!session) {
+    return settings?.allTheTime ? buildRecipeCss(recipe, allTheTimeToggles(recipe, settings), settings.hidden) : '';
+  }
+  const profile = profiles.find((p) => p.id === session.profileId);
   const pathname = parseHttpUrl(String(url))?.pathname;
   if (!profile || levelFor(profile, recipe.id, pathname) !== 'tamed') return '';
 
   const rule = profile.sites.find((site) => site.recipeId === recipe.id);
-
-  return buildRecipeCss(recipe, resolveToggles(recipe, rule, session?.overrides?.[recipe.id]), rule?.hidden);
+  return buildRecipeCss(recipe, resolveToggles(recipe, rule, session.overrides?.[recipe.id]), settings?.hidden);
 }

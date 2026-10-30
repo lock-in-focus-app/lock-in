@@ -19,6 +19,7 @@ export default defineBackground(() => {
   browser.runtime.onStartup.addListener(syncAll);
   activeSession.watch(sync);
   profiles.watch(syncAll);
+  siteSettings.watch(() => void syncScripts());
   browser.permissions.onAdded.addListener(syncAll);
   browser.permissions.onRemoved.addListener(syncAll);
   browser.alarms.onAlarm.addListener((alarm) => {

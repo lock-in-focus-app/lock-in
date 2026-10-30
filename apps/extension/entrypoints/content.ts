@@ -4,13 +4,14 @@ import {
   cssForPage,
   endLock,
   findRecipe,
-  findRule,
   maxHiddenParts,
   pagePathAttribute,
   siteAccess,
   siteRecipes,
+  siteSettingsFor,
   type Profile,
   type Session,
+  type SiteSettings,
 } from '@lock-in/core';
 import { recipes } from '@lock-in/recipes';
 import type { Picker } from '@/utils/picker';
@@ -27,16 +28,17 @@ export default defineContentScript({
     style.dataset.lockIn = '';
     document.documentElement.append(style);
 
-    // The session and profiles are kept here and updated by storage events, so moving
-    // between pages doesn't read storage.
+    // The session, profiles and site settings are kept here and updated by storage events, so
+    // moving between pages doesn't read storage.
     let session: Session | null = null;
     let profileList: Profile[] = [];
+    let sites: SiteSettings[] = [];
     let known = recipes;
     let url = new URL(location.href);
 
     // While the element picker is open (from the popup), it decides what's hidden of the parts
     // picked on this site, in a session or not, so you see what Done would save before saving it.
-    let picking: { profileId: string; recipeId: string } | undefined;
+    let picking: { recipeId: string } | undefined;
     let picker: Picker | undefined;
     const pickStyle = document.createElement('style');
     pickStyle.dataset.lockInPicker = '';
@@ -45,32 +47,23 @@ export default defineContentScript({
     let overlayKey = '';
     let recheck: number | undefined;
 
-    const savedWhilePicking = () =>
-      (picking &&
-        findRule(
-          profileList.find((p) => p.id === picking!.profileId),
-          picking.recipeId,
-        )?.hidden) ??
-      [];
-    // The profiles as the page's own stylesheet sees them: while picking, without the parts the
-    // picker is showing or hiding itself.
-    const tamingProfiles = () =>
+    const savedWhilePicking = () => (picking && siteSettingsFor(sites, picking.recipeId)?.hidden) ?? [];
+    // The site settings as the page's own stylesheet sees them: while picking, without the parts
+    // the picker is showing or hiding itself.
+    const tamingSites = () =>
       picking
-        ? profileList.map((profile) =>
-            profile.id !== picking!.profileId
-              ? profile
-              : {
-                  ...profile,
-                  sites: profile.sites.map((site) =>
-                    site.recipeId === picking!.recipeId ? { ...site, hidden: undefined } : site,
-                  ),
-                },
-          )
-        : profileList;
+        ? sites.map((site) => (site.recipeId === picking!.recipeId ? { ...site, hidden: undefined } : site))
+        : sites;
 
     const apply = (navigated = false) => {
       picker?.refresh();
-      style.textContent = cssForPage({ url, session, profiles: tamingProfiles(), recipes: known });
+      style.textContent = cssForPage({
+        url,
+        session,
+        profiles: profileList,
+        recipes: known,
+        siteSettings: tamingSites(),
+      });
 
       // Recipes can hide things on some pages only by matching the path kept on <html>.
       // It's only there while the page is tamed.
@@ -122,19 +115,17 @@ export default defineContentScript({
       }
     };
 
-    function startPicking(profileId: string, recipeId: string) {
+    function startPicking(recipeId: string) {
       const recipe = known.find((r) => r.id === recipeId);
-      const profile = profileList.find((p) => p.id === profileId);
-      if (!recipe || !profile) return false;
+      if (!recipe) return false;
       picker?.close();
       document.documentElement.append(pickStyle);
       // The page's own stylesheet leaves the saved parts to the picker's preview from here on.
-      picking = { profileId, recipeId };
+      picking = { recipeId };
       picker = showPicker({
         siteName: recipe.name,
-        profileName: profile.name,
         saved: savedWhilePicking,
-        locked: () => session?.profileId === profileId && endLock(session, Date.now()) === 'hard',
+        locked: () => !!session && endLock(session, Date.now()) === 'hard',
         maxParts: maxHiddenParts,
         partFor: hiddenPartFor,
         pickable,
@@ -142,7 +133,7 @@ export default defineContentScript({
           pickStyle.textContent = buildRecipeCss({ ...recipe, toggles: [] }, {}, parts);
         },
         onDone: async (change) => {
-          await changeHiddenParts(profileId, recipeId, change);
+          await changeHiddenParts(recipeId, change);
           stopPicking();
         },
         onCancel: stopPicking,
@@ -159,25 +150,33 @@ export default defineContentScript({
     }
     // The popup's "Hide parts of this page" asks for the picker on this tab.
     const onMessage = (message: unknown, _sender: unknown, sendResponse: (started: boolean) => void) => {
-      const ask = message as { type?: string; profileId?: string; recipeId?: string } | undefined;
-      if (ask?.type !== 'lock-in:pick' || !ask.profileId || !ask.recipeId) return;
-      sendResponse(startPicking(ask.profileId, ask.recipeId));
+      const ask = message as { type?: string; recipeId?: string } | undefined;
+      if (ask?.type !== 'lock-in:pick' || !ask.recipeId) return;
+      sendResponse(startPicking(ask.recipeId));
     };
     browser.runtime.onMessage.addListener(onMessage);
 
-    void Promise.all([activeSession.getValue(), profiles.getValue()]).then(([s, p]) => {
-      session = s;
-      profileList = p;
-      known = siteRecipes(recipes, p);
-      apply();
-    });
+    void Promise.all([activeSession.getValue(), profiles.getValue(), siteSettings.getValue()]).then(
+      ([s, p, settings]) => {
+        session = s;
+        profileList = p;
+        sites = settings;
+        known = siteRecipes(recipes, p, settings);
+        apply();
+      },
+    );
     const unwatchSession = activeSession.watch((value) => {
       session = value;
       apply();
     });
     const unwatchProfiles = profiles.watch((value) => {
       profileList = value;
-      known = siteRecipes(recipes, value);
+      known = siteRecipes(recipes, value, sites);
+      apply();
+    });
+    const unwatchSites = siteSettings.watch((value) => {
+      sites = value;
+      known = siteRecipes(recipes, profileList, value);
       apply();
     });
     // Fired as single-page apps navigate, before the new page shows.
@@ -195,6 +194,7 @@ export default defineContentScript({
       stopPicking();
       unwatchSession();
       unwatchProfiles();
+      unwatchSites();
       style.remove();
       document.documentElement.removeAttribute(pagePathAttribute);
       removeOverlay?.();

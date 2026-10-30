@@ -4,16 +4,17 @@ import {
   type FromDesktop,
   type Profile,
   type Session,
+  type SiteSettings,
   type ToDesktop,
 } from '@lock-in/core';
 
 // The link to the desktop app. The browser starts the app's bridge when the extension
 // connects (Native Messaging), and the bridge says "linked" once it reaches the running app.
-// While linked, the profiles and the session stay in step with the app and every other linked
-// browser: each side sends its changes, and the newest change wins. Without the app,
+// While linked, the profiles, the session and the site settings stay in step with the app and
+// every other linked browser: each side sends its changes, and the newest change wins. Without the app,
 // none of this does anything and the extension works on its own.
 
-type SyncedKey = 'profiles' | 'activeSession';
+type SyncedKey = 'profiles' | 'activeSession' | 'siteSettings';
 
 export function linkDesktopApp(): void {
   let port: Browser.runtime.Port | undefined;
@@ -26,15 +27,19 @@ export function linkDesktopApp(): void {
   };
 
   async function sendState(keys: SyncedKey[]) {
-    const [profileList, session, times] = await Promise.all([
+    const [profileList, session, sites, times] = await Promise.all([
       profiles.getValue(),
       activeSession.getValue(),
+      siteSettings.getValue(),
       syncedAt.getValue(),
     ]);
     send({
       type: 'state',
       ...(keys.includes('profiles') && { profiles: { value: profileList, updatedAt: times.profiles } }),
       ...(keys.includes('activeSession') && { activeSession: { value: session, updatedAt: times.activeSession } }),
+      ...(keys.includes('siteSettings') && {
+        siteSettings: { value: sites, updatedAt: times.siteSettings ?? 0 },
+      }),
     });
   }
 
@@ -52,6 +57,12 @@ export function linkDesktopApp(): void {
       next.activeSession = message.activeSession.updatedAt;
       updates.push({ item: activeSession, value: message.activeSession.value });
     }
+    // Apps from before site settings don't send any.
+    if (message.siteSettings && message.siteSettings.updatedAt > (times.siteSettings ?? 0)) {
+      fromApp.siteSettings = JSON.stringify(message.siteSettings.value);
+      next.siteSettings = message.siteSettings.updatedAt;
+      updates.push({ item: siteSettings, value: message.siteSettings.value });
+    }
     if (updates.length) await storage.setItems([...updates, { item: syncedAt, value: next }]);
   }
 
@@ -61,7 +72,7 @@ export function linkDesktopApp(): void {
         linked = true;
         await desktopLinked.setValue(true);
         send({ type: 'hello', protocol: linkProtocol, browser: import.meta.env.BROWSER });
-        await sendState(['profiles', 'activeSession']);
+        await sendState(['profiles', 'activeSession', 'siteSettings']);
         for (const visit of await gateVisits.getValue()) send({ type: 'gateVisit', visit });
         break;
       case 'unlinked':
@@ -76,16 +87,17 @@ export function linkDesktopApp(): void {
 
   // A change made here is newer than anything the app has, so it's stamped and sent. This
   // runs even while unlinked, so changes made without the app still win once it's back.
-  async function onLocalChange(key: SyncedKey, value: Profile[] | Session | null) {
+  async function onLocalChange(key: SyncedKey, value: Profile[] | Session | SiteSettings[] | null) {
     if (JSON.stringify(value) === fromApp[key]) return;
     delete fromApp[key];
     const times = await syncedAt.getValue();
-    await syncedAt.setValue({ ...times, [key]: Math.max(Date.now(), times[key] + 1) });
+    await syncedAt.setValue({ ...times, [key]: Math.max(Date.now(), (times[key] ?? 0) + 1) });
     await sendState([key]);
   }
 
   profiles.watch((value) => void onLocalChange('profiles', value));
   activeSession.watch((value) => void onLocalChange('activeSession', value));
+  siteSettings.watch((value) => void onLocalChange('siteSettings', value));
 
   // Gate visits go to the app's log as they happen and as the user answers "why?".
   gateVisits.watch((visits, previous) => {

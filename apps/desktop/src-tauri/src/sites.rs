@@ -57,15 +57,27 @@ pub struct SiteRule {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub paths: Option<Vec<PathRule>>,
-    /// Parts of the page picked to hide while the site is tamed, beyond its recipe's toggles.
+}
+
+/// What's set for a site outside any profile: the parts of its page picked to hide, which are
+/// hidden whenever it's tamed (in any profile's session, or all the time), and whether it's
+/// tamed all the time, even with no session running, with toggles of its own for then.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SiteSettings {
+    pub recipe_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub hidden: Option<Vec<HiddenPart>>,
-    /// Whether the extension tames the site this way when no session is running, too. Only one
-    /// profile has it for each site.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
-    pub outside_sessions: Option<bool>,
+    pub all_the_time: Option<bool>,
+    /// Overrides for the recipe's toggle defaults while it's tamed all the time, kept while it's
+    /// off so turning it back on brings them back.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, as = "Option<std::collections::HashMap<String, bool>>")]
+    pub toggles: Option<BTreeMap<String, bool>>,
 }
 
 /// The most sites a profile keeps, and page rules and toggles a site keeps, so a bad sync can't
@@ -96,6 +108,20 @@ pub fn tidy(sites: Vec<SiteRule>) -> Vec<SiteRule> {
                 toggles.pop_last();
             }
         }
+    }
+    sites
+}
+
+/// Drops site settings that can't be right (an id that isn't a site, a site listed twice, a
+/// hidden part whose selector could break out of the stylesheet), and anything past the limits.
+pub fn tidy_settings(settings: Vec<SiteSettings>) -> Vec<SiteSettings> {
+    let mut seen = std::collections::HashSet::new();
+    let mut settings: Vec<SiteSettings> = settings
+        .into_iter()
+        .filter(|site| is_site_id(&site.recipe_id) && seen.insert(site.recipe_id.clone()))
+        .collect();
+    settings.truncate(MAX_SITES);
+    for site in &mut settings {
         if let Some(hidden) = &mut site.hidden {
             hidden.retain(|part| part.selector.len() <= MAX_SELECTOR_LENGTH && is_safe_selector(&part.selector));
             hidden.truncate(MAX_HIDDEN);
@@ -105,8 +131,44 @@ pub fn tidy(sites: Vec<SiteRule>) -> Vec<SiteRule> {
                 }
             }
         }
+        if site.hidden.as_ref().is_some_and(Vec::is_empty) {
+            site.hidden = None;
+        }
+        if let Some(toggles) = &mut site.toggles {
+            while toggles.len() > MAX_TOGGLES {
+                toggles.pop_last();
+            }
+        }
     }
-    sites
+    settings
+}
+
+/// Adds a backup's site settings to these: parts hidden in either are hidden, and a site tamed
+/// all the time here keeps its own toggles. Returns whether anything changed.
+pub fn merge_settings(here: &mut Vec<SiteSettings>, theirs: Vec<SiteSettings>) -> bool {
+    let before = here.clone();
+    for site in tidy_settings(theirs) {
+        match here.iter_mut().find(|s| s.recipe_id == site.recipe_id) {
+            None => here.push(site),
+            Some(mine) => {
+                let hidden = mine.hidden.get_or_insert_with(Vec::new);
+                for part in site.hidden.into_iter().flatten() {
+                    if !hidden.iter().any(|p| p.selector == part.selector) {
+                        hidden.push(part);
+                    }
+                }
+                if hidden.is_empty() {
+                    mine.hidden = None;
+                }
+                if mine.all_the_time.is_none() {
+                    mine.all_the_time = site.all_the_time;
+                    mine.toggles = mine.toggles.take().or(site.toggles);
+                }
+            }
+        }
+    }
+    *here = tidy_settings(std::mem::take(here));
+    *here != before
 }
 
 /// Whether a selector can go in the extension's stylesheet without closing its rule or starting
@@ -136,8 +198,8 @@ fn is_site_id(id: &str) -> bool {
     }
 }
 
-/// Whether `new` lets through anything `old` kept away: a site or page at a looser level, one
-/// taken off, or a hidden part shown again. A new page rule can't be looser than anything already set on its site. Not
+/// Whether `new` lets through anything `old` kept away: a site or page at a looser level, or
+/// one taken off. A new page rule can't be looser than anything already set on its site. Not
 /// allowed during a Hard session. The extension checks the same (packages/core/src/sites.ts).
 pub fn looser(old: &[SiteRule], new: &[SiteRule]) -> bool {
     let same_path = |a: &PathRule, b: &PathRule| a.path.eq_ignore_ascii_case(&b.path);
@@ -158,13 +220,7 @@ pub fn looser(old: &[SiteRule], new: &[SiteRule]) -> bool {
         let new_page_looser = pages
             .iter()
             .any(|page| !old_pages.iter().any(|p| same_path(p, page)) && page.level < strictest);
-        let hidden = kept.and_then(|site| site.hidden.as_deref()).unwrap_or_default();
-        let shown_again = before
-            .hidden
-            .iter()
-            .flatten()
-            .any(|part| !hidden.iter().any(|p| p.selector == part.selector));
-        level < before.level || page_loosened || new_page_looser || shown_again
+        level < before.level || page_loosened || new_page_looser
     })
 }
 
@@ -178,8 +234,6 @@ mod tests {
             recipe_id: id.into(),
             level,
             toggles: None,
-            hidden: None,
-            outside_sessions: None,
             paths: (!paths.is_empty()).then(|| {
                 paths
                     .iter()
@@ -194,7 +248,7 @@ mod tests {
 
     #[test]
     fn reads_what_the_extension_saves_and_writes_it_back_the_same() {
-        let saved = r#"[{"recipeId":"youtube","level":"tamed","toggles":{"hideShorts":true},"paths":[{"path":"/shorts","level":"restricted"}]},{"recipeId":"site:example.com","level":"tamed","hidden":[{"selector":"aside.trending","label":"Trending now"}],"outsideSessions":true}]"#;
+        let saved = r#"[{"recipeId":"youtube","level":"tamed","toggles":{"hideShorts":true},"paths":[{"path":"/shorts","level":"restricted"}]},{"recipeId":"site:example.com","level":"redirected"}]"#;
         let sites: Vec<SiteRule> = serde_json::from_str(saved).unwrap();
         assert_eq!(sites[0].level, Tamed);
         assert_eq!(sites[1].paths, None);
@@ -216,7 +270,7 @@ mod tests {
         assert_eq!(sites[0].paths.as_ref().unwrap().len(), 1);
     }
 
-    fn hiding(id: &str, selectors: &[&str]) -> SiteRule {
+    fn hiding(id: &str, selectors: &[&str]) -> SiteSettings {
         let hidden = selectors
             .iter()
             .map(|&selector| HiddenPart {
@@ -224,10 +278,20 @@ mod tests {
                 label: "A part".into(),
             })
             .collect();
-        SiteRule {
+        SiteSettings {
+            recipe_id: id.into(),
             hidden: Some(hidden),
-            ..site(id, Tamed, &[])
+            all_the_time: None,
+            toggles: None,
         }
+    }
+
+    #[test]
+    fn reads_site_settings_and_writes_them_back_the_same() {
+        let saved = r#"[{"recipeId":"reddit","hidden":[{"selector":"aside.trending","label":"Trending now"}],"allTheTime":true,"toggles":{"grayscale":true}}]"#;
+        let settings: Vec<SiteSettings> = serde_json::from_str(saved).unwrap();
+        assert_eq!(settings[0].all_the_time, Some(true));
+        assert_eq!(serde_json::to_string(&settings).unwrap(), saved);
     }
 
     #[test]
@@ -237,7 +301,12 @@ mod tests {
             &["aside", "a{}", "b;c", "@import x", "a\\62", "a /* c */", "  "],
         );
         long.hidden.as_mut().unwrap()[0].label = "x".repeat(200);
-        let tidied = tidy(vec![long]);
+        let tidied = tidy_settings(vec![
+            long,
+            hiding("site:a.com", &["nav"]),
+            hiding("Not a site", &["nav"]),
+        ]);
+        assert_eq!(tidied.len(), 1);
         let hidden = tidied[0].hidden.as_ref().unwrap();
         assert_eq!(hidden.len(), 1);
         assert_eq!(hidden[0].selector, "aside");
@@ -245,11 +314,27 @@ mod tests {
     }
 
     #[test]
-    fn showing_a_hidden_part_again_is_looser_and_hiding_more_is_not() {
-        let old = vec![hiding("site:a.com", &["aside"])];
-        assert!(!looser(&old, &[hiding("site:a.com", &["aside", "nav"])]));
-        assert!(looser(&old, &[hiding("site:a.com", &[])]));
-        assert!(looser(&old, &[site("site:a.com", Tamed, &[])]));
+    fn merging_a_backup_adds_hidden_parts_and_keeps_toggles_here() {
+        let mut here = vec![SiteSettings {
+            all_the_time: Some(true),
+            toggles: Some(BTreeMap::from([("grayscale".into(), true)])),
+            ..hiding("reddit", &["aside"])
+        }];
+        let theirs = vec![
+            SiteSettings {
+                all_the_time: Some(false),
+                toggles: Some(BTreeMap::from([("grayscale".into(), false)])),
+                ..hiding("reddit", &["aside", "nav"])
+            },
+            hiding("site:a.com", &["footer"]),
+        ];
+        assert!(merge_settings(&mut here, theirs.clone()));
+        let selectors: Vec<&str> = here[0].hidden.iter().flatten().map(|p| p.selector.as_str()).collect();
+        assert_eq!(selectors, ["aside", "nav"]);
+        assert_eq!(here[0].all_the_time, Some(true));
+        assert!(here[0].toggles.as_ref().unwrap()["grayscale"]);
+        assert_eq!(here[1].recipe_id, "site:a.com");
+        assert!(!merge_settings(&mut here, theirs));
     }
 
     #[test]

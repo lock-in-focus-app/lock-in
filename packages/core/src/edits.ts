@@ -1,7 +1,6 @@
 import { maxPathRules, normalizePath } from './paths';
 import { isStarColor, newStarColor } from './sky';
-import { isSafeSelector } from './recipe';
-import type { HiddenPart, Profile, RedirectSettings, Session, SiteLevel, SiteRecipe, SiteRule } from './types';
+import type { Profile, RedirectSettings, Session, SiteLevel, SiteRecipe, SiteRule } from './types';
 
 // Pure, immutable edits to profiles and sessions. The extension (and later the desktop
 // app) persists whatever these return.
@@ -200,82 +199,6 @@ export function withPathRuleRemoved(
     const paths = (site.paths ?? []).filter((rule) => !samePath(rule.path, path));
     return paths.length > 0 ? { ...rest, paths } : rest;
   });
-}
-
-/** Most parts of a page one site can have hidden, and the longest selector and name for one. */
-export const maxHiddenParts = 50;
-export const maxSelectorLength = 500;
-export const maxHiddenLabelLength = 80;
-
-/**
- * Hides a part of a site's page, picked with the element picker, while the site is tamed. One
- * already hidden, a selector that isn't safe or too long, or one past the limit is left out.
- */
-export function withHiddenPart(
-  profiles: readonly Profile[],
-  profileId: string,
-  recipeId: string,
-  part: HiddenPart,
-): Profile[] {
-  const selector = part.selector.trim();
-  if (!isSafeSelector(selector) || selector.length > maxSelectorLength) return [...profiles];
-  const label = part.label.trim().slice(0, maxHiddenLabelLength);
-  return withSite(profiles, profileId, recipeId, (site) => {
-    const hidden = site.hidden ?? [];
-    if (hidden.length >= maxHiddenParts || hidden.some((p) => p.selector === selector)) return site;
-    return { ...site, hidden: [...hidden, { selector, label }] };
-  });
-}
-
-/** Shows a hidden part of a site's page again. */
-export function withHiddenPartRemoved(
-  profiles: readonly Profile[],
-  profileId: string,
-  recipeId: string,
-  selector: string,
-): Profile[] {
-  return withSite(profiles, profileId, recipeId, (site) => {
-    const { hidden: _previous, ...rest } = site;
-    const hidden = (site.hidden ?? []).filter((part) => part.selector !== selector);
-    return hidden.length > 0 ? { ...rest, hidden } : rest;
-  });
-}
-
-/**
- * Keeps a site tamed the way this profile tames it when no session is running, or stops. Only one
- * profile does this for each site, so turning it on here turns it off in the others.
- */
-export function withTamedOutsideSessions(
-  profiles: readonly Profile[],
-  profileId: string,
-  recipeId: string,
-  on: boolean,
-): Profile[] {
-  if (
-    on &&
-    !findRule(
-      profiles.find((p) => p.id === profileId),
-      recipeId,
-    )
-  )
-    return [...profiles];
-  return profiles.map((profile) => {
-    const keep = on && profile.id === profileId;
-    if (profile.id !== profileId && !on) return profile;
-    return {
-      ...profile,
-      sites: profile.sites.map((site) => {
-        if (site.recipeId !== recipeId) return site;
-        const { outsideSessions: _previous, ...rest } = site;
-        return keep ? { ...rest, outsideSessions: true } : rest;
-      }),
-    };
-  });
-}
-
-/** The profile that keeps a site tamed when no session is running, if one does. */
-export function tamedOutsideSessionsBy(profiles: readonly Profile[], recipeId: string): Profile | undefined {
-  return profiles.find((p) => p.sites.some((site) => site.recipeId === recipeId && site.outsideSessions));
 }
 
 /** Paths match without regard to case, so "/Shorts" and "/shorts" are the same rule. */

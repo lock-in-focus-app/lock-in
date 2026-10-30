@@ -17,7 +17,8 @@ import SegmentedControl from './SegmentedControl.vue';
 // A profile's sites, the same list as in the browser extension's settings: each built-in site,
 // then any added by address, with its level. The extension does the taming and redirecting, and
 // gets every change here through the link. What Tamed hides, and page rules, are set there, and
-// so are the parts of a page picked to hide with its element picker.
+// so are the parts of a page picked to hide with its element picker, and taming a site all the
+// time with no session running.
 const props = defineProps<{ sites: SiteRule[] }>();
 const emit = defineEmits<{ 'update:sites': [sites: SiteRule[]] }>();
 
@@ -43,7 +44,6 @@ const setLevel = (recipeId: string, level: SiteLevel) => edit((list) => withSite
 const remove = (recipeId: string) => edit((list) => withSiteRemoved(list, 'this', recipeId));
 
 const pageCount = (id: string) => ruleFor(id)?.paths?.length ?? 0;
-const hiddenCount = (id: string) => ruleFor(id)?.hidden?.length ?? 0;
 
 // Adding a site by its address. One that's built in is already listed.
 const draft = ref('');
@@ -81,12 +81,6 @@ function add() {
           <b>{{ recipe.name }}</b>
           <span v-if="pageCount(recipe.id)" class="pages mono">
             + {{ pageCount(recipe.id) }} page {{ pageCount(recipe.id) === 1 ? 'rule' : 'rules' }}
-          </span>
-          <span v-if="ruleFor(recipe.id)?.level === 'tamed' && ruleFor(recipe.id)?.outsideSessions" class="pages mono">
-            + all the time
-          </span>
-          <span v-if="hiddenCount(recipe.id)" class="pages mono">
-            + {{ hiddenCount(recipe.id) }} hidden {{ hiddenCount(recipe.id) === 1 ? 'part' : 'parts' }}
           </span>
         </span>
         <SegmentedControl
@@ -126,7 +120,7 @@ function add() {
       These apply in the browser, through Lock In's extension, while this profile runs. Added sites start out
       redirected, and the browser asks once to let Lock In reach each one. What Tamed hides, and page rules, are set in
       the extension's settings. To hide part of a page, open the site and choose Hide parts of this page in the
-      extension's popup. A tamed site can also be tamed all the time, even with no session running, set there too.
+      extension's popup. Any site can also be tamed all the time, with no session running, set there too.
     </p>
   </div>
 </template>

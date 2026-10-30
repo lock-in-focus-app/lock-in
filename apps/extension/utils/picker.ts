@@ -113,7 +113,6 @@ li.note { display: block; margin: -2px 0 2px; }
 
 export interface PickerOptions {
   siteName: string;
-  profileName: string;
   /** What's saved as hidden on this site now, read again whenever the panel redraws. */
   saved: () => readonly HiddenPart[];
   /** Whether a Hard session of the profile is running, so parts can be hidden but not shown again. */
@@ -255,9 +254,7 @@ export function showPicker(options: PickerOptions): Picker {
       element(
         'p',
         'note',
-        changed()
-          ? `Done saves this to ${options.profileName}. It's hidden whenever ${options.profileName} tames ${options.siteName}.`
-          : `Saved to ${options.profileName}. It's hidden whenever ${options.profileName} tames ${options.siteName}.`,
+        `${changed() ? 'Done saves this. ' : ''}Hidden whenever ${options.siteName} is tamed, in a session or all the time.`,
       ),
     );
     const buttons = element('div', 'end');

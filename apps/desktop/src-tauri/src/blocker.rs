@@ -523,8 +523,6 @@ mod tests {
                 level,
                 toggles: None,
                 paths: None,
-                hidden: None,
-                outside_sessions: None,
             })
             .collect();
         let mut profile: Profile = serde_json::from_str(r#"{"id":"p","name":"P"}"#).unwrap();

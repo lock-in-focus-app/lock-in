@@ -1,4 +1,4 @@
-import { ownSiteDomain, ownSitePattern, type Profile } from '@lock-in/core';
+import { ownSiteDomain, ownSitePattern, type Profile, type SiteSettings } from '@lock-in/core';
 import { onUnmounted, ref, watchEffect, type Ref } from 'vue';
 
 // Sites people add themselves (packages/core/src/sites.ts) need their OK before Lock In can
@@ -8,10 +8,13 @@ import { onUnmounted, ref, watchEffect, type Ref } from 'vue';
 
 const scriptId = 'lock-in-own-sites';
 
-/** The addresses of every site the profiles have added, once each. */
-export function ownDomains(list: readonly Profile[]): string[] {
-  const domains = list.flatMap((profile) => profile.sites.flatMap((site) => ownSiteDomain(site.recipeId) ?? []));
-  return [...new Set(domains)];
+/** The addresses of every site the profiles have added, or that has settings of its own, once each. */
+export function ownDomains(list: readonly Profile[], sites: readonly SiteSettings[] = []): string[] {
+  const ids = [
+    ...list.flatMap((profile) => profile.sites.map((site) => site.recipeId)),
+    ...sites.map((s) => s.recipeId),
+  ];
+  return [...new Set(ids.flatMap((id) => ownSiteDomain(id) ?? []))];
 }
 
 /** Asks the browser to let Lock In reach these sites. Resolves to whether it may. */
@@ -49,11 +52,11 @@ export function useReachable(domains: () => string[]): Ref<Set<string> | undefin
 
 /**
  * Runs the content script on the added sites Lock In may reach, as the manifest does on the
- * built-in ones, so their tabs are covered like any other. Called whenever the profiles or the
- * permissions change, and when the browser starts.
+ * built-in ones, so their tabs are covered like any other. Called whenever the profiles, the site
+ * settings or the permissions change, and when the browser starts.
  */
 export async function syncOwnSiteScripts(): Promise<void> {
-  const allowed = await reachable(ownDomains(await profiles.getValue()));
+  const allowed = await reachable(ownDomains(await profiles.getValue(), await siteSettings.getValue()));
   const matches = [...allowed].map(ownSitePattern);
 
   const registered = await browser.scripting.getRegisteredContentScripts({ ids: [scriptId] });

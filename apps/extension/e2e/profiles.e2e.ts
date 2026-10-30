@@ -167,6 +167,7 @@ describe('profile editor', () => {
     const reddit = await t.browser.newPage();
     await reddit.goto(urls.reddit);
     const popup = await openPopup(t, reddit);
+    await popup.click('.when button.session');
     await popup.$eval('[role=radiogroup][aria-label="Reddit level"]', (group) =>
       (
         [...group.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Redirected') as HTMLElement

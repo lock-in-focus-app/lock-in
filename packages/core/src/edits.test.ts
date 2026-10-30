@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  maxHiddenParts,
-  withHiddenPart,
-  withHiddenPartRemoved,
   withNewProfile,
   withPathRuleRemoved,
   withPathRules,
@@ -15,10 +12,8 @@ import {
   withRedirectSettings,
   withSessionOverridesSaved,
   withSessionToggle,
-  tamedOutsideSessionsBy,
   withSiteLevel,
   withStarterProfilesReset,
-  withTamedOutsideSessions,
 } from './edits';
 import { defaultRedirectSettings } from './settings';
 import type { Profile, Session, SiteRecipe } from './types';
@@ -220,54 +215,5 @@ describe('page rules', () => {
     expect(paths(withSiteLevel(added, 'focus', 'example', 'allowed'))).toEqual([
       { path: '/shorts', level: 'redirected' },
     ]);
-  });
-});
-
-describe('hidden parts', () => {
-  const hidden = (list: Profile[], recipeId = 'example') =>
-    list.find((p) => p.id === 'focus')!.sites.find((s) => s.recipeId === recipeId)?.hidden;
-  const part = { selector: 'aside.trending', label: 'Trending now' };
-
-  it('hides a picked part once, tidied', () => {
-    const edited = withHiddenPart(profiles, 'focus', 'example', {
-      selector: ' aside.trending ',
-      label: ' Trending now ',
-    });
-    expect(hidden(edited)).toEqual([part]);
-    expect(hidden(withHiddenPart(edited, 'focus', 'example', part))).toEqual([part]);
-    expect(edited[1]!.sites[0]!.hidden).toBeUndefined();
-  });
-
-  it('skips selectors that could break out of the stylesheet, and parts past the limit', () => {
-    expect(
-      hidden(withHiddenPart(profiles, 'focus', 'example', { selector: 'a } body {', label: 'x' })),
-    ).toBeUndefined();
-    const full = Array.from({ length: maxHiddenParts }, (_, i) => ({ selector: `#p${i}`, label: '' }));
-    const filled = full.reduce((list, p) => withHiddenPart(list, 'focus', 'example', p), profiles);
-    expect(hidden(withHiddenPart(filled, 'focus', 'example', part))).toHaveLength(maxHiddenParts);
-  });
-
-  it('shows one again, and drops the list once it is empty', () => {
-    const edited = withHiddenPart(profiles, 'focus', 'example', part);
-    expect(hidden(withHiddenPartRemoved(edited, 'focus', 'example', part.selector))).toBeUndefined();
-    expect(withHiddenPartRemoved(edited, 'focus', 'example', part.selector)[0]!.sites[0]).toEqual(rule);
-  });
-});
-
-describe('tamed outside sessions', () => {
-  it('belongs to one profile per site', () => {
-    const focus = withTamedOutsideSessions(profiles, 'focus', 'example', true);
-    expect(tamedOutsideSessionsBy(focus, 'example')?.id).toBe('focus');
-    const other = withTamedOutsideSessions(focus, 'other', 'example', true);
-    expect(tamedOutsideSessionsBy(other, 'example')?.id).toBe('other');
-    expect(other[0]!.sites[0]).toEqual(rule);
-  });
-
-  it('turns off, and needs the profile to have the site', () => {
-    const on = withTamedOutsideSessions(profiles, 'focus', 'example', true);
-    expect(tamedOutsideSessionsBy(withTamedOutsideSessions(on, 'focus', 'example', false), 'example')).toBeUndefined();
-    expect(
-      tamedOutsideSessionsBy(withTamedOutsideSessions(profiles, 'focus', 'nowhere', true), 'nowhere'),
-    ).toBeUndefined();
   });
 });

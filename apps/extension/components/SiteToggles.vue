@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 import {
+  allTheTimeToggles,
   findPathRule,
   findRule,
   isLooser,
   ownSiteDomain,
   resolveToggles,
   siteLevels,
-  tamedOutsideSessionsBy,
+  siteSettingsFor,
   type Profile,
   type Session,
   type SiteLevel,
@@ -25,6 +26,11 @@ const props = defineProps<{
   /** The current tab, reloaded once it's kept away so the change shows straight away. */
   tabId?: number;
 }>();
+
+// Two tabs, by when settings apply: with no session running, where a site can be tamed all the
+// time, belonging to no profile; and in a session, where each profile has its own level for it.
+// It opens on the one that applies right now.
+const when = ref<'none' | 'session'>(props.session ? 'session' : 'none');
 
 // Outside a session there's no "current" profile, so let the user pick which one to edit.
 // Default to the first profile that has a rule for this site.
@@ -52,6 +58,14 @@ const passMinutesLeft = computed(() => {
 });
 const hasSessionChanges = computed(() => Object.keys(props.session?.overrides?.[props.recipe.id] ?? {}).length > 0);
 
+// What's set for the site outside any profile: taming it all the time, and the parts of its page
+// picked to hide, which are hidden whenever it's tamed, in either tab.
+const sites = useStorageItem(siteSettings);
+const settings = computed(() => siteSettingsFor(sites.value ?? [], props.recipe.id));
+const allTheTime = computed(() => !!settings.value?.allTheTime);
+const allTheTimeValues = computed(() => allTheTimeToggles(props.recipe, settings.value));
+const hiddenCount = computed(() => settings.value?.hidden?.length ?? 0);
+
 // A site someone added needs the browser's OK before Lock In can reach it. The browser only
 // asks straight from a click, so asking comes before anything else in one.
 const own = computed(() => !!ownSiteDomain(props.recipe.id));
@@ -67,33 +81,34 @@ function setLevel(level: SiteLevel) {
   void setSiteLevel(profile.value.id, props.recipe.id, level);
 }
 
-// During a session, a site that's open can be kept away for the rest of it, and later ones.
+function setAlways(on: boolean) {
+  if (on) askIfNeeded('tamed');
+  void setAllTheTime(props.recipe.id, on);
+}
+
 // What the picked level does, spelled out under the picker.
 const levelDetail = computed(() => {
   const level = rule.value?.level ?? 'allowed';
   if (level === 'tamed' && own.value) {
-    const count = rule.value?.hidden?.length ?? 0;
-    return count
-      ? `Stays open, with the ${count === 1 ? 'part' : `${count} parts`} you picked hidden.`
+    return hiddenCount.value
+      ? `Stays open, with the ${hiddenCount.value === 1 ? 'part' : `${hiddenCount.value} parts`} you picked hidden.`
       : `Stays open. Pick the parts of ${props.recipe.name} to hide below.`;
   }
   return siteLevels.find((l) => l.id === level)?.detail;
 });
 
-// A tamed site can stay tamed all the time, with no session running, the way one profile tames it,
-// so changes here show on the page straight away.
-const outsideBy = computed(() => tamedOutsideSessionsBy(props.profiles, props.recipe.id));
-const allTheTime = computed(() => !!profile.value && outsideBy.value?.id === profile.value.id);
-
-// The element picker hides parts of the page while the site is tamed. It runs on the page itself,
-// through the content script, which a tab opened before Lock In could reach the site doesn't have
-// yet, so it's added then.
+// The element picker hides parts of the page whenever the site is tamed. It runs on the page
+// itself, through the content script, which a tab opened before Lock In could reach the site
+// doesn't have yet, so it's added then.
 const canPick = computed(
-  () => !!profile.value && rule.value?.level === 'tamed' && props.tabId !== undefined && !needsReach.value,
+  () =>
+    props.tabId !== undefined &&
+    !needsReach.value &&
+    (when.value === 'none' ? allTheTime.value : !!profile.value && rule.value?.level === 'tamed'),
 );
 async function pickParts() {
-  if (!profile.value || props.tabId === undefined) return;
-  const message = { type: 'lock-in:pick', profileId: profile.value.id, recipeId: props.recipe.id };
+  if (props.tabId === undefined) return;
+  const message = { type: 'lock-in:pick', recipeId: props.recipe.id };
   try {
     await browser.tabs.sendMessage(props.tabId, message);
   } catch {
@@ -103,6 +118,7 @@ async function pickParts() {
   window.close();
 }
 
+// During a session, a site that's open can be kept away for the rest of it, and later ones.
 const isOpen = computed(() => !isLooser('tamed', rule.value?.level ?? 'allowed'));
 const canKeepAway = computed(() => !!props.session && !!profile.value && !pageRule.value && isOpen.value);
 async function keepAway(level: 'redirected' | 'restricted') {
@@ -129,89 +145,127 @@ function set(toggleId: string, value: boolean) {
       On this site · <b>{{ recipe.name }}</b>
     </p>
 
-    <label v-if="!session && profiles.length > 1" class="picker">
-      <span>Editing</span>
-      <select v-model="editingId">
-        <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
-      </select>
-    </label>
-
-    <!-- Levels can be changed between sessions. Mid-session loosening waits for strictness levels. -->
-    <LevelPicker
-      v-if="!session && profile"
-      class="levels"
-      :site-name="recipe.name"
-      :can-tame="recipe.toggles.length > 0 || own"
-      :model-value="rule?.level ?? 'allowed'"
-      @update:model-value="setLevel"
-    />
-    <p v-if="!session && profile" class="note detail">{{ levelDetail }}</p>
-    <template v-if="profile && rule?.level === 'tamed'">
-      <ToggleSwitch
-        class="outside"
-        :label="`Tame ${recipe.name} all the time`"
-        :model-value="allTheTime"
-        @update:model-value="setTamedOutsideSessions(profile.id, recipe.id, $event)"
-      />
-      <p class="note all-the-time">{{ allTheTimeNote(recipe.name, profile, outsideBy) }}</p>
-    </template>
-
-    <p v-if="pageRule" class="note">
-      This page follows the {{ pageRule.path === '/' ? 'home page' : pageRule.path }} rule: {{ pageRule.level }}.
-    </p>
-
-    <template v-if="session && !pageRule">
-      <p v-if="rule?.level === 'redirected'" class="note">
-        {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile'
-        }}<template v-if="passMinutesLeft"> · pass ends in {{ passMinutesLeft }} min</template>.
-      </p>
-      <p v-else-if="rule?.level === 'restricted'" class="note">
-        {{ recipe.name }} is restricted in {{ profile?.name ?? 'this profile' }}, with no way through until the session
-        ends.
-      </p>
-      <p v-else-if="rule?.level !== 'tamed'" class="note">
-        {{ recipe.name }} {{ own ? 'is left alone' : "isn't tamed" }} in {{ profile?.name ?? 'this profile' }}.
-      </p>
-    </template>
-
-    <div v-if="canKeepAway" class="keep-away">
-      <span>Keep it away from now on</span>
-      <button class="key" type="button" @click="keepAway('redirected')">Redirect it</button>
-      <button class="key" type="button" @click="keepAway('restricted')">Restrict it</button>
+    <div class="when" role="tablist" :aria-label="`When ${recipe.name}'s settings apply`">
+      <button
+        v-for="option in [
+          { id: 'none', label: 'No session', now: !session },
+          { id: 'session', label: 'In a session', now: !!session },
+        ] as const"
+        :key="option.id"
+        type="button"
+        role="tab"
+        :class="option.id"
+        :aria-selected="when === option.id"
+        @click="when = option.id"
+      >
+        <span v-if="option.now" class="dot" title="Applies right now" aria-label="(applies right now)" />
+        {{ option.label }}
+      </button>
     </div>
 
-    <p v-if="needsReach && (rule?.level ?? 'allowed') !== 'allowed'" class="reach">
-      <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
-      <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
-    </p>
+    <!-- Drawn once the site settings have loaded, so the switch doesn't slide into place. -->
+    <template v-if="when === 'none' && sites">
+      <ToggleSwitch
+        class="all-the-time"
+        :label="`Tame ${recipe.name} all the time`"
+        :model-value="allTheTime"
+        @update:model-value="setAlways"
+      />
+      <p class="note" :class="{ apart: allTheTime && recipe.toggles.length }">
+        {{ allTheTimeNote(recipe.name, allTheTime) }}
+      </p>
+      <p v-if="needsReach && allTheTime" class="reach">
+        <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
+        <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+      </p>
+      <ToggleSwitch
+        v-for="toggle in allTheTime ? recipe.toggles : []"
+        :key="toggle.id"
+        :label="toggle.label"
+        :model-value="allTheTimeValues[toggle.id] ?? false"
+        @update:model-value="setAllTheTimeToggle(recipe.id, toggle.id, $event)"
+      />
+    </template>
 
-    <ToggleSwitch
-      v-for="toggle in showsToggles ? recipe.toggles : []"
-      :key="toggle.id"
-      :label="toggle.label"
-      :model-value="values[toggle.id] ?? false"
-      @update:model-value="set(toggle.id, $event)"
-    />
+    <template v-else>
+      <label v-if="!session && profiles.length > 1" class="picker">
+        <span>Editing</span>
+        <select v-model="editingId">
+          <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
+      </label>
+
+      <!-- Levels can be changed between sessions. Mid-session loosening waits for strictness levels. -->
+      <LevelPicker
+        v-if="!session && profile"
+        class="levels"
+        :site-name="recipe.name"
+        :can-tame="recipe.toggles.length > 0 || own"
+        :model-value="rule?.level ?? 'allowed'"
+        @update:model-value="setLevel"
+      />
+      <p v-if="!session && profile" class="note detail">{{ levelDetail }}</p>
+
+      <p v-if="pageRule" class="note">
+        This page follows the {{ pageRule.path === '/' ? 'home page' : pageRule.path }} rule: {{ pageRule.level }}.
+      </p>
+
+      <template v-if="session && !pageRule">
+        <p v-if="rule?.level === 'redirected'" class="note">
+          {{ recipe.name }} is redirected in {{ profile?.name ?? 'this profile'
+          }}<template v-if="passMinutesLeft"> · pass ends in {{ passMinutesLeft }} min</template>.
+        </p>
+        <p v-else-if="rule?.level === 'restricted'" class="note">
+          {{ recipe.name }} is restricted in {{ profile?.name ?? 'this profile' }}, with no way through until the
+          session ends.
+        </p>
+        <p v-else-if="rule?.level !== 'tamed'" class="note">
+          {{ recipe.name }} {{ own ? 'is left alone' : "isn't tamed" }} in {{ profile?.name ?? 'this profile' }}.
+        </p>
+      </template>
+
+      <div v-if="canKeepAway" class="keep-away">
+        <span>Keep it away from now on</span>
+        <button class="key" type="button" @click="keepAway('redirected')">Redirect it</button>
+        <button class="key" type="button" @click="keepAway('restricted')">Restrict it</button>
+      </div>
+
+      <p v-if="needsReach && (rule?.level ?? 'allowed') !== 'allowed'" class="reach">
+        <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
+        <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+      </p>
+
+      <ToggleSwitch
+        v-for="toggle in showsToggles ? recipe.toggles : []"
+        :key="toggle.id"
+        :label="toggle.label"
+        :model-value="values[toggle.id] ?? false"
+        @update:model-value="set(toggle.id, $event)"
+      />
+    </template>
 
     <div v-if="canPick" class="pick">
       <button type="button" class="key" @click="pickParts">Hide parts of this page</button>
-      <span v-if="rule?.hidden?.length">
-        {{ rule.hidden.length }} {{ rule.hidden.length === 1 ? 'part' : 'parts' }} hidden so far
+      <span>
+        <template v-if="hiddenCount">{{ hiddenCount }} {{ hiddenCount === 1 ? 'part' : 'parts' }} hidden. </template>
+        Hidden whenever {{ recipe.name }} is tamed, in either tab.
       </span>
     </div>
 
-    <p v-if="session && hasSessionChanges" class="footer">
-      <span>Changed for this session</span>
-      <button type="button" class="key lit save" @click="saveSessionChanges(recipe.id)">
-        Save to {{ profile?.name }}
-      </button>
-    </p>
-    <p v-else-if="!session" class="footer">
-      <span>{{ allTheTime ? 'Applies all the time' : `Applies whenever ${profile?.name} is running` }}</span>
-    </p>
-    <p v-else-if="canKeepAway" class="footer">
-      <span>Either one is saved to {{ profile?.name }}, for later sessions too</span>
-    </p>
+    <template v-if="when === 'session'">
+      <p v-if="session && hasSessionChanges" class="footer">
+        <span>Changed for this session</span>
+        <button type="button" class="key lit save" @click="saveSessionChanges(recipe.id)">
+          Save to {{ profile?.name }}
+        </button>
+      </p>
+      <p v-else-if="!session" class="footer">
+        <span>Applies whenever {{ profile?.name }} is running</span>
+      </p>
+      <p v-else-if="canKeepAway" class="footer">
+        <span>Either one is saved to {{ profile?.name }}, for later sessions too</span>
+      </p>
+    </template>
   </section>
 </template>
 
@@ -291,8 +345,46 @@ select {
   padding: 7px 8px;
 }
 
-/* Set apart from the site's own toggles below it. */
-.all-the-time {
+/* When the settings below apply: two tabs, like the level switch, the one shown lit. */
+.when {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 2px 0 8px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgb(8 11 22 / 0.55);
+}
+
+.when button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 4px;
+  border-radius: 2px;
+  background: none;
+  color: var(--faint);
+  font: 9.5px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    color 300ms,
+    background-color 300ms;
+}
+
+.when button:hover {
+  color: var(--dim);
+}
+
+.when button[aria-selected='true'] {
+  background: rgb(220 228 255 / 0.08);
+  box-shadow: inset 0 -1px 0 #cfe0ff;
+  color: var(--starlight);
+}
+
+/* Sets the switch apart from the site's own toggles below it. */
+.apart {
   margin-bottom: 4px;
   padding-bottom: 8px;
   border-bottom: 1px dashed var(--line);

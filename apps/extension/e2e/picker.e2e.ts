@@ -1,7 +1,7 @@
 import { starterProfiles, type Profile } from '@lock-in/core';
 import type { Page } from 'puppeteer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { controlPage, launch, setStored, startSession, stored, type TestBrowser } from './harness';
+import { controlPage, launch, setStored, startSession, stored, urls, type TestBrowser } from './harness';
 
 // The element picker, opened from the popup on a site added by address and tamed: picking parts
 // of the real page hides them whenever the profile tames the site.
@@ -14,9 +14,7 @@ describe('the element picker', () => {
   let control: Page;
   const profileId = starterProfiles[0]!.id;
 
-  const hidden = async () =>
-    (await stored(control)).profiles?.find((p) => p.id === profileId)?.sites.find((s) => s.recipeId === recipeId)
-      ?.hidden ?? [];
+  const hidden = async () => (await stored(control)).siteSettings?.find((s) => s.recipeId === recipeId)?.hidden ?? [];
   const shown = (tab: Page, selector: string) => tab.$eval(selector, (e) => getComputedStyle(e).display !== 'none');
 
   /** Opens the popup on the tab and starts the picker from it. */
@@ -26,6 +24,9 @@ describe('the element picker', () => {
     await tab.triggerExtensionAction(t.extension);
     const target = await t.browser.waitForTarget((x) => x.url().endsWith('/popup.html') && !earlier.has(x));
     const popup = (await target.asPage())!;
+    // The site is tamed in a session, not all the time.
+    await popup.waitForSelector('main > .site .when button.session');
+    await popup.click('main > .site .when button.session');
     await popup.waitForSelector('main > .site .pick button');
     await popup.click('main > .site .pick button');
     await tab.waitForSelector('lock-in-picker >>> .panel', { visible: true });
@@ -173,7 +174,7 @@ describe('the element picker', () => {
     await tab.close();
   });
 
-  it('tames a site all the time', async () => {
+  it('tames a site all the time, from the No session tab', async () => {
     const tab = await t.browser.newPage();
     await tab.goto(site);
     expect(await shown(tab, '#second')).toBe(true);
@@ -183,24 +184,48 @@ describe('the element picker', () => {
     await tab.triggerExtensionAction(t.extension);
     const target = await t.browser.waitForTarget((x) => x.url().endsWith('/popup.html') && !earlier.has(x));
     const popup = (await target.asPage())!;
-    await popup.waitForSelector('main > .site button.outside');
-    await popup.click('main > .site button.outside');
+    // With no session running, the popup opens on No session.
+    await popup.waitForSelector('main > .site .when button.none[aria-selected="true"]');
+    await popup.click('main > .site button.all-the-time');
 
+    // The picked parts are hidden with no session, as they are in one.
     await expect.poll(() => shown(tab, '#second')).toBe(false);
-    const rule = async (id: string) =>
-      (await stored(control)).profiles?.find((p) => p.id === id)?.sites.find((s) => s.recipeId === recipeId);
-    expect(await rule(profileId)).toMatchObject({ outsideSessions: true });
+    const settings = async () => (await stored(control)).siteSettings?.find((s) => s.recipeId === recipeId);
+    expect(await settings()).toMatchObject({ allTheTime: true });
+    // Nothing about it is saved on a profile.
+    expect(JSON.stringify((await stored(control)).profiles)).not.toContain('allTheTime');
 
-    // Settings says so, and turns it off again.
+    // The settings page lists it under No session, and turns it off again.
     const options = await t.browser.newPage();
     await options.goto(`chrome-extension://${t.extensionId}/options.html`);
     await options.waitForFunction(() =>
-      document.body.innerText.includes('looks like this even with no session running'),
+      document.body.innerText.includes('stays tamed like this with no session running'),
     );
     await options.click('::-p-text(Tame picker.test all the time)');
-    await expect.poll(async () => (await rule(profileId))?.outsideSessions).toBeUndefined();
+    await expect.poll(async () => (await settings())?.allTheTime).toBeUndefined();
     await expect.poll(() => shown(tab, '#second')).toBe(true);
     await options.close();
     await tab.close();
+  });
+
+  it('tames a built-in site all the time with its own toggles', async () => {
+    const reddit = await t.browser.newPage();
+    await reddit.goto(urls.reddit);
+    expect(await shown(reddit, '#feed')).toBe(true);
+    const earlier = new Set(t.browser.targets());
+    await reddit.bringToFront();
+    await reddit.triggerExtensionAction(t.extension);
+    const target = await t.browser.waitForTarget((x) => x.url().endsWith('/popup.html') && !earlier.has(x));
+    const popup = (await target.asPage())!;
+    await popup.waitForSelector('main > .site button.all-the-time');
+    await popup.click('main > .site button.all-the-time');
+    await expect.poll(() => shown(reddit, '#feed')).toBe(false);
+    // Its toggles are its own: grayscale is off by default here, whatever Writing says.
+    expect(await reddit.evaluate(() => getComputedStyle(document.documentElement).filter)).toBe('none');
+    await popup.click('main > .site ::-p-text(Grayscale)');
+    await expect
+      .poll(() => reddit.evaluate(() => getComputedStyle(document.documentElement).filter))
+      .toContain('grayscale');
+    await reddit.close();
   });
 });

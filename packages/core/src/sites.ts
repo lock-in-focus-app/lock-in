@@ -1,5 +1,5 @@
 import { findRecipe } from './recipe';
-import type { Profile, SiteLevel, SiteRecipe, SiteRule } from './types';
+import type { Profile, SiteLevel, SiteRecipe, SiteRule, SiteSettings } from './types';
 
 // Sites people add themselves, beyond the built-in recipes: any site, by its address. Each is
 // kept in the profile like any other site, with the address in its id ("site:example.com"), so
@@ -64,17 +64,23 @@ export function ownSiteRecipe(domain: string): SiteRecipe {
 
 /**
  * Every site the profiles know about: the built-in recipes first, so a site that has one always
- * uses it, then each site added to any profile, once. The longest addresses come first, so
- * "news.example.com" is found before "example.com".
+ * uses it, then each site added to any profile or tamed all the time, once. The longest
+ * addresses come first, so "news.example.com" is found before "example.com".
  */
-export function siteRecipes(builtIn: readonly SiteRecipe[], profiles: readonly Profile[]): SiteRecipe[] {
+export function siteRecipes(
+  builtIn: readonly SiteRecipe[],
+  profiles: readonly Profile[],
+  siteSettings: readonly SiteSettings[] = [],
+): SiteRecipe[] {
+  const ids = [
+    ...profiles.flatMap((profile) => profile.sites.map((site) => site.recipeId)),
+    ...siteSettings.map((site) => site.recipeId),
+  ];
   const domains = new Set(
-    profiles.flatMap((profile) =>
-      profile.sites.flatMap((site) => {
-        const domain = ownSiteDomain(site.recipeId);
-        return domain && siteDomain(domain) === domain ? [domain] : [];
-      }),
-    ),
+    ids.flatMap((id) => {
+      const domain = ownSiteDomain(id);
+      return domain && siteDomain(domain) === domain ? [domain] : [];
+    }),
   );
   const own = [...domains].sort((a, b) => b.length - a.length).map(ownSiteRecipe);
   return [...builtIn, ...own];
@@ -129,8 +135,8 @@ export function isLooser(level: SiteLevel, than: SiteLevel): boolean {
 }
 
 /**
- * Whether `after` lets through anything `before` kept away: a site or page at a looser level, one
- * taken off, or a hidden part shown again. A new page rule can't be looser than anything already set on its site. Not
+ * Whether `after` lets through anything `before` kept away: a site or page at a looser level, or
+ * one taken off. A new page rule can't be looser than anything already set on its site. Not
  * allowed during a Hard session (the desktop app checks the same in sites.rs).
  */
 export function sitesLooser(before: readonly SiteRule[], after: readonly SiteRule[]): boolean {
@@ -150,9 +156,6 @@ export function sitesLooser(before: readonly SiteRule[], after: readonly SiteRul
     const newPageLooser = pages.some(
       (page) => !oldPages.some((p) => samePath(p.path, page.path)) && isLooser(page.level, strictest),
     );
-    const shownAgain = (old.hidden ?? []).some(
-      (part) => !(kept?.hidden ?? []).some((p) => p.selector === part.selector),
-    );
-    return pageLoosened || newPageLooser || shownAgain;
+    return pageLoosened || newPageLooser;
   });
 }
