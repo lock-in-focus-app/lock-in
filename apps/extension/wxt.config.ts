@@ -28,7 +28,12 @@ export default defineConfig({
       'LICENSE',
       'SOURCES.md',
     ],
-    excludeSources: ['apps/extension/e2e/**', 'apps/extension/.output/**', '**/node_modules/**'],
+    excludeSources: [
+      'apps/extension/e2e/**',
+      'apps/extension/store/**',
+      'apps/extension/.output/**',
+      '**/node_modules/**',
+    ],
   },
   manifest: ({ browser, manifestVersion }) => ({
     name: 'Lock In',

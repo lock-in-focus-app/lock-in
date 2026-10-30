@@ -13,6 +13,7 @@
     "zip:firefox": "wxt zip -b firefox",
     "typecheck": "vue-tsc --noEmit",
     "test:e2e": "wxt build && vitest run --config vitest.e2e.config.ts",
+    "screenshots": "wxt build && vitest run --config vitest.store.config.ts",
     "postinstall": "wxt prepare",
     "icons": "node icon/render.ts"
   },

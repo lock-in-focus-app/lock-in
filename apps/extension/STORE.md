@@ -69,9 +69,7 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 
 **Data usage:** Lock In doesn't collect or transmit any of the listed kinds of data. Everything stays in the browser, or goes to the Lock In desktop app on the same computer over Native Messaging. Tick the three certifications (no selling, no unrelated use, no creditworthiness).
 
-**Screenshots:** one to five, 1280×800 (or 640×400). Good ones: a tamed site next to the same site untamed, the popup on a tamed site, the settings page's Sites section, the redirect page, and the picker on a page. Firefox Add-ons takes the same images.
-
-**Small promo tile:** 440×280, required. The icon and the name on the night-sky background.
+**Screenshots and promo tile:** `pnpm --filter @lock-in/extension screenshots` makes five 1280×800 screenshots and the 440×280 promo tile in `apps/extension/.output/store-screenshots`, as PNGs without transparency. They're real captures of the extension (`store/screenshots.ts`), so run it again when the pages change. Firefox Add-ons takes the same screenshots.
 
 ## Firefox Add-ons
 
