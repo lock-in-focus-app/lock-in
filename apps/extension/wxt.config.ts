@@ -36,11 +36,11 @@ export default defineConfig({
     ],
   },
   manifest: ({ browser, manifestVersion }) => ({
-    name: 'Lock In',
+    name: 'Seiza',
     description: 'Tame, block, or redirect distracting sites during focus sessions.',
     homepage_url: 'https://github.com/lock-in-focus-app/lock-in',
     // "WithHostAccess" limits redirects to the recipe sites below, so the browser doesn't
-    // warn that Lock In can block content on every page.
+    // warn that Seiza can block content on every page.
     // nativeMessaging links the extension to the desktop app, when it's installed.
     // scripting runs the content script on sites people add themselves (utils/ownSites.ts).
     permissions: [
@@ -57,13 +57,13 @@ export default defineConfig({
     ...(manifestVersion === 2 ? { optional_permissions: ['*://*/*'] } : { optional_host_permissions: ['*://*/*'] }),
     // Redirected visits land on the redirect page. Chrome only allows that if the page the
     // visit came *from* may load it, and a link to Reddit can be on any site, so every site
-    // may. use_dynamic_url stops websites from loading it directly to detect Lock In.
+    // may. use_dynamic_url stops websites from loading it directly to detect Seiza.
     web_accessible_resources: [{ resources: ['redirect.html'], matches: ['<all_urls>'], use_dynamic_url: true }],
     // Fixed ids, so the desktop app knows which extension may connect to it. In Chrome the id
     // comes from this public key (nfaamgjiehkppopelaampopbofjoepca); the app lists it in
     // apps/desktop/src-tauri/src/hosts.rs. The store zip leaves the key out and gets the id the
     // store gives it, which hosts.rs lists too.
-    // Firefox asks every new extension what it collects. Lock In collects nothing: everything
+    // Firefox asks every new extension what it collects. Seiza collects nothing: everything
     // stays in the browser, or goes to the desktop app on the same computer.
     ...(browser === 'firefox'
       ? {

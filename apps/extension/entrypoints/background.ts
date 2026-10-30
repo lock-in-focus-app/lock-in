@@ -2,14 +2,14 @@ export default defineBackground(() => {
   // Syncs run one at a time, so two quick changes can't interleave their rule updates.
   let queue = Promise.resolve();
   const sync = () =>
-    (queue = queue.then(syncRedirects).catch((error) => console.error('Lock In: could not update redirects', error)));
+    (queue = queue.then(syncRedirects).catch((error) => console.error('Seiza: could not update redirects', error)));
 
-  // Sites people add themselves need the content script too, once Lock In may reach them.
+  // Sites people add themselves need the content script too, once Seiza may reach them.
   let scripts = Promise.resolve();
   const syncScripts = () =>
     (scripts = scripts
       .then(syncOwnSiteScripts)
-      .catch((error) => console.error('Lock In: could not update added sites', error)));
+      .catch((error) => console.error('Seiza: could not update added sites', error)));
   const syncAll = () => {
     void sync();
     void syncScripts();

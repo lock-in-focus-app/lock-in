@@ -1,4 +1,4 @@
-# Lock In website
+# Seiza website
 
 The product website: the home page, Why it works (the research behind the features, from PLAN §12) and Privacy (from `PRIVACY.md`). Built with Nuxt and prerendered to static files, served by a Cloudflare Worker with no server code.
 

@@ -60,11 +60,11 @@ const session = computed(() => {
         <li><NuxtLink to="/why-it-works">Why it works</NuxtLink></li>
       </ul>
       <NuxtLink v-slot="{ href, navigate }" to="/#top" custom>
-        <a class="mark" :href="href ?? undefined" aria-label="Lock In, home" @click="navigate">
+        <a class="mark" :href="href ?? undefined" aria-label="Seiza, home" @click="navigate">
           <svg viewBox="28 28 72 72" aria-hidden="true">
             <path d="M64 30 Q67.5 60.5 98 64 Q67.5 67.5 64 98 Q60.5 67.5 30 64 Q60.5 60.5 64 30 Z" fill="#f5c86b" />
           </svg>
-          <span class="brand">Lock In</span>
+          <span class="brand">Seiza</span>
         </a>
       </NuxtLink>
       <ul>

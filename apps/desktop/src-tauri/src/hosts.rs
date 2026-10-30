@@ -1,5 +1,5 @@
 // Tells browsers how to start the bridge: a small "host manifest" in each installed browser's
-// NativeMessagingHosts folder, naming Lock In's executable and the extension allowed to use it.
+// NativeMessagingHosts folder, naming Seiza's executable and the extension allowed to use it.
 // They're written on every launch, so they always point at the app wherever it's installed.
 
 use std::path::{Path, PathBuf};
@@ -29,7 +29,7 @@ struct Browser {
     family: Family,
 }
 
-/// The browsers Lock In knows how to link to on this computer.
+/// The browsers Seiza knows how to link to on this computer.
 fn browsers() -> Vec<Browser> {
     let mut list = Vec::new();
     #[cfg(target_os = "macos")]
@@ -95,7 +95,7 @@ fn browsers() -> Vec<Browser> {
 fn manifest(family: Family, executable: &Path) -> Value {
     let mut manifest = json!({
         "name": HOST_NAME,
-        "description": "Links the Lock In browser extension to the Lock In app",
+        "description": "Links the Seiza browser extension to the Seiza app",
         "path": executable,
         "type": "stdio",
     });
@@ -141,9 +141,9 @@ mod tests {
 
     #[test]
     fn allows_only_lock_in() {
-        let chrome = manifest(Family::Chrome, Path::new("/Apps/Lock In"));
+        let chrome = manifest(Family::Chrome, Path::new("/Apps/Seiza"));
         assert_eq!(chrome["name"], HOST_NAME);
-        assert_eq!(chrome["path"], "/Apps/Lock In");
+        assert_eq!(chrome["path"], "/Apps/Seiza");
         assert_eq!(
             chrome["allowed_origins"],
             json!([
@@ -153,7 +153,7 @@ mod tests {
         );
         assert_eq!(chrome.get("allowed_extensions"), None);
 
-        let firefox = manifest(Family::Firefox, Path::new("/Apps/Lock In"));
+        let firefox = manifest(Family::Firefox, Path::new("/Apps/Seiza"));
         assert_eq!(firefox["allowed_extensions"], json!([FIREFOX_EXTENSION_ID]));
         assert_eq!(firefox.get("allowed_origins"), None);
     }

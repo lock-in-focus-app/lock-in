@@ -1,4 +1,4 @@
-//! Finding, closing and hiding other programs, by the file they were started from. Lock In
+//! Finding, closing and hiding other programs, by the file they were started from. Seiza
 //! only looks for browsers that have linked to it and the apps in a session's app rules, and
 //! only closes or hides them during a session.
 
@@ -86,7 +86,7 @@ pub fn hide(pid: u32) -> bool {
     }
 }
 
-/// The app in front, unless it's Lock In itself. Only macOS says which app that is; elsewhere
+/// The app in front, unless it's Seiza itself. Only macOS says which app that is; elsewhere
 /// the window manager hands focus back by itself.
 pub fn frontmost_other_app() -> Option<u32> {
     #[cfg(target_os = "macos")]

@@ -7,7 +7,7 @@
 //! Changing that file needs an administrator, so a tiny helper does it: this same program, run
 //! by the system (launchd) as root with `--blocker`. It's installed only when someone turns the
 //! setting on, when macOS asks for their password once, and it can be removed again from
-//! Settings. It only ever writes Lock In's own marked part of the file, from site names it
+//! Settings. It only ever writes Seiza's own marked part of the file, from site names it
 //! checks itself. It listens on a local socket that only the person who installed it can use,
 //! and if the app stops checking in for a few minutes (it quit, crashed or was deleted), it
 //! unblocks everything by itself, so a site is never left blocked by mistake.
@@ -153,10 +153,12 @@ pub fn valid_hostname(name: &str) -> bool {
         && !labels.last().is_some_and(|tld| tld.bytes().all(|b| b.is_ascii_digit()))
 }
 
+// The markers keep the app's first name, Lock In, so blocks written before it was renamed are still
+// found and taken out.
 const BEGIN: &str = "# >>> Lock In: sites blocked during a focus session. Removed when it ends.";
 const END: &str = "# <<< Lock In";
 
-/// The hosts file with Lock In's part set to block these names, or taken out if there are none.
+/// The hosts file with Seiza's part set to block these names, or taken out if there are none.
 /// Everything else in the file is kept as it was.
 pub fn with_section(hosts: &str, hostnames: &[String]) -> String {
     if !hosts.contains("# >>> Lock In") && !hostnames.iter().any(|name| valid_hostname(name)) {
@@ -248,13 +250,13 @@ mod mac {
     // ----- The helper, running as root -----
 
     /// Runs the helper: `--blocker --uid <uid>` serves the person who installed it, and
-    /// `--blocker-clean` just takes Lock In's part out of the hosts file (when it's removed).
+    /// `--blocker-clean` just takes Seiza's part out of the hosts file (when it's removed).
     pub fn run_helper(args: &[String]) -> i32 {
         if args.iter().any(|arg| arg == "--blocker-clean") {
             return match apply(&[]) {
                 Ok(()) => 0,
                 Err(error) => {
-                    eprintln!("Lock In helper: {error}");
+                    eprintln!("Seiza helper: {error}");
                     1
                 }
             };
@@ -265,13 +267,13 @@ mod mac {
             .and_then(|i| args.get(i + 1))
             .and_then(|uid| uid.parse::<u32>().ok());
         let Some(uid) = uid else {
-            eprintln!("Lock In helper: started without --uid");
+            eprintln!("Seiza helper: started without --uid");
             return 2;
         };
         match serve(uid) {
             Ok(()) => 0,
             Err(error) => {
-                eprintln!("Lock In helper: {error}");
+                eprintln!("Seiza helper: {error}");
                 1
             }
         }
@@ -296,7 +298,7 @@ mod mac {
                 if until.is_some_and(|until| Instant::now() >= until) {
                     *until = None;
                     if let Err(error) = apply(&[]) {
-                        eprintln!("Lock In helper: couldn't unblock after the app went quiet: {error}");
+                        eprintln!("Seiza helper: couldn't unblock after the app went quiet: {error}");
                     }
                 }
             }
@@ -305,7 +307,7 @@ mod mac {
         for stream in listener.incoming() {
             let Ok(stream) = stream else { continue };
             if let Err(error) = answer(stream, uid, &lease) {
-                eprintln!("Lock In helper: {error}");
+                eprintln!("Seiza helper: {error}");
             }
         }
         Ok(())
@@ -366,7 +368,7 @@ mod mac {
         }
     }
 
-    /// Writes Lock In's part of the hosts file, if it changed, then has macOS forget the
+    /// Writes Seiza's part of the hosts file, if it changed, then has macOS forget the
     /// addresses it remembered so the change applies straight away.
     fn apply(hostnames: &[String]) -> std::io::Result<()> {
         let before = std::fs::read_to_string(HOSTS)?;
@@ -412,7 +414,7 @@ mod mac {
         }
     }
 
-    /// Takes Lock In's part out of the hosts file straight away, e.g. when the setting is
+    /// Takes Seiza's part out of the hosts file straight away, e.g. when the setting is
     /// turned off.
     pub fn clean() -> std::io::Result<()> {
         send(&Request::Block { hostnames: vec![] }).map(|_| ())
@@ -420,12 +422,12 @@ mod mac {
 
     /// Installs (or updates) the helper: copies this program to where only root can change it
     /// and has launchd run it. macOS asks for an administrator's password first, in its own
-    /// dialog; Lock In never sees it.
+    /// dialog; Seiza never sees it.
     pub fn install() -> Result<(), String> {
         let executable = std::env::current_exe()
             .and_then(std::fs::canonicalize)
-            .map_err(|error| format!("couldn't find Lock In itself: {error}"))?;
-        let executable = executable.to_str().ok_or("Lock In's location has unusual characters")?;
+            .map_err(|error| format!("couldn't find Seiza itself: {error}"))?;
+        let executable = executable.to_str().ok_or("Seiza's location has unusual characters")?;
         // Safety: getuid just returns the current user's id.
         let uid = unsafe { libc::getuid() };
         run_as_admin(&install_script(executable, uid))
@@ -483,7 +485,7 @@ mod mac {
     /// Runs a shell script as root, after macOS asks for an administrator's password.
     fn run_as_admin(script: &str) -> Result<(), String> {
         let applescript = format!(
-            "do shell script \"{}\" with administrator privileges with prompt \"Lock In needs your OK to block sites without the browser extension.\"",
+            "do shell script \"{}\" with administrator privileges with prompt \"Seiza needs your OK to block sites without the browser extension.\"",
             applescript_quote(script)
         );
         let output = Command::new("/usr/bin/osascript")
@@ -638,8 +640,8 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn quotes_what_it_hands_the_shell_and_applescript() {
-        let script = mac::install_script("/Applications/Lock In's \"test\".app/Contents/MacOS/lock-in", 501);
-        assert!(script.contains(r#"'/Applications/Lock In'\''s "test".app/Contents/MacOS/lock-in'"#));
+        let script = mac::install_script("/Applications/Seiza's \"test\".app/Contents/MacOS/lock-in", 501);
+        assert!(script.contains(r#"'/Applications/Seiza'\''s "test".app/Contents/MacOS/lock-in'"#));
         assert!(script.contains("<string>--uid</string><string>501</string>"));
         assert_eq!(mac::sh_quote("it's"), r"'it'\''s'");
         assert_eq!(mac::applescript_quote(r#"say "hi" \ bye"#), r#"say \"hi\" \\ bye"#);

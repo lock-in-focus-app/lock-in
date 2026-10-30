@@ -57,7 +57,7 @@ describe('redirects and the redirect page', () => {
     expect(await gateText()).toContain('Focus for 3 seconds first');
     expect(await gateText()).toContain('If you still want Reddit after that, go right ahead.');
     expect(await gateText()).toContain('First try at Reddit today');
-    expect(await gateText()).toContain('LOCK IN · DEEP WORK');
+    expect(await gateText()).toContain('SEIZA · DEEP WORK');
   });
 
   it('counts each attempt', async () => {
@@ -160,7 +160,7 @@ describe('redirects from other sites', () => {
     expect(tab.url()).toBe(redirectPage(t, urls.reddit));
   });
 
-  it("doesn't let websites detect Lock In by loading its pages", async () => {
+  it("doesn't let websites detect Seiza by loading its pages", async () => {
     const tab = await t.browser.newPage();
     await tab.goto(urls.other);
     const loaded = await tab.evaluate(

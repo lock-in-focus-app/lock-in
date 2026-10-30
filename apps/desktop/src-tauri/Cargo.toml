@@ -1,7 +1,7 @@
 [package]
 name = "lock-in"
 version = "0.1.0"
-description = "Lock In — a free, open-source focus app"
+description = "Seiza — a free, open-source focus app"
 authors = ["SortelOne"]
 edition = "2024"
 license = "AGPL-3.0-only"

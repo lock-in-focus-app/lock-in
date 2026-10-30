@@ -1,4 +1,4 @@
-// Shared types, schemas, and logic for Lock In (profiles, recipes, sessions, rewards).
+// Shared types, schemas, and logic for Seiza (profiles, recipes, sessions, rewards).
 export type * from './types';
 // Types shared with the desktop app, generated from its Rust code.
 export type * from './generated/ActiveSession';

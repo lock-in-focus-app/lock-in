@@ -21,7 +21,7 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 
 ## Name and summary
 
-**Name:** Lock In
+**Name:** Seiza
 
 **Summary** (Chrome's 132-character limit fits both):
 
@@ -29,18 +29,18 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 
 ## Description
 
-> Lock In is a free, open-source focus app. Most blockers treat a site as all or nothing. Lock In gives each site one of four levels, chosen per profile:
+> Seiza is a free, open-source focus app. Most blockers treat a site as all or nothing. Seiza gives each site one of four levels, chosen per profile:
 >
 > • Allowed: nothing changes.
 > • Tamed: the site still works, but the distracting parts are hidden: feeds, Shorts and Reels, trending, recommendations. Grayscale too, if you like.
-> • Redirected: visits go to a calm Lock In page first. Focus for five minutes, read your own if-then plan, or open one of your links. If you still need the site, take a few minutes on it.
+> • Redirected: visits go to a calm Seiza page first. Focus for five minutes, read your own if-then plan, or open one of your links. If you still need the site, take a few minutes on it.
 > • Restricted: blocked until the session ends.
 >
 > Built-in recipes tame Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Twitch, Threads and Bluesky. Add any other site by its address, and click away any part of a page you'd rather not see.
 >
 > Page rules give part of a site its own level, like restricting YouTube Shorts while the rest of YouTube is tamed. Sites can also stay tamed all the time, outside sessions.
 >
-> Lock In works on its own. With the Lock In desktop app installed, the two stay in step, and your focus time fills a night sky with stars.
+> Seiza works on its own. With the Seiza desktop app installed, the two stay in step, and your focus time fills a night sky with stars.
 >
 > No accounts, no analytics, no ads. Nothing leaves your computer. The source code is public: https://github.com/lock-in-focus-app/lock-in
 
@@ -50,7 +50,7 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 
 **Single purpose:**
 
-> Lock In helps people focus by changing how distracting websites behave during focus sessions: hiding distracting parts of a site, sending visits to a pause page first, or blocking the site, depending on the level the person chooses.
+> Seiza helps people focus by changing how distracting websites behave during focus sessions: hiding distracting parts of a site, sending visits to a pause page first, or blocking the site, depending on the level the person chooses.
 
 **Permission justifications:**
 
@@ -60,14 +60,14 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 | `activeTab` | When the person opens the popup, it reads the current tab's address to show that site's level and toggles. |
 | `alarms` | Ends a site's few-minute pass on time, so the site is redirected again, even while the background worker is asleep. |
 | `declarativeNetRequestWithHostAccess` | Sends visits to redirected or restricted sites to the extension's own pause page during a session, using the browser's built-in redirect rules, limited to sites the extension has access to. |
-| `nativeMessaging` | Links to the Lock In desktop app on the same computer, when it's installed, so both share profiles and the current session. Nothing is sent anywhere else. |
+| `nativeMessaging` | Links to the Seiza desktop app on the same computer, when it's installed, so both share profiles and the current session. Nothing is sent anywhere else. |
 | `scripting` | Runs the taming stylesheet on sites the person adds themselves, after they grant access to that one site, and starts the "Hide parts of this page" picker on the current tab. |
 | Host permissions (the built-in sites) | Hides distracting parts of Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Twitch, Threads and Bluesky during a session, and redirects visits to them. |
-| Optional host permission (all sites) | Asked for one site at a time, only when the person adds that site to Lock In. |
+| Optional host permission (all sites) | Asked for one site at a time, only when the person adds that site to Seiza. |
 
 **Remote code:** No. All code is in the package.
 
-**Data usage:** Lock In doesn't collect or transmit any of the listed kinds of data. Everything stays in the browser, or goes to the Lock In desktop app on the same computer over Native Messaging. Tick the three certifications (no selling, no unrelated use, no creditworthiness).
+**Data usage:** Seiza doesn't collect or transmit any of the listed kinds of data. Everything stays in the browser, or goes to the Seiza desktop app on the same computer over Native Messaging. Tick the three certifications (no selling, no unrelated use, no creditworthiness).
 
 **Screenshots and promo tile:** `pnpm --filter @lock-in/extension screenshots` makes five 1280×800 screenshots and the 440×280 promo tile in `apps/extension/.output/store-screenshots`, as PNGs without transparency. They're real captures of the extension (`store/screenshots.ts`), so run it again when the pages change. Firefox Add-ons takes the same screenshots.
 
@@ -85,4 +85,4 @@ Raise `version` in `package.json` before each upload; both stores refuse a versi
 
 **Notes to reviewer:**
 
-> Build instructions are in SOURCES.md at the root of the sources zip: `pnpm install --frozen-lockfile`, then `pnpm --filter @lock-in/extension build:firefox`; the output is apps/extension/.output/firefox-mv2. The innerHTML warning from web-ext lint is in Vue's runtime chunk, not Lock In's code. nativeMessaging links to the optional Lock In desktop app on the same computer (host name io.github.lock_in_focus_app.lock_in); without it, the extension works on its own.
+> Build instructions are in SOURCES.md at the root of the sources zip: `pnpm install --frozen-lockfile`, then `pnpm --filter @lock-in/extension build:firefox`; the output is apps/extension/.output/firefox-mv2. The innerHTML warning from web-ext lint is in Vue's runtime chunk, not Seiza's code. nativeMessaging links to the optional Seiza desktop app on the same computer (host name io.github.lock_in_focus_app.lock_in); without it, the extension works on its own.

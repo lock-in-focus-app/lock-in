@@ -162,7 +162,7 @@ const style = `
   .tile p { font-size: 17px; line-height: 1.35; }
 `;
 
-const brand = `<div class="brand"><span>✦</span> Lock In</div>`;
+const brand = `<div class="brand"><span>✦</span> Seiza</div>`;
 
 function split(title: string, text: string, image: string, width: number, fade = false) {
   return `<div class="split">
@@ -227,7 +227,7 @@ it('makes the store listing images', async () => {
     },
     'promo-tile': {
       size: [440, 280],
-      body: `<div class="tile">${icon}<div><h1>Lock In</h1><p>Tame distracting sites during focus sessions.</p></div></div>`,
+      body: `<div class="tile">${icon}<div><h1>Seiza</h1><p>Tame distracting sites during focus sessions.</p></div></div>`,
     },
   };
 

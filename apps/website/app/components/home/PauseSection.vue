@@ -43,9 +43,9 @@ onBeforeUnmount(() => {
         <p class="kicker mono reveal"><b>02</b> · The redirect page</p>
         <h2 class="reveal" style="--d: 80ms">A pause before the scroll</h2>
         <p class="lede reveal" style="--d: 160ms">
-          Visits to a redirected site go to a calm Lock In page first. Focus for five minutes, read your own if-then
-          plan, or open one of your links. If you still need the site once the wait is up, take a few minutes on it. Or
-          don't: <em>Not now</em> is always right there.
+          Visits to a redirected site go to a calm Seiza page first. Focus for five minutes, read your own if-then plan,
+          or open one of your links. If you still need the site once the wait is up, take a few minutes on it. Or don't:
+          <em>Not now</em> is always right there.
         </p>
         <p class="source reveal" style="--d: 240ms">
           <b>Why a pause works.</b> In a six-week field study of a pause-before-opening app, people opened the apps they
@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
 
       <div class="pause-card hud glass reveal" style="--d: 200ms">
         <div class="top">
-          <span class="brand"><span>✦</span> Lock In</span>
+          <span class="brand"><span>✦</span> Seiza</span>
           <span class="dest mono">x.com/home</span>
         </div>
         <h3>Focus for five minutes first</h3>

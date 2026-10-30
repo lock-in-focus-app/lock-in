@@ -1,4 +1,4 @@
-// Lock In's own things on a site's page (the pause cover and the element picker) live in a shadow
+// Seiza's own things on a site's page (the pause cover and the element picker) live in a shadow
 // root, so the site's styles can't reach inside. The element holding it is still part of the
 // page, though, and some sites hide elements like it: Reddit hides every custom element that
 // isn't registered yet (`:not(:defined)`), and a content script can't register one. So the

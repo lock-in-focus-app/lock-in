@@ -117,10 +117,10 @@ function add() {
     <p v-if="problem" class="problem">{{ problem }}</p>
 
     <p class="help">
-      These apply in the browser, through Lock In's extension, while this profile runs. Added sites start out
-      redirected, and the browser asks once to let Lock In reach each one. What Tamed hides, and page rules, are set in
-      the extension's settings. To hide part of a page, open the site and choose Hide parts of this page in the
-      extension's popup. Any site can also be tamed all the time, with no session running, set there too.
+      These apply in the browser, through Seiza's extension, while this profile runs. Added sites start out redirected,
+      and the browser asks once to let Seiza reach each one. What Tamed hides, and page rules, are set in the
+      extension's settings. To hide part of a page, open the site and choose Hide parts of this page in the extension's
+      popup. Any site can also be tamed all the time, with no session running, set there too.
     </p>
   </div>
 </template>

@@ -288,7 +288,7 @@ export function showPicker(options: PickerOptions): Picker {
     previewNow([...saved.filter((p) => !showing.has(p.selector)), ...drafts.map((d) => d.part)]);
 
     const brand = element('p', 'mono');
-    brand.append(element('span', 'star', '✦ '), 'Lock In · Hiding on ', element('b', '', options.siteName));
+    brand.append(element('span', 'star', '✦ '), 'Seiza · Hiding on ', element('b', '', options.siteName));
     const say = switches.childElementCount
       ? 'Click anything on the page to hide it, or flip a toggle below. Nothing is saved until Done.'
       : 'Click anything on the page to hide it. Nothing is saved until Done.';
@@ -373,7 +373,7 @@ export function showPicker(options: PickerOptions): Picker {
   async function pick(target: Element) {
     problem = '';
     const part = options.partFor(target);
-    if (!part) problem = "Lock In can't point at that part on its own. Try clicking around it.";
+    if (!part) problem = "Seiza can't point at that part on its own. Try clicking around it.";
     else if (taken(part.selector)) return;
     else if (options.saved().length + drafts.length >= options.maxParts) {
       problem = `That's the most one site can hide (${options.maxParts}).`;
@@ -401,7 +401,7 @@ export function showPicker(options: PickerOptions): Picker {
     const part = parent && options.partFor(parent);
     problem = '';
     if (!parent || !part) {
-      problem = "Lock In can't point at the part around that one on its own.";
+      problem = "Seiza can't point at the part around that one on its own.";
     } else {
       // Its size is read while it's still shown, before the preview hides it again.
       const others = drafts.filter((d) => d !== draft && !parent.contains(d.element));

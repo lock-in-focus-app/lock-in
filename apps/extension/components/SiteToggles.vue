@@ -66,7 +66,7 @@ const allTheTime = computed(() => !!settings.value?.allTheTime);
 const allTheTimeValues = computed(() => allTheTimeToggles(props.recipe, settings.value));
 const hiddenCount = computed(() => settings.value?.hidden?.length ?? 0);
 
-// A site someone added needs the browser's OK before Lock In can reach it. The browser only
+// A site someone added needs the browser's OK before Seiza can reach it. The browser only
 // asks straight from a click, so asking comes before anything else in one.
 const own = computed(() => !!ownSiteDomain(props.recipe.id));
 const reach = useReachable(() => (own.value ? [props.recipe.name] : []));
@@ -98,7 +98,7 @@ const levelDetail = computed(() => {
 });
 
 // The element picker hides parts of the page whenever the site is tamed. It runs on the page
-// itself, through the content script, which a tab opened before Lock In could reach the site
+// itself, through the content script, which a tab opened before Seiza could reach the site
 // doesn't have yet, so it's added then.
 const canPick = computed(
   () =>
@@ -175,8 +175,8 @@ function set(toggleId: string, value: boolean) {
         {{ allTheTimeNote(recipe.name, allTheTime) }}
       </p>
       <p v-if="needsReach && allTheTime" class="reach">
-        <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
-        <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+        <span>Seiza can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
+        <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Seiza reach it</button>
       </p>
       <ToggleSwitch
         v-for="toggle in allTheTime ? recipe.toggles : []"
@@ -231,8 +231,8 @@ function set(toggleId: string, value: boolean) {
       </div>
 
       <p v-if="needsReach && (rule?.level ?? 'allowed') !== 'allowed'" class="reach">
-        <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
-        <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+        <span>Seiza can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
+        <button type="button" class="key lit save" @click="askToReach([recipe.name])">Let Seiza reach it</button>
       </p>
 
       <ToggleSwitch

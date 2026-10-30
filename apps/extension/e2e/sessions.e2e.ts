@@ -35,7 +35,7 @@ describe('sessions', () => {
   it('tames pages loaded during the session from the start', async () => {
     const fresh = await t.browser.newPage();
     await fresh.goto(urls.reddit);
-    // Lock In reads the session from storage as the page starts, which can come back after a
+    // Seiza reads the session from storage as the page starts, which can come back after a
     // page this small has already loaded.
     await expect.poll(async () => (await visibility(fresh, ['feed'])).feed).toBe(false);
     await fresh.close();

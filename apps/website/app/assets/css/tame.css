@@ -265,7 +265,7 @@
   .shorts-row {
     grid-template-columns: repeat(4, 1fr);
   }
-  /* Tall enough for Lock In's own pages, which take the site's place. */
+  /* Tall enough for Seiza's own pages, which take the site's place. */
   .viewport {
     min-height: 600px;
   }
@@ -302,7 +302,7 @@
   pointer-events: none;
 }
 
-/* Lock In's own pages, which take the site's place. */
+/* Seiza's own pages, which take the site's place. */
 .page {
   position: absolute;
   inset: 0;
@@ -393,7 +393,7 @@
   gap: 8px;
 }
 
-/* Look like Lock In's buttons, but they're a picture of the page, so they don't do anything. */
+/* Look like Seiza's buttons, but they're a picture of the page, so they don't do anything. */
 .page .do span {
   position: relative;
   display: inline-flex;

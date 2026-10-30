@@ -117,7 +117,7 @@ export function linkDesktopApp(): void {
     (message: FromDesktop) =>
       (handling = handling
         .then(() => onMessage(message))
-        .catch((error) => console.error('Lock In: could not handle a message from the app', error))),
+        .catch((error) => console.error('Seiza: could not handle a message from the app', error))),
   );
   // Fires straight away when the app isn't installed. The extension carries on by itself.
   port.onDisconnect.addListener(() => {

@@ -1,4 +1,4 @@
-//! Keeping the browsers honest during a session. Each browser with the Lock In extension
+//! Keeping the browsers honest during a session. Each browser with the Seiza extension
 //! starts a bridge that links it to the app (link.rs), and that link lasts exactly as long as
 //! the extension runs. So a browser that's running without a link during a session has had
 //! the extension turned off or removed, and its sites aren't being tamed.

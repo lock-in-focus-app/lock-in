@@ -40,7 +40,7 @@ export async function syncRedirects(): Promise<void> {
         : { type: 'allow' as Browser.declarativeNetRequest.RuleActionType },
     condition: {
       regexFilter: rule.regexFilter,
-      // Page rules ignore case, like the rest of Lock In's path matching.
+      // Page rules ignore case, like the rest of Seiza's path matching.
       isUrlFilterCaseSensitive: false,
       resourceTypes: ['main_frame' as Browser.declarativeNetRequest.ResourceType],
     },

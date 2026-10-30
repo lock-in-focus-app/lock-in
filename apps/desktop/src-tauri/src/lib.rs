@@ -84,7 +84,7 @@ pub(crate) fn satellites_changed(app: &AppHandle) {
     let snapshot = engine(app).snapshot(now_ms());
     let _ = app.emit("snapshot", &snapshot);
     if let Err(error) = tray::refresh(app, &snapshot) {
-        eprintln!("Lock In: couldn't update the menu bar: {error}");
+        eprintln!("Seiza: couldn't update the menu bar: {error}");
     }
 }
 
@@ -100,7 +100,7 @@ pub(crate) fn changed(app: &AppHandle) {
     let _ = app.emit("snapshot", &snapshot);
     link::broadcast(app);
     if let Err(error) = tray::refresh(app, &snapshot) {
-        eprintln!("Lock In: couldn't update the menu bar: {error}");
+        eprintln!("Seiza: couldn't update the menu bar: {error}");
     }
     watch_idle(
         app,
@@ -166,11 +166,11 @@ pub(crate) fn sync_blocker(app: &AppHandle) {
             match sent {
                 Ok(Ok(response)) if !response.ok => {
                     eprintln!(
-                        "Lock In: the blocker couldn't update: {}",
+                        "Seiza: the blocker couldn't update: {}",
                         response.error.unwrap_or_default()
                     );
                 }
-                Ok(Err(error)) => eprintln!("Lock In: couldn't reach the blocker: {error}"),
+                Ok(Err(error)) => eprintln!("Seiza: couldn't reach the blocker: {error}"),
                 _ => {}
             }
             let blocking = matches!(&*request, blocker::Request::Block { hostnames } if !hostnames.is_empty());
@@ -320,7 +320,7 @@ fn act_on_apps(app: &AppHandle, profile_name: &str, actions: Vec<apps::Action>) 
         .title(format!("Closed {names}"))
         .body(format!("{profile_name} keeps {them} closed until the session ends."));
     if let Err(error) = notification.show() {
-        eprintln!("Lock In: couldn't show the app rules notification: {error}");
+        eprintln!("Seiza: couldn't show the app rules notification: {error}");
     }
 }
 
@@ -335,22 +335,22 @@ fn act_on_browser(app: &AppHandle, session_id: &str, action: Action) {
                 }
             };
             (
-                format!("Lock In isn't running in {name}"),
-                format!("Turn the Lock In extension back on, {then}"),
+                format!("Seiza isn't running in {name}"),
+                format!("Turn the Seiza extension back on, {then}"),
             )
         }
         Action::Close { pid, name, breaks } => {
             if !processes::quit(pid) {
-                eprintln!("Lock In: couldn't close {name}");
+                eprintln!("Seiza: couldn't close {name}");
                 return;
             }
-            let mut body = format!("The Lock In extension was off. Turn it on before opening {name} again.");
+            let mut body = format!("The Seiza extension was off. Turn it on before opening {name} again.");
             if breaks {
                 let broken = engine(app).break_session(session_id, now_ms());
                 match broken {
                     Ok(true) => changed(app),
                     Ok(false) => {}
-                    Err(error) => eprintln!("Lock In: couldn't mark the session as broken: {error}"),
+                    Err(error) => eprintln!("Seiza: couldn't mark the session as broken: {error}"),
                 }
                 body.push_str(" This session now counts as broken.");
             }
@@ -358,7 +358,7 @@ fn act_on_browser(app: &AppHandle, session_id: &str, action: Action) {
         }
     };
     if let Err(error) = app.notification().builder().title(title).body(body).show() {
-        eprintln!("Lock In: couldn't show a browser notification: {error}");
+        eprintln!("Seiza: couldn't show a browser notification: {error}");
     }
 }
 
@@ -417,12 +417,12 @@ fn end_idle_session(app: &AppHandle, session_id: &str, last_input: i64, now: i64
                 record.profile_name
             ));
             if let Err(error) = notification.show() {
-                eprintln!("Lock In: couldn't show the idle notification: {error}");
+                eprintln!("Seiza: couldn't show the idle notification: {error}");
             }
             changed(app);
         }
         Ok(None) => {}
-        Err(error) => eprintln!("Lock In: couldn't end an idle session: {error}"),
+        Err(error) => eprintln!("Seiza: couldn't end an idle session: {error}"),
     }
 }
 
@@ -467,7 +467,7 @@ fn schedule_timer(app: &AppHandle, session: Option<Session>, profile_name: Optio
             notification = notification.sound(ALERT_SOUND);
         }
         if let Err(error) = notification.show() {
-            eprintln!("Lock In: couldn't show the timer notification: {error}");
+            eprintln!("Seiza: couldn't show the timer notification: {error}");
         }
     }));
 }
@@ -485,11 +485,11 @@ pub(crate) fn open_window(app: &AppHandle) -> Result<()> {
         window.set_focus()?;
         return Ok(());
     }
-    // While the window is open, Lock In shows in the Dock and app switcher like any other app.
+    // While the window is open, Seiza shows in the Dock and app switcher like any other app.
     #[cfg(target_os = "macos")]
     app.set_activation_policy(tauri::ActivationPolicy::Regular)?;
     WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::default())
-        .title("Lock In")
+        .title("Seiza")
         .inner_size(400.0, 600.0)
         .min_inner_size(340.0, 440.0)
         .build()?;
@@ -510,17 +510,17 @@ fn create_private_dir(dir: &Path) -> std::io::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        // Opening Lock In again brings up the running app's window instead of starting a second copy.
+        // Opening Seiza again brings up the running app's window instead of starting a second copy.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Err(error) = open_window(app) {
-                eprintln!("Lock In: couldn't open the window: {error}");
+                eprintln!("Seiza: couldn't open the window: {error}");
             }
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(capture::plugin())
         .setup(|app| {
-            // Lock In lives in the menu bar, with no Dock icon until its window opens.
+            // Seiza lives in the menu bar, with no Dock icon until its window opens.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
@@ -558,11 +558,11 @@ pub fn run() {
                 Ok(executable) => {
                     for result in hosts::install(&executable) {
                         if let Err(error) = result {
-                            eprintln!("Lock In: couldn't link a browser: {error}");
+                            eprintln!("Seiza: couldn't link a browser: {error}");
                         }
                     }
                 }
-                Err(error) => eprintln!("Lock In: couldn't find its own executable: {error}"),
+                Err(error) => eprintln!("Seiza: couldn't find its own executable: {error}"),
             }
 
             open_window(app.handle())?;
@@ -587,7 +587,7 @@ pub fn run() {
             // The satellite box goes away when you click somewhere else, like Spotlight.
             WindowEvent::Focused(false) if window.label() == capture::WINDOW => {
                 if let Err(error) = capture::close(window.app_handle(), false) {
-                    eprintln!("Lock In: couldn't close the satellite box: {error}");
+                    eprintln!("Seiza: couldn't close the satellite box: {error}");
                 }
             }
             _ => {}
@@ -633,10 +633,10 @@ pub fn run() {
             commands::first_weekday,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Lock In")
+        .expect("error while building Seiza")
         .run(|_app, event| {
             // With the window closed there are no windows left, which would normally quit the
-            // app. Lock In keeps running in the menu bar until you choose Quit.
+            // app. Seiza keeps running in the menu bar until you choose Quit.
             if let RunEvent::ExitRequested { code: None, api, .. } = event {
                 api.prevent_exit();
             }

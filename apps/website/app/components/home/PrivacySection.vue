@@ -3,7 +3,7 @@
     <p class="kicker mono reveal"><b>05</b> · Private by design</p>
     <h2 class="reveal" style="--d: 80ms">Nothing leaves your computer</h2>
     <p class="lede reveal" style="--d: 160ms">
-      Lock In collects nothing. It has no accounts, no analytics, no ads, and no servers of its own.
+      Seiza collects nothing. It has no accounts, no analytics, no ads, and no servers of its own.
     </p>
     <ul class="promises">
       <li class="hud glass reveal" style="--d: 220ms">

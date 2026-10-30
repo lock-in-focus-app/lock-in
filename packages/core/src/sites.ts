@@ -122,7 +122,7 @@ export const siteLevels: readonly { id: SiteLevel; label: string; detail: string
   {
     id: 'redirected',
     label: 'Redirected',
-    detail: 'Sends you to a Lock In page first, with a way through for a few minutes.',
+    detail: 'Sends you to a Seiza page first, with a way through for a few minutes.',
   },
   { id: 'restricted', label: 'Restricted', detail: 'Shut, with no way through until the session ends.' },
 ];

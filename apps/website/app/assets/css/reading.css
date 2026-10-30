@@ -142,13 +142,13 @@
   font-size: 14.5px;
 }
 
-.finding .in-lock-in {
+.finding .in-seiza {
   padding-top: 8px;
   border-top: 1px solid var(--line);
   color: var(--starlight);
 }
 
-.finding .in-lock-in .mono {
+.finding .in-seiza .mono {
   margin-right: 6px;
   font-size: 10px;
   letter-spacing: 0.14em;

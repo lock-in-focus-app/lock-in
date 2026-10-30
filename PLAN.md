@@ -1,4 +1,4 @@
-# Lock In — Product & Build Plan
+# Seiza — Product & Build Plan
 
 > **Status:** Phases 1–4 built and most of Phase 5: the extension and the macOS desktop app both work, with recipes for eleven sites. Next is the first release (Phase 5's last item), which still needs each recipe checked on the real sites while logged in.
 
@@ -9,11 +9,13 @@ Existing focus apps each get part of the way there:
 - **Focus Friend**: a fun reward loop, but it's phone-only and blocks everything.
 - **SocialFocus**: hides distracting parts of social sites, but you have to toggle it by hand every time.
 
-**Lock In** is a free-forever, open-source (**AGPL-3.0**) desktop focus app plus browser extension. It lets you:
+**Seiza** is a free-forever, open-source (**AGPL-3.0**) desktop focus app plus browser extension. It lets you:
 - block, *tame*, or allow each site per session
 - redirect distractions somewhere useful
 - park distracting thoughts for later
 - reward focus with a night sky that fills with stars
+
+**Name:** Seiza (星座) is Japanese for *constellation*, and sounds the same as 正座 *seiza*, the calm kneeling posture of meditation and tea ceremony. The app was first called Lock In (renamed October 2026). "Lock in" stays as the verb for starting a session, and hidden IDs keep the old name so installs, backups and store listings keep working: the bundle ID and data folder, the browser link's name, the Firefox add-on ID, the hosts file's markers, the backup file's `lockIn` key, and the extension's element and message names.
 
 **Theme:** social media is *light pollution*. When you lock in, the noise fades and you can finally see the stars. The app, the reward system and the website all share this theme.
 
@@ -46,7 +48,7 @@ Each site has one of four levels, set per session profile:
 ### Site Recipes (JSON) + live visual editor
 A **recipe** defines what "tamed" means for one site: a list of toggles, each mapped to CSS selectors and effects. Built-in recipes cover Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Twitch, Threads and Bluesky. Users can edit them or create their own, and the community can contribute fixes when sites change their HTML.
 
-Any other site can be added to a profile by its address ("site:example.com"), from the extension's settings, its popup or the app's Profiles › Sites. With no recipe there's nothing to hide, so an added site is allowed, redirected or restricted. The extension asks the browser for each added site as it's added (an optional host permission for that site alone), so it never asks to read every site; one added in the app shows "Let Lock In reach it" in the extension until the browser says yes. During a session the popup offers to keep the site you're on away (Redirect it, Restrict it), which is saved to the profile. While a Hard session runs, sites can only get stricter, in the app and the extension alike.
+Any other site can be added to a profile by its address ("site:example.com"), from the extension's settings, its popup or the app's Profiles › Sites. With no recipe there's nothing to hide, so an added site is allowed, redirected or restricted. The extension asks the browser for each added site as it's added (an optional host permission for that site alone), so it never asks to read every site; one added in the app shows "Let Seiza reach it" in the extension until the browser says yes. During a session the popup offers to keep the site you're on away (Redirect it, Restrict it), which is saved to the profile. While a Hard session runs, sites can only get stricter, in the app and the extension alike.
 
 ```json
 {
@@ -66,7 +68,7 @@ Any other site can be added to a profile by its address ("site:example.com"), fr
 - **Plain CSS only.** Recipes are injected as one stylesheet at `document_start`, so there's no flash and no script running per element. Selectors are checked so they can't break out of the stylesheet.
 - **Page-specific hiding.** CSS can't see the URL, so while a site is tamed the extension keeps the page's path on `<html data-lock-in-path="…">` and updates it as single-page apps navigate. A selector like `html[data-lock-in-path^="/explore"] main` hides something on some pages only.
 - **Prefer stable hooks.** Use test ids, roles, `href`s and custom element names over generated class names (Facebook and Instagram change theirs constantly). Some selectors still rely on English labels (`aria-label="Explore"`), which is a known gap for other languages.
-- **Credit sources.** Selectors adapted from open projects (UBlock-Filters-for-Social-Media, Control Panel for Twitter and Declutter Pinterest, all MIT; News Feed Eradicator, AGPL-3.0 like Lock In) are credited in the recipe's `source`. TikTok has no open list to draw on, so its recipe uses TikTok's own `data-e2e` test attributes and links. Bluesky's app is open source (MIT), so its recipe uses the app's own test ids; Threads has no stable hooks, so its recipe sticks to one landmark (the feed column's region label).
+- **Credit sources.** Selectors adapted from open projects (UBlock-Filters-for-Social-Media, Control Panel for Twitter and Declutter Pinterest, all MIT; News Feed Eradicator, AGPL-3.0 like Seiza) are credited in the recipe's `source`. TikTok has no open list to draw on, so its recipe uses TikTok's own `data-e2e` test attributes and links. Bluesky's app is open source (MIT), so its recipe uses the app's own test ids; Threads has no stable hooks, so its recipe sticks to one landmark (the feed column's region label).
 - **Tested twice.** Browser tests check each recipe against a stand-in page for the site. Sites change their HTML without notice, so each recipe also needs checking on the real site before a release.
 
 **The editor shows a version of the actual site and animates every toggle:**
@@ -117,9 +119,9 @@ The timer is a *starting ramp*, not a cage.
 
 ## 3. The redirect page (handled by the extension)
 
-When a site is *Redirected*, the extension intercepts the navigation and sends you to **one Lock In page that always looks the same**, so you know what to expect. (It used to pick one of four pages at random: an intention gate, a quote card, a link and an "I'm stuck" page. They overlapped, and three of them were different ways of saying "go back to work" that all led to the gate, so they were folded into this one page in Phase 5.) The page is bundled inside the extension, so it loads instantly and works offline. *Restricted* sites get a plainer page instead: "Reddit is off for now", with no way through until the session ends.
+When a site is *Redirected*, the extension intercepts the navigation and sends you to **one Seiza page that always looks the same**, so you know what to expect. (It used to pick one of four pages at random: an intention gate, a quote card, a link and an "I'm stuck" page. They overlapped, and three of them were different ways of saying "go back to work" that all led to the gate, so they were folded into this one page in Phase 5.) The page is bundled inside the extension, so it loads instantly and works offline. *Restricted* sites get a plainer page instead: "Reddit is off for now", with no way through until the session ends.
 
-Links to a redirected site can come from anywhere (a search result, a chat), and Chrome only redirects to an extension page if the page the visit came from may load it. So the redirect page is open to every site, with `use_dynamic_url` so websites can't load it directly to detect Lock In.
+Links to a redirected site can come from anywhere (a search result, a chat), and Chrome only redirects to an extension page if the page the visit came from may load it. So the redirect page is open to every site, with `use_dynamic_url` so websites can't load it directly to detect Seiza.
 
 **What the page shows, top to bottom:**
 - The **attempt counter**: "6th try at Reddit today".
@@ -160,7 +162,7 @@ To make the name instantly clear:
 - The new-user tour says what satellites are. The launch box keeps a tiny satellite circling a star as its mark, and the Alt+P hotkey beside Launch as a reminder.
 
 **Capture from anywhere:**
-- a global hotkey, **Alt+P** (Option+P on a Mac), which opens a tiny spotlight-style box. Return launches the thought and hands focus straight back to the app you were in; Escape or clicking elsewhere closes it. (Option+P normally types π, which Lock In takes over while it's running. The hotkey can be changed or turned off in Settings › Satellites: it needs Option, or two of Control, Shift and Command, so it doesn't take other apps' shortcuts, and a few the system uses are turned away.)
+- a global hotkey, **Alt+P** (Option+P on a Mac), which opens a tiny spotlight-style box. Return launches the thought and hands focus straight back to the app you were in; Escape or clicking elsewhere closes it. (Option+P normally types π, which Seiza takes over while it's running. The hotkey can be changed or turned off in Settings › Satellites: it needs Option, or two of Control, Shift and Command, so it doesn't take other apps' shortcuts, and a few the system uses are turned away.)
 - the menu-bar icon
 - the extension popup
 - every redirect page
@@ -309,12 +311,12 @@ Insights are all computed locally.
 **In the desktop app:** "Your week" in the header, between sessions (dimmed during one), opens the report for the week in local time, starting on the first day of the week set on the computer (read from macOS's Language & Region settings, or the language's default elsewhere), with arrows back to earlier weeks. Clicking the week's title opens a calendar to jump to any week, with a dot on each day that had a session. The app's Rust core only reads the log for a range of dates; the report itself is worked out in `packages/core/src/insights.ts`, which knows the local time zone and can be shared with the extension later. It reads as one long numbered readout (01 Focus, 02 Profiles, …, counting only the sections shown): focus as a big figure with the change on last week, a thin line for each day of this week (as far as today) against a dashed line for the week before, with the busiest day marked, and a stacked line for each profile's share in its star color; trips to redirected sites by hour, site and "why", how often you went back to focus, and grouped intentions; what became of the satellites launched; and up to three suggestions, each only when there's enough data behind it (a reason a site keeps pulling you in, the time of day focus goes best, a timer that fits how long sessions really run). The extension on its own keeps only a week of gate visits and no session log, so it has no report yet.
 
 ## 7. Other features
-- **Lock In observes; it doesn't interject.** It works quietly in the background and collects what happens, for the weekly report and the sky. It never prompts you to start a session or nudges you outside what you set up yourself. (Session suggestions from apps, e.g. "Obsidian opened — start *Writing*?", were considered and dropped for this reason.)
+- **Seiza observes; it doesn't interject.** It works quietly in the background and collects what happens, for the weekly report and the sky. It never prompts you to start a session or nudges you outside what you set up yourself. (Session suggestions from apps, e.g. "Obsidian opened — start *Writing*?", were considered and dropped for this reason.)
 - **App rules**: close or hide desktop apps (Discord, Steam, Slack) during a session.
 - **Session intention + reflection**: a one-line goal at the start, and "did you do it?" on the page that waits after the session ends (never a pop-up). It's a switch on each profile, off by default, so people who don't want to give a reason never see it (e.g. on for Deep Work, off for Writing). The goal can be skipped even when it's on. Answers feed the weekly report (§6).
   - Built in the app only: the extension's settings stay about what happens on each site. The switch is "Ask for a goal" in Profiles › Timer. Pressing that profile's start button on the Sky turns the row into one line, "What will you get done?", with ‹ Back and a button that reads "Start without a goal" until something's typed. The goal shows under the session's clock. Afterwards, a strip at the top of the Sky (in place of the day's quote) shows it with "Did you do it?" and Yes, I did / Not this time; it waits until it's answered or the next session starts. Sessions started from the menu bar or the extension don't ask.
   - The goal and the answer are kept in the session log (`goal`, `goal_met`), not synced with the extension. Your week's focus section counts them: "3 of 5 goals done · 1 unanswered".
-- **Backup (export/import)**, in the app's Settings › Backup. Export saves everything in one JSON file in the Downloads folder ("Lock In backup 2026-10-29.json", only readable by you, never over an earlier one): profiles as they're saved (sites, page rules, redirect settings and plan, timer, app rules, star color, the goal switch), settings, your quotes, the sky's secret, and the whole log (sessions with goals, trips to sites, satellites with what they say, constellation names). Sample data stays out. The file says `"lockIn": "backup"` and a `version`; a newer version than the app knows is turned away.
+- **Backup (export/import)**, in the app's Settings › Backup. Export saves everything in one JSON file in the Downloads folder ("Seiza backup 2026-10-29.json", only readable by you, never over an earlier one): profiles as they're saved (sites, page rules, redirect settings and plan, timer, app rules, star color, the goal switch), settings, your quotes, the sky's secret, and the whole log (sessions with goals, trips to sites, satellites with what they say, constellation names). Sample data stays out. The file says `"lockIn": "backup"` and a `version`; a newer version than the app knows is turned away.
   - Import adds what's in the file to what's here and never removes anything, so the same file twice changes nothing the second time. A profile in the file replaces the one here with the same id, others are added; its settings replace these except the satellite hotkey and blocking without the extension, which are set up on each computer. A computer with nothing logged takes the backup's sky secret, so the same sky comes back; one with its own sky keeps it. Everything brought in counts as seen, so it doesn't all play at once.
   - Only between sessions, so an import can't loosen a running session (Hard or not) or change its profile under it. The extension takes the imported profiles through the usual sync. The extension itself has no export, since its settings are about each site.
 - **Allowlist-only mode**: block everything except the listed sites.
@@ -322,10 +324,10 @@ Insights are all computed locally.
 
 ### Habit goals: earn your sites (later; a planning session first)
 An idea from *Atomic Habits* (James Clear), where it's called temptation bundling (the evidence is real but modest, §12, which is one more question for the planning session): the thing you want comes after the thing you mean to do. A profile can have a **daily gate**: its Restricted sites (and app rules) stay on all day until you've done a habit you set up, e.g. "read 20 pages", "listen to 30 minutes of a book" or "study 50 Anki cards". Then they unlock until the day resets. It's a sibling of *Earn your scroll*, where focus time is what you earn with.
-- **It fits Lock In** rather than a separate app: the app already runs in the background, the extension always does, and the macOS helper (§8) blocks without the extension. A gate is a new way for blocking to *end*: a goal met instead of a timer running out.
+- **It fits Seiza** rather than a separate app: the app already runs in the background, the extension always does, and the macOS helper (§8) blocks without the extension. A gate is a new way for blocking to *end*: a goal met instead of a timer running out.
 - **The habit loop:** the cue is going to the site, where the redirect page shows what's left ("12 of 20 pages"), only when you go there yourself, so it still observes and never interjects (above). The reward is the site. Finished goals could show in the sky (§5).
 - **First version: the honor system.** You log what you did (pages, minutes, cards) yourself, because most sources have no way to report it (a Kindle, Audible, Apple Books).
-- **Later, once sync (§8) reaches a phone** (mobile is out of scope for now, see Context): goals checked automatically, e.g. a Lock In session with a chosen profile, Anki through the AnkiConnect add-on's local server (it needs Anki open, and only the app can ask it), or sources on the phone.
+- **Later, once sync (§8) reaches a phone** (mobile is out of scope for now, see Context): goals checked automatically, e.g. a Seiza session with a chosen profile, Anki through the AnkiConnect add-on's local server (it needs Anki open, and only the app can ask it), or sources on the phone.
 - **To work out in a planning session before building** (nothing here is decided):
   - An escape hatch for days you can't, e.g. a plainly labelled "Skip today", and whether the sky notes it.
   - When the day resets (e.g. 4am rather than midnight).
@@ -346,7 +348,7 @@ An idea from *Atomic Habits* (James Clear), where it's called temptation bundlin
 - **Shared:** `packages/core` holds the TS types and JSON schemas for Profile, Recipe, Session, RewardEvent and Satellite, plus shared logic. The Rust side mirrors the types; generate them from Rust with `ts-rs`/`specta` so the two never drift.
 - **Storage:** local SQLite in the desktop app; `storage.local` in the extension, mirrored from the app.
 - **Link between the two:** browser **Native Messaging**. The desktop app is the source of truth for the active session; the extension applies it and reports events back. **The extension is also a first-class standalone product**: it runs sessions, profiles, recipes and redirects entirely on its own, so people can install just the extension. The desktop app adds app blocking, stronger enforcement, Satellites hotkey, and the sky.
-- **Blocking without the extension** (macOS first; `blocker.rs`): an opt-in setting in the app (Settings › Blocking without the extension) that keeps a running session's **Restricted** sites from loading in every browser and app, Safari included, for people who just want sites shut. It writes a marked "Lock In" section of `/etc/hosts` (each site, `www.` and `m.`), so it's whole sites only: taming, page rules, Redirected sites and Lock In's own pages still need the extension. It runs alongside a linked extension too. Editing that file needs root, so a tiny helper does it: the app's own executable, copied to `/Library/PrivilegedHelperTools` and run by launchd with `--blocker --uid <installer>`. It's installed only when the setting is first turned on (macOS asks for an administrator's password in its own dialog, via `osascript … with administrator privileges`), and Settings can update or remove it. It only accepts requests over its socket from the person who installed it (checked with `getpeereid`), checks every name itself, writes the file atomically and flushes macOS's DNS cache. The app checks in every minute while blocking; after five quiet minutes (it quit, crashed or was deleted) the helper unblocks everything, and it starts each run unblocked. During a Hard session the setting can't be turned off or the helper removed. Later: once builds are signed, install through `SMAppService` so the system checks the helper's signature (today the copy comes from wherever the app sits); Windows and Linux helpers.
+- **Blocking without the extension** (macOS first; `blocker.rs`): an opt-in setting in the app (Settings › Blocking without the extension) that keeps a running session's **Restricted** sites from loading in every browser and app, Safari included, for people who just want sites shut. It writes a marked "Seiza" section of `/etc/hosts` (each site, `www.` and `m.`), so it's whole sites only: taming, page rules, Redirected sites and Seiza's own pages still need the extension. It runs alongside a linked extension too. Editing that file needs root, so a tiny helper does it: the app's own executable, copied to `/Library/PrivilegedHelperTools` and run by launchd with `--blocker --uid <installer>`. It's installed only when the setting is first turned on (macOS asks for an administrator's password in its own dialog, via `osascript … with administrator privileges`), and Settings can update or remove it. It only accepts requests over its socket from the person who installed it (checked with `getpeereid`), checks every name itself, writes the file atomically and flushes macOS's DNS cache. The app checks in every minute while blocking; after five quiet minutes (it quit, crashed or was deleted) the helper unblocks everything, and it starts each run unblocked. During a Hard session the setting can't be turned off or the helper removed. Later: once builds are signed, install through `SMAppService` so the system checks the helper's signature (today the copy comes from wherever the app sits); Windows and Linux helpers.
 
 ### Performance & battery budget (a hard requirement)
 - **Menu-bar resident:** closing the window *destroys* the webview, so only the small Rust core stays running. The UI reopens on demand.
@@ -403,7 +405,7 @@ lock-in/
   - Running costs, abuse limits, backups, and what happens to data if the hosted tier ever shuts down (export first).
 
 ### Support the developer
-- A small, quiet "Support Lock In" link appears only on the website and at the very bottom of Settings. It goes to [Ko-fi](https://ko-fi.com/sortelone).
+- A small, quiet "Support Seiza" link appears only on the website and at the very bottom of Settings. It goes to [Ko-fi](https://ko-fi.com/sortelone).
 - No nags, popups or feature gates.
 
 ---
@@ -474,7 +476,7 @@ Built in slices, one PR each:
 - ✅ **Twitch, Threads and Bluesky** recipes, each with a preview drawing and a test page. Checked against the live sites logged out only (Bluesky's test ids also against its open-source app); logged-in parts like Twitch's followed channels follow community filter lists. Hiding a playing video or stream (Twitch's front page plays one) also pauses it, since hiding alone leaves its sound on.
 - More built-in recipes as people ask for them.
 - ✅ Your own quotes in the app too: Settings › Your quotes adds and removes them, the Sky's quote for the day picks from them (more often than the bundled ones), and (until the extension dropped quotes) they synced with the extension's. The bundled pack grew from 22 to 181 quotes, all public domain with their sources noted (two modern Marcus Aurelius translations and a 1932 Seneca were replaced); the daily quote fetch was dropped (§3).
-- ✅ The support link (§8): "Support Lock In on Ko-fi" at the very bottom of the app's Settings and of the extension's settings page, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
+- ✅ The support link (§8): "Support Seiza on Ko-fi" at the very bottom of the app's Settings and of the extension's settings page, and a Sponsor button on the repository (`.github/FUNDING.yml`). The website gets it in Phase 6.
 - ✅ Export/import: Settings › Backup in the app, everything in one file, imported by adding to what's here, between sessions only (§7).
 - ✅ Blocking without the extension, macOS first (§8). Windows and Linux later.
 - **First release:** the desktop app on GitHub Releases and the extension on the Chrome Web Store and Firefox Add-ons.
@@ -485,7 +487,7 @@ Built in slices, one PR each:
 
 **Phase 6: Website, community sky & sync**
 - Marketing website (§10) + community-worlds gallery, with the Why it works page (§12).
-  - ✅ The website in `apps/website`, built from mock-up D (`prototypes/website`): the framed home page with the Lock In switch, the four levels, the redirect page, the sky, satellites, privacy and install; Why it works (§12) and Privacy pages; the quiet Ko-fi link in the footer; and a note that sync is planned, free to self-host or hosted for a small fee (§8). Static, served by a Cloudflare Worker deployed from GitHub. Still to do: the domain, store links once the extension is listed, and the community-worlds gallery.
+  - ✅ The website in `apps/website`, built from mock-up D (`prototypes/website`): the framed home page with the Lock in switch, the four levels, the redirect page, the sky, satellites, privacy and install; Why it works (§12) and Privacy pages; the quiet Ko-fi link in the footer; and a note that sync is planned, free to self-host or hosted for a small fee (§8). Static, served by a Cloudflare Worker deployed from GitHub. Still to do: the domain, store links once the extension is listed, and the community-worlds gallery.
 - Constellation sharing endpoint.
 - Sync between devices (§8, Sync): first a planning session to choose hosting, sign-in and encryption, then stats only, with an offline / hosted / self-hosted choice on first run. Live session sync after.
 
@@ -498,7 +500,7 @@ Built in slices, one PR each:
 
 ## 10. Marketing website (Phase 6, to discuss in detail later)
 - **Hero:** a light-polluted night sky. Around the edges, distractions crowd in: fake reels, tweet cards, notification badges, autoplaying thumbnails, all jittering and glowing. They're original mock UI, not real brand assets.
-- **The toggle:** a single big **Lock In** toggle sits at the center. Flipping it pushes every distraction out past the edges with springy, staggered motion. The orange glow drains away, and a deep, clear sky full of stars fades in, ideally with a constellation drawing itself.
+- **The toggle:** a single big **Lock in** toggle sits at the center. Flipping it pushes every distraction out past the edges with springy, staggered motion. The orange glow drains away, and a deep, clear sky full of stars fades in, ideally with a constellation drawing itself.
 - **Design language everywhere: distracted vs. focused.**
   - *Distracted* states are noisy, saturated, cluttered and jittery.
   - *Focused* states are calm, dark, spacious and slow.
@@ -531,10 +533,10 @@ Built in slices, one PR each:
 ---
 
 ## 12. The science behind it
-Lock In should help because of research that has held up, not because it sounds like it should. Most of what it does already rests on that research. This section keeps track of which findings back which features, so new features can be checked against it and the website's Why it works page (§10) can explain it. Each finding was checked against its paper's abstract (October 2026); the links are under Sources. "Strong" means a large meta-analysis, "modest" means real but small or a single study, and "reasoning" means not tested.
+Seiza should help because of research that has held up, not because it sounds like it should. Most of what it does already rests on that research. This section keeps track of which findings back which features, so new features can be checked against it and the website's Why it works page (§10) can explain it. Each finding was checked against its paper's abstract (October 2026); the links are under Sources. "Strong" means a large meta-analysis, "modest" means real but small or a single study, and "reasoning" means not tested.
 
-### What Lock In already does, and why it works
-| Finding | Strength | In Lock In |
+### What Seiza already does, and why it works
+| Finding | Strength | In Seiza |
 |---|---|---|
 | **A pause and an easy way out cut how often you give in.** In a 6-week field study of the one sec app (Grüning et al., 2023), openings of the chosen apps fell 57%. The option to back out mattered most and the wait helped; the message alone did nothing. | Modest (one study) | The redirect page's wait and its Not now (§3) |
 | **Limits you set yourself work.** Letting people cap their own future screen time cut social media use a lot, and short-term help to cut back kept working after it ended (Allcott, Gentzkow & Song, 2022). | Strong (large field experiment) | Profiles, Hard mode and its passes, Restricted sites |
@@ -544,7 +546,7 @@ Lock In should help because of research that has held up, not because it sounds 
 | **Habits take a while, and one missed day doesn't undo one.** In the best-known study, the median was about 66 days, from 18 to 254 (Lally et al., 2010). | Modest (small study, not yet replicated) | Never showing a broken streak (§5); no "21 days" claims anywhere |
 | **Being kind to yourself after a slip goes with less procrastination next time** (Wohl, Pychyl & Bennett, 2010, students across two exams). | Modest (correlational) | A session that ends early just ends: no scolding, no lost progress beyond that session |
 | **Starting small makes starting easier** (the two-minute rule in *Atomic Habits*). | Reasoning | The quiet timer (§2): a short timer you're free to run past |
-| **People keep at things they chose themselves; pressure from outside wears that down** (self-determination theory, Ryan & Deci, 2000). | Strong (a large body of work) | Lock In observes and never interjects (§7); every default is editable |
+| **People keep at things they chose themselves; pressure from outside wears that down** (self-determination theory, Ryan & Deci, 2000). | Strong (a large body of work) | Seiza observes and never interjects (§7); every default is editable |
 
 ### New, from the research (decided October 2026)
 - **Five minutes first** (§3), at the heart of one redirect page that always looks the same.
@@ -552,9 +554,9 @@ Lock In should help because of research that has held up, not because it sounds 
 - **Session intention + reflection** (§7), a switch on each profile. A specific goal beats a vague "do your best" (Locke & Latham, 2002), and the "did you do it?" afterwards is progress tracking.
 
 ### Considered and left out
-- **Planning the week at a fresh start** (a Monday, a new month): Lock In isn't a planning app.
+- **Planning the week at a fresh start** (a Monday, a new month): Seiza isn't a planning app.
 - **Break timers between sessions:** short breaks help with tiredness more than with output; not worth the extra settings.
-- **A separate rule for forgiving slips:** Lock In already doesn't punish them (above).
+- **A separate rule for forgiving slips:** Seiza already doesn't punish them (above).
 - **Habit goals** (§7) stay parked for their own planning session. Temptation bundling works, but a larger follow-up found a smaller effect than the first study (Milkman, Minson & Volpp, 2014).
 
 ### What hasn't held up (don't design on it)
@@ -565,7 +567,7 @@ Lock In should help because of research that has held up, not because it sounds 
 ### What to keep out
 - **Points, badges and leaderboards.** Expected, tangible rewards can wear down people's own motivation (Deci, Koestner & Ryan, 1999; still debated). The sky reflects what you did; it isn't a currency to chase.
 - **Streaks you're afraid to lose.** Show the current and longest streak, never a broken one (§5).
-- **Nudges and nagging.** Lock In only acts on what you set up (§7).
+- **Nudges and nagging.** Seiza only acts on what you set up (§7).
 - **Variable rewards** (the slot-machine pull) only for focusing, never for visiting a site, and never something you can chase (§5, Comets and Rare events).
 
 ---

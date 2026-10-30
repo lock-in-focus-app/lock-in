@@ -123,7 +123,7 @@ function ordinal(n: number): string {
 <template>
   <main>
     <p class="brand mono">
-      <span class="star" aria-hidden="true">✦ </span>Lock In<template v-if="profileName">
+      <span class="star" aria-hidden="true">✦ </span>Seiza<template v-if="profileName">
         · <b>{{ profileName }}</b></template
       >
     </p>

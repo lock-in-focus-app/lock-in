@@ -31,7 +31,7 @@ const ownSites = computed(() =>
 );
 const listed = computed(() => [...recipes, ...ownSites.value]);
 
-// An added site needs the browser's OK before Lock In can reach it. One added in the desktop app
+// An added site needs the browser's OK before Seiza can reach it. One added in the desktop app
 // hasn't had it yet.
 const reach = useReachable(() => ownSites.value.map((site) => site.name));
 const needsReach = (recipe: SiteRecipe) => !!ownSiteDomain(recipe.id) && !!reach.value && !reach.value.has(recipe.name);
@@ -94,7 +94,7 @@ const point = (recipeId: string, toggleId?: string) => {
       <dd>
         {{
           level.id === 'tamed'
-            ? `${level.detail} You pick what's hidden under each site, or on the page itself from Lock In's popup. With no session running, a site can be tamed all the time, below.`
+            ? `${level.detail} You pick what's hidden under each site, or on the page itself from Seiza's popup. With no session running, a site can be tamed all the time, below.`
             : level.detail
         }}
       </dd>
@@ -125,8 +125,8 @@ const point = (recipeId: string, toggleId?: string) => {
         />
       </div>
       <p v-if="needsReach(recipe)" class="reach">
-        <span>Lock In can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
-        <button type="button" class="text-button" @click="askToReach([recipe.name])">Let Lock In reach it</button>
+        <span>Seiza can't reach {{ recipe.name }} yet, so it's left alone for now.</span>
+        <button type="button" class="text-button" @click="askToReach([recipe.name])">Let Seiza reach it</button>
       </p>
       <PageRules :profile="profile" :recipe="recipe" />
       <div v-if="showsToggles(recipe.id)" class="toggles">
@@ -161,7 +161,7 @@ const point = (recipeId: string, toggleId?: string) => {
     <p v-if="problem" class="error">{{ problem }}</p>
   </form>
   <p class="help small">
-    Added sites start out redirected. Your browser asks to let Lock In reach each one, and Lock In only uses that to
+    Added sites start out redirected. Your browser asks to let Seiza reach each one, and Seiza only uses that to
     redirect or restrict it during a session.
   </p>
 </template>
@@ -223,7 +223,7 @@ const point = (recipeId: string, toggleId?: string) => {
   margin-left: 4px;
 }
 
-/* A site Lock In can't reach yet, with the way to let it. */
+/* A site Seiza can't reach yet, with the way to let it. */
 .reach {
   display: flex;
   flex-wrap: wrap;

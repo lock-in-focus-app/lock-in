@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
-            --title "Lock In ${GITHUB_REF_NAME#v}" \
+            --title "Seiza ${GITHUB_REF_NAME#v}" \
             --notes-file .github/release-notes.md
 
   macos:
