@@ -21,7 +21,6 @@ export default defineNuxtConfig({
     '~/assets/css/satellites.css',
     '~/assets/css/privacy-install.css',
     '~/assets/css/reading.css',
-    '~/assets/css/look.css',
     '~/assets/css/phones.css',
   ],
   app: {

@@ -7,7 +7,6 @@ import { createSky } from '~/utils/sky';
 const route = useRoute();
 const nuxtApp = useNuxtApp();
 const { locked, lockOnce } = useLock();
-const { look, restoreLook } = useLook();
 
 const canvas = ref<HTMLCanvasElement>();
 const scroller = ref<HTMLElement>();
@@ -38,7 +37,6 @@ watch(locked, (on) => {
   document.body.style.setProperty('--lead', '0ms');
   sky?.set(skyFor(on));
 });
-watch(look, (next) => sky?.set({ city: next === 'city' ? 1 : 0 }));
 
 // ── The constellation navigator ─────────────────────────────────────────────
 
@@ -240,11 +238,9 @@ let stopPageHook: (() => void) | undefined;
 
 onMounted(() => {
   reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  restoreLook();
   sky = createSky(canvas.value!, {
     ...skyFor(locked.value),
     seed: 5,
-    city: look.value === 'city' ? 1 : 0,
     ...placement(),
   });
   document.body.classList.toggle('locked', locked.value);
@@ -291,6 +287,4 @@ onBeforeUnmount(() => {
   <main id="scroller" ref="scroller" @scroll.passive="queueScroll">
     <slot />
   </main>
-
-  <LookSwitch />
 </template>
