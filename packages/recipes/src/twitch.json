@@ -1,0 +1,39 @@
+{
+  "id": "twitch",
+  "name": "Twitch",
+  "matches": ["*://*.twitch.tv/*"],
+  "pages": [{ "label": "Browse", "paths": ["/directory"] }],
+  "source": "Recommended channel selectors adapted from UBlock-Filters-for-Social-Media by Bevíz László (MIT), https://github.com/BevizLaszlo/UBlock-Filters-for-Social-Media",
+  "toggles": [
+    {
+      "id": "hideFrontPage",
+      "label": "Hide front page streams",
+      "selectors": ["[data-a-target=\"front-page-carousel\"]", "[data-a-target=\"front-page-main-content\"]"],
+      "default": true
+    },
+    {
+      "id": "hideRecommended",
+      "label": "Hide recommended channels",
+      "selectors": [
+        ".side-nav-section:has([data-test-selector=\"recommended-channel\"])",
+        ".side-nav-section:has([data-test-selector=\"similarity-channel\"])",
+        "[aria-label=\"Recommended Channels\"]",
+        "[aria-label=\"Recommended Categories\"]",
+        "[aria-label*=\"Viewers Also Watch\"]"
+      ],
+      "default": true
+    },
+    {
+      "id": "hideChat",
+      "label": "Hide chat",
+      "selectors": ["[data-a-target=\"right-column-chat-bar\"]"],
+      "default": false
+    },
+    {
+      "id": "grayscale",
+      "label": "Grayscale",
+      "effect": "grayscale",
+      "default": false
+    }
+  ]
+}

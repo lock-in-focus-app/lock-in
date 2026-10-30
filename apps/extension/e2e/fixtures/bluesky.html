@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- A stand-in for Bluesky. Home feeds are hidden on the home page only; trending and counts everywhere. -->
+<html>
+  <head>
+    <title>Fake Bluesky</title>
+    <style>
+      body {
+        font: 16px sans-serif;
+        background: #fff;
+      }
+      body * {
+        display: block;
+        margin: 8px;
+        padding: 12px;
+        background: #1185fe;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-testid="homeScreenFeedTabs" id="keep">Following · Discover (stays)</div>
+    <div data-testid="followingFeedPage-feed" id="following">
+      <div data-testid="feedItem-by-someone">
+        A post
+        <span data-testid="likeCount" id="likes">12 (hidden)</span>
+        <span data-testid="repostCount" id="reposts">3 (hidden)</span>
+      </div>
+    </div>
+    <div data-testid="customFeedPage-feed" id="discover">Discover (hidden on home)</div>
+    <div id="trending">
+      <div>Trending</div>
+      <div><a aria-label="Browse topic news" href="/search">1. News (hidden)</a></div>
+    </div>
+  </body>
+</html>

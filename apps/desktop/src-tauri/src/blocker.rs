@@ -65,13 +65,16 @@ pub struct BlockerStatus {
 }
 
 /// The built-in sites' recipes, for their addresses. A test checks every recipe is listed.
-const RECIPES: [&str; 8] = [
+const RECIPES: [&str; 11] = [
+    include_str!("../../../../packages/recipes/src/bluesky.json"),
     include_str!("../../../../packages/recipes/src/facebook.json"),
     include_str!("../../../../packages/recipes/src/instagram.json"),
     include_str!("../../../../packages/recipes/src/linkedin.json"),
     include_str!("../../../../packages/recipes/src/pinterest.json"),
     include_str!("../../../../packages/recipes/src/reddit.json"),
+    include_str!("../../../../packages/recipes/src/threads.json"),
     include_str!("../../../../packages/recipes/src/tiktok.json"),
+    include_str!("../../../../packages/recipes/src/twitch.json"),
     include_str!("../../../../packages/recipes/src/x.json"),
     include_str!("../../../../packages/recipes/src/youtube.json"),
 ];

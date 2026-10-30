@@ -1,11 +1,15 @@
 import type { Component } from 'vue';
+import BlueskyHome from './BlueskyHome.vue';
 import FacebookHome from './FacebookHome.vue';
 import InstagramHome from './InstagramHome.vue';
 import LinkedInHome from './LinkedInHome.vue';
 import PinterestHome from './PinterestHome.vue';
 import PinterestPin from './PinterestPin.vue';
 import RedditHome from './RedditHome.vue';
+import ThreadsHome from './ThreadsHome.vue';
 import TikTokHome from './TikTokHome.vue';
+import TwitchChannel from './TwitchChannel.vue';
+import TwitchHome from './TwitchHome.vue';
 import XHome from './XHome.vue';
 import YouTubeHome from './YouTubeHome.vue';
 import YouTubeWatch from './YouTubeWatch.vue';
@@ -106,6 +110,40 @@ export const mocks: Record<string, MockPage[]> = {
       address: 'pinterest.com/pin',
       component: PinterestPin,
       toggles: ['hideMoreLikeThis', 'hideExplore'],
+    },
+  ],
+  twitch: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'twitch.tv',
+      component: TwitchHome,
+      toggles: ['hideFrontPage', 'hideRecommended'],
+    },
+    {
+      id: 'channel',
+      label: 'Stream',
+      address: 'twitch.tv/channel',
+      component: TwitchChannel,
+      toggles: ['hideChat', 'hideRecommended'],
+    },
+  ],
+  threads: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'threads.com',
+      component: ThreadsHome,
+      toggles: ['hideHomeFeed'],
+    },
+  ],
+  bluesky: [
+    {
+      id: 'home',
+      label: 'Home',
+      address: 'bsky.app',
+      component: BlueskyHome,
+      toggles: ['hideHomeFeed', 'hideTrending', 'hideCounts'],
     },
   ],
 };

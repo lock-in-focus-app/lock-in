@@ -178,6 +178,71 @@ describe('built-in recipes', () => {
     expect((await visibility(tab, ['pin'])).pin).toBe(false);
   });
 
+  it('tames Twitch, pausing the front page stream it hides', async () => {
+    await tab.goto(urls.twitch);
+    const ids = ['followed', 'recommended', 'also-watch', 'carousel', 'shelves', 'stream', 'chat'];
+    expect(await visibility(tab, ids)).toEqual({
+      followed: true,
+      recommended: false,
+      'also-watch': false,
+      carousel: false,
+      shelves: false,
+      stream: true,
+      chat: false,
+      grayscale: true,
+    });
+
+    // Videos without a file to play: a blank canvas's stream plays like a live one. It never
+    // sends a frame, so play() never settles, but a video counts as playing once it's asked to.
+    const paused = () =>
+      tab.evaluate(() =>
+        ['carousel-video', 'stream'].map((id) => (document.getElementById(id) as HTMLVideoElement).paused),
+      );
+    await tab.evaluate(() => {
+      for (const id of ['carousel-video', 'stream']) {
+        const video = document.getElementById(id) as HTMLVideoElement;
+        video.srcObject = document.createElement('canvas').captureStream();
+        void video.play().catch(() => undefined);
+      }
+    });
+    await expect.poll(paused).toEqual([true, false]);
+
+    // One already playing is paused as it's hidden.
+    await setStored(control, { activeSession: null });
+    await expect.poll(async () => (await visibility(tab, ['carousel'])).carousel).toBe(true);
+    await tab.evaluate(
+      () => void (document.getElementById('carousel-video') as HTMLVideoElement).play().catch(() => undefined),
+    );
+    expect(await paused()).toEqual([false, false]);
+    await startSession(control, 'everything');
+    await expect.poll(paused).toEqual([true, false]);
+  });
+
+  it('tames Threads on the home page only', async () => {
+    await tab.goto(urls.threads);
+    expect(await visibility(tab, ['keep', 'feed'])).toEqual({ keep: true, feed: false, grayscale: true });
+
+    await pushPath('/search');
+    expect((await visibility(tab, ['feed'])).feed).toBe(true);
+  });
+
+  it('tames Bluesky', async () => {
+    await tab.goto(urls.bluesky);
+    const ids = ['keep', 'following', 'discover', 'trending', 'likes', 'reposts'];
+    expect(await visibility(tab, ids)).toEqual({
+      keep: true,
+      following: false,
+      discover: false,
+      trending: false,
+      likes: false,
+      reposts: false,
+      grayscale: true,
+    });
+
+    await pushPath('/profile/someone');
+    expect(await visibility(tab, ['following', 'trending'])).toMatchObject({ following: true, trending: false });
+  });
+
   it('removes the page path when the session ends', async () => {
     await tab.goto(urls.pinterest);
     expect(await tab.$eval('html', (html) => html.getAttribute('data-lock-in-path'))).toBe('/');

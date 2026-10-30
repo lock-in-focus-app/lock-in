@@ -3,9 +3,10 @@ import type { HiddenPart } from '@lock-in/core';
 // The element picker: a small panel on the real page, started from the popup, for hiding parts of
 // a site while it's tamed. Clicking part of the page hides it straight away (the page's own clicks
 // are held back), so you see what the site will look like. Each part picked this time is listed
-// with Bigger and Undo, and ones hidden before with Show again. Nothing is saved until Done, and
-// Cancel puts everything back. It lives in
-// a shadow root, like the pause cover, so the site's styles can't change it (shadowHost.ts).
+// with Bigger and Undo, and ones hidden before with Show again. The site's own toggles are there
+// too, changing the page as they're flipped. Nothing is saved until Done, and Cancel puts
+// everything back. It lives in a shadow root, like the pause cover, so the site's styles can't
+// change it (shadowHost.ts).
 
 const css = `
 :host {
@@ -106,8 +107,48 @@ li.note { display: block; margin: -2px 0 2px; }
 .end { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
 .end button { flex: none; padding: 7px 14px; }
 .problem { color: var(--glow); }
+/* The site's toggles, drawn like the popup's switches (ToggleSwitch.vue). */
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  color: var(--starlight);
+  font: 13px/1.45 system-ui, -apple-system, sans-serif;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+}
+.switch:hover:not(:disabled) { color: var(--starlight); }
+.switch .label { flex: 1; min-width: 0; }
+.track {
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  transition: border-color 400ms;
+}
+.track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: translate 400ms cubic-bezier(0.2, 0.8, 0.2, 1), background 400ms, box-shadow 400ms;
+}
+[aria-checked='true'] .track { border-color: rgb(159 227 201 / 0.4); }
+[aria-checked='true'] .track::after { translate: 16px 0; background: #9fe3c9; box-shadow: 0 0 8px #9fe3c9; }
 @media (prefers-reduced-motion: reduce) {
   .panel { animation: none; }
+  .track, .track::after { transition: none; }
 }
 `;
 
@@ -123,10 +164,15 @@ export interface PickerOptions {
   partFor: (element: Element) => HiddenPart | undefined;
   /** The element someone means by clicking this one, or undefined for the whole page. */
   pickable: (target: Element) => Element | undefined;
-  /** Hides these parts on the page right now, as a preview of what Done would save. */
-  preview: (parts: HiddenPart[]) => void;
-  /** Saves the parts picked this time, and the saved ones to show again. */
-  onDone: (change: { add: HiddenPart[]; remove: string[] }) => void;
+  /**
+   * The site's toggles taming the page right now, named for when they apply, with their saved
+   * values. Undefined when none are (the site isn't tamed, or has no toggles).
+   */
+  toggles: () => { when: string; list: { id: string; label: string; on: boolean }[] } | undefined;
+  /** Shows the page with these parts hidden and toggles flipped, as a preview of what Done would save. */
+  preview: (parts: HiddenPart[], toggles: Record<string, boolean>) => void;
+  /** Saves the parts picked this time, the saved ones to show again, and the toggles flipped. */
+  onDone: (change: { add: HiddenPart[]; remove: string[]; toggles: Record<string, boolean> }) => void;
   /** Closes without saving anything. */
   onCancel: () => void;
 }
@@ -156,6 +202,11 @@ export function showPicker(options: PickerOptions): Picker {
   const panel = element('section', 'panel');
   panel.setAttribute('role', 'region');
   panel.setAttribute('aria-label', `Hide parts of ${options.siteName}`);
+  // The switches are kept between redraws, so they slide when flipped; the rest is redrawn.
+  const top = element('div', '');
+  const switches = element('div', '');
+  const rest = element('div', '');
+  panel.append(top, switches, rest);
   root.append(style, pointingBox, panel);
   document.documentElement.append(host);
 
@@ -163,9 +214,14 @@ export function showPicker(options: PickerOptions): Picker {
   let drafts: Draft[] = [];
   /** Saved parts to show again once Done is clicked. */
   const showing = new Set<string>();
+  /** Toggles flipped from their saved values, saved once Done is clicked. */
+  const flipped = new Map<string, boolean>();
+  /** Which toggles the switches were drawn for, to draw them again if that changes. */
+  let switchesFor = '';
   let problem = '';
 
-  const changed = () => drafts.length > 0 || showing.size > 0;
+  const changed = () => drafts.length > 0 || showing.size > 0 || flipped.size > 0;
+  const previewNow = (parts: HiddenPart[]) => options.preview(parts, Object.fromEntries(flipped));
   const taken = (selector: string) =>
     drafts.some((d) => d.part.selector === selector) || options.saved().some((p) => p.selector === selector);
 
@@ -185,20 +241,59 @@ export function showPicker(options: PickerOptions): Picker {
     });
   };
 
+  /** The site's toggles, flipped as drafts that show on the page straight away. */
+  function drawSwitches() {
+    const toggles = options.toggles();
+    const key = toggles ? `${toggles.when}:${toggles.list.map((t) => `${t.id}=${t.label}`).join(',')}` : '';
+    if (key !== switchesFor) {
+      // What tames the page changed, like a session starting, so flips made for the old one go.
+      switchesFor = key;
+      flipped.clear();
+      switches.replaceChildren();
+      if (toggles?.list.length) {
+        const frame = element('div', 'list');
+        const heading = element('p', 'mono', 'Toggles · ');
+        heading.append(element('b', '', toggles.when));
+        frame.append(heading);
+        for (const toggle of toggles.list) {
+          const row = button('', 'switch', () => {
+            const saved = options.toggles()?.list.find((t) => t.id === toggle.id)?.on ?? false;
+            const next = !(flipped.get(toggle.id) ?? saved);
+            if (next === saved) flipped.delete(toggle.id);
+            else flipped.set(toggle.id, next);
+            draw();
+          });
+          row.setAttribute('role', 'switch');
+          row.dataset.toggle = toggle.id;
+          row.append(element('span', 'label', toggle.label), element('span', 'track'));
+          frame.append(row);
+        }
+        switches.append(frame);
+      }
+    }
+    for (const toggle of toggles?.list ?? []) {
+      // A flip that now matches what's saved isn't a change any more.
+      if (flipped.get(toggle.id) === toggle.on) flipped.delete(toggle.id);
+      const row = switches.querySelector(`[data-toggle="${CSS.escape(toggle.id)}"]`);
+      row?.setAttribute('aria-checked', String(flipped.get(toggle.id) ?? toggle.on));
+    }
+  }
+
   function draw() {
     const saved = options.saved();
     const locked = options.locked();
     // Showing again isn't allowed during a Hard session, even if it was marked before one started.
     if (locked) showing.clear();
-    options.preview([...saved.filter((p) => !showing.has(p.selector)), ...drafts.map((d) => d.part)]);
+    drawSwitches();
+    previewNow([...saved.filter((p) => !showing.has(p.selector)), ...drafts.map((d) => d.part)]);
 
     const brand = element('p', 'mono');
     brand.append(element('span', 'star', '✦ '), 'Lock In · Hiding on ', element('b', '', options.siteName));
-    const children: Node[] = [
-      brand,
-      element('p', 'say', 'Click anything on the page to hide it. Nothing is saved until Done.'),
-    ];
-    if (problem) children.push(element('p', 'note problem', problem));
+    const say = switches.childElementCount
+      ? 'Click anything on the page to hide it, or flip a toggle below. Nothing is saved until Done.'
+      : 'Click anything on the page to hide it. Nothing is saved until Done.';
+    top.replaceChildren(brand, element('p', 'say', say), ...(problem ? [element('p', 'note problem', problem)] : []));
+    const children: Node[] = [];
 
     if (drafts.length) {
       const list = section('Hiding now', drafts.length);
@@ -260,11 +355,17 @@ export function showPicker(options: PickerOptions): Picker {
     const buttons = element('div', 'end');
     buttons.append(
       button('Cancel', 'cancel', () => options.onCancel()),
-      button('Done', 'lit done', () => options.onDone({ add: drafts.map((d) => d.part), remove: [...showing] })),
+      button('Done', 'lit done', () =>
+        options.onDone({
+          add: drafts.map((d) => d.part),
+          remove: [...showing],
+          toggles: Object.fromEntries(flipped),
+        }),
+      ),
     );
     footer.append(buttons);
     children.push(footer);
-    panel.replaceChildren(...children);
+    rest.replaceChildren(...children);
     placePointing();
   }
 
@@ -305,7 +406,7 @@ export function showPicker(options: PickerOptions): Picker {
       // Its size is read while it's still shown, before the preview hides it again.
       const others = drafts.filter((d) => d !== draft && !parent.contains(d.element));
       drafts = others;
-      options.preview([...options.saved().filter((p) => !showing.has(p.selector)), ...others.map((d) => d.part)]);
+      previewNow([...options.saved().filter((p) => !showing.has(p.selector)), ...others.map((d) => d.part)]);
       const big = coversMostOfPage(parent);
       if (!taken(part.selector)) drafts = [...others, { element: parent, part, big }];
     }

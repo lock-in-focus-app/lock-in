@@ -677,7 +677,7 @@ h2 {
 .support a {
   color: var(--faint);
   text-decoration: underline;
-  text-decoration-color: var(--line-bright);
+  text-decoration-color: var(--tick);
   text-underline-offset: 3px;
   transition: color 300ms;
 }

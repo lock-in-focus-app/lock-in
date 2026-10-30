@@ -1,10 +1,13 @@
 import type { SiteRecipe } from '@lock-in/core';
+import bluesky from './bluesky.json';
 import facebook from './facebook.json';
 import instagram from './instagram.json';
 import linkedin from './linkedin.json';
 import pinterest from './pinterest.json';
 import reddit from './reddit.json';
+import threads from './threads.json';
 import tiktok from './tiktok.json';
+import twitch from './twitch.json';
 import x from './x.json';
 import youtube from './youtube.json';
 
@@ -18,4 +21,7 @@ export const recipes: SiteRecipe[] = [
   facebook,
   linkedin,
   pinterest,
+  twitch,
+  threads,
+  bluesky,
 ] as SiteRecipe[];

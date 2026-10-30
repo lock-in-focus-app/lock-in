@@ -32,6 +32,10 @@ const testDomains: Record<string, string> = {
   '*.facebook.com/': '*.facebook.test/',
   '*.linkedin.com/': '*.linkedin.test/',
   '*.pinterest.com/': '*.pinterest.test/',
+  '*.twitch.tv/': '*.twitch.test/',
+  '*.threads.com/': '*.threads.test/',
+  '*.threads.net/': '*.threadsnet.test/',
+  '*.bsky.app/': '*.bsky.test/',
 };
 
 export const urls = {
@@ -43,6 +47,9 @@ export const urls = {
   facebook: 'http://www.facebook.test/',
   linkedin: 'http://www.linkedin.test/feed/',
   pinterest: 'http://www.pinterest.test/',
+  twitch: 'http://www.twitch.test/',
+  threads: 'http://www.threads.test/',
+  bluesky: 'http://bsky.test/',
   other: 'http://other.test/',
 };
 
@@ -278,6 +285,9 @@ async function serveFixtures(): Promise<Server> {
     'www.facebook.test': await fixture('facebook'),
     'www.linkedin.test': await fixture('linkedin'),
     'www.pinterest.test': await fixture('pinterest'),
+    'www.twitch.test': await fixture('twitch'),
+    'www.threads.test': await fixture('threads'),
+    'bsky.test': await fixture('bluesky'),
     'picker.test': await fixture('picker'),
   };
   const server = createServer((req, res) => {

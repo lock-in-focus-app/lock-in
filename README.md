@@ -17,7 +17,7 @@ Most blockers treat a site as all or nothing. Lock In gives every site one of fo
 
 **Page rules** give part of a site its own level, like redirecting YouTube Shorts while the rest of YouTube is tamed, or allowing `reddit.com/r/writing` while the rest of Reddit is redirected.
 
-What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. There are built-in recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn and Pinterest. You can flip toggles from the extension popup for one session or save them to a profile.
+What "tamed" means for a site is a **recipe**: a small JSON file of toggles, each mapped to CSS selectors. There are built-in recipes for Reddit, YouTube, X, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Twitch, Threads and Bluesky. You can flip toggles from the extension popup for one session or save them to a profile.
 
 Lock In has no accounts and no telemetry. Everything stays on your device.
 
