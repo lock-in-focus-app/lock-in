@@ -1,9 +1,9 @@
 import { ownSiteDomain, ownSitePattern, type Profile, type SiteSettings } from '@lock-in/core';
 import { onUnmounted, ref, watchEffect, type Ref } from 'vue';
 
-// Sites people add themselves (packages/core/src/sites.ts) need their OK before Lock In can
+// Sites people add themselves (packages/core/src/sites.ts) need their OK before Seiza can
 // redirect them or cover their tabs, one site at a time, so it never asks to read every site.
-// The built-in sites are allowed when Lock In is installed. The browser only asks straight from a
+// The built-in sites are allowed when Seiza is installed. The browser only asks straight from a
 // click, so `askToReach` has to come before anything in the click that waits.
 
 const scriptId = 'lock-in-own-sites';
@@ -17,12 +17,12 @@ export function ownDomains(list: readonly Profile[], sites: readonly SiteSetting
   return [...new Set(ids.flatMap((id) => ownSiteDomain(id) ?? []))];
 }
 
-/** Asks the browser to let Lock In reach these sites. Resolves to whether it may. */
+/** Asks the browser to let Seiza reach these sites. Resolves to whether it may. */
 export function askToReach(domains: string[]): Promise<boolean> {
   return browser.permissions.request({ origins: domains.map(ownSitePattern) });
 }
 
-/** Which of these sites Lock In may reach. */
+/** Which of these sites Seiza may reach. */
 export async function reachable(domains: readonly string[]): Promise<Set<string>> {
   const allowed = await Promise.all(
     domains.map((domain) => browser.permissions.contains({ origins: [ownSitePattern(domain)] })),
@@ -30,7 +30,7 @@ export async function reachable(domains: readonly string[]): Promise<Set<string>
   return new Set(domains.filter((_, i) => allowed[i]));
 }
 
-/** The sites Lock In may reach, kept current as the browser's permissions change. */
+/** The sites Seiza may reach, kept current as the browser's permissions change. */
 export function useReachable(domains: () => string[]): Ref<Set<string> | undefined> {
   const result = ref<Set<string>>();
   let checked = 0;
@@ -51,7 +51,7 @@ export function useReachable(domains: () => string[]): Ref<Set<string> | undefin
 }
 
 /**
- * Runs the content script on the added sites Lock In may reach, as the manifest does on the
+ * Runs the content script on the added sites Seiza may reach, as the manifest does on the
  * built-in ones, so their tabs are covered like any other. Called whenever the profiles, the site
  * settings or the permissions change, and when the browser starts.
  */

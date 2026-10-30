@@ -3,9 +3,9 @@
 definePageMeta({ lockOnArrival: true });
 
 useSeoMeta({
-  title: 'Privacy · Lock In',
+  title: 'Privacy · Seiza',
   description:
-    'Lock In collects nothing. It has no accounts, no analytics, no ads, and no servers of its own. Nothing you do in it is sent to anyone.',
+    'Seiza collects nothing. It has no accounts, no analytics, no ads, and no servers of its own. Nothing you do in it is sent to anyone.',
 });
 </script>
 
@@ -13,10 +13,10 @@ useSeoMeta({
   <div class="site-page reading">
     <section id="top" class="page-head" data-name="Top">
       <p class="kicker mono reveal"><b>✦</b> · Privacy</p>
-      <h1 class="reveal" style="--d: 80ms">Lock In collects nothing</h1>
+      <h1 class="reveal" style="--d: 80ms">Seiza collects nothing</h1>
       <p class="lede reveal" style="--d: 160ms">
         It has no accounts, no analytics, no ads, and no servers of its own. Nothing you do in it is sent to us or
-        anyone else. This covers the Lock In desktop app and the Lock In browser extension.
+        anyone else. This covers the Seiza desktop app and the Seiza browser extension.
       </p>
     </section>
 

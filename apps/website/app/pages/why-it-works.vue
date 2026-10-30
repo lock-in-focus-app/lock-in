@@ -4,9 +4,9 @@
 definePageMeta({ lockOnArrival: true });
 
 useSeoMeta({
-  title: 'Why it works · Lock In',
+  title: 'Why it works · Seiza',
   description:
-    "The research behind Lock In, in plain words: what each feature rests on, how strong the evidence is, and what has been left out because it didn't hold up.",
+    "The research behind Seiza, in plain words: what each feature rests on, how strong the evidence is, and what has been left out because it didn't hold up.",
 });
 
 type Strength = 'strong' | 'modest' | 'reasoning';
@@ -16,7 +16,7 @@ interface Finding {
   detail: string;
   strength: Strength;
   why: string;
-  inLockIn: string;
+  inSeiza: string;
   source: { cite: string; href?: string };
 }
 
@@ -33,7 +33,7 @@ const FINDINGS: Finding[] = [
       'In a six-week field study of the one sec app, people opened the apps they chose 57% less. The option to back out mattered most and the wait helped; the message on its own did nothing.',
     strength: 'modest',
     why: 'one study',
-    inLockIn: 'The redirect page: five minutes of focus first, and Not now always right there.',
+    inSeiza: 'The redirect page: five minutes of focus first, and Not now always right there.',
     source: {
       cite: 'Grüning, Riedel & Lorenz-Spreen, 2023, PNAS',
       href: 'https://doi.org/10.1073/pnas.2213114120',
@@ -45,7 +45,7 @@ const FINDINGS: Finding[] = [
       'Letting people cap their own future screen time cut their social media use a lot, and short-term help to cut back kept working after it ended.',
     strength: 'strong',
     why: 'a large field experiment',
-    inLockIn: 'Profiles, Hard mode and its passes, and Restricted sites.',
+    inSeiza: 'Profiles, Hard mode and its passes, and Restricted sites.',
     source: {
       cite: 'Allcott, Gentzkow & Song, 2022, American Economic Review',
       href: 'https://www.nber.org/papers/w28936',
@@ -57,7 +57,7 @@ const FINDINGS: Finding[] = [
       'Habits form from repeating something in the same context, and after that the context itself sets them off. Taking the cue away works better than fighting it every time.',
     strength: 'strong',
     why: 'a review',
-    inLockIn: "Taming a site: its feeds, Shorts and recommendations are hidden, so the cue isn't there.",
+    inSeiza: "Taming a site: its feeds, Shorts and recommendations are hidden, so the cue isn't there.",
     source: {
       cite: 'Wood & Rünger, 2016, Annual Review of Psychology',
       href: 'https://dornsife.usc.edu/wendy-wood/wp-content/uploads/sites/183/2023/10/wood.runger.2016.pdf',
@@ -69,7 +69,7 @@ const FINDINGS: Finding[] = [
       'An if-then plan, "when X happens, I\'ll do Y", had a medium-to-large effect on reaching goals across 94 tests, one of the strongest results in the field.',
     strength: 'strong',
     why: 'a meta-analysis',
-    inLockIn:
+    inSeiza:
       'An if-then plan on each profile, shown on the redirect page, and offered by the weekly report when a pattern is clear.',
     source: {
       cite: 'Gollwitzer & Sheeran, 2006, Advances in Experimental Social Psychology',
@@ -81,7 +81,7 @@ const FINDINGS: Finding[] = [
     detail: 'Setting a clear, specific goal leads to doing more than a vague intention to try hard.',
     strength: 'strong',
     why: 'decades of studies',
-    inLockIn:
+    inSeiza:
       'Session goals: a one-line goal at the start and "did you do it?" after. A switch on each profile, off by default.',
     source: { cite: 'Locke & Latham, 2002, American Psychologist', href: 'https://doi.org/10.1037/0003-066X.57.9.705' },
   },
@@ -90,7 +90,7 @@ const FINDINGS: Finding[] = [
     detail: 'Making a plan for an unfinished task stops it from pulling at your attention while you do something else.',
     strength: 'modest',
     why: 'a set of lab studies',
-    inLockIn: 'Satellites: a thought for later, launched with Alt+P, back when the session ends.',
+    inSeiza: 'Satellites: a thought for later, launched with Alt+P, back when the session ends.',
     source: {
       cite: 'Masicampo & Baumeister, 2011, Journal of Personality and Social Psychology',
       href: 'https://doi.org/10.1037/a0024192',
@@ -102,7 +102,7 @@ const FINDINGS: Finding[] = [
       "Keeping track of progress helps people reach their goals, more so when it's written down. Across 138 studies.",
     strength: 'strong',
     why: 'a meta-analysis',
-    inLockIn: 'The weekly report, and the sky itself.',
+    inSeiza: 'The weekly report, and the sky itself.',
     source: { cite: 'Harkin et al., 2016, Psychological Bulletin', href: 'https://doi.org/10.1037/bul0000025' },
   },
   {
@@ -111,7 +111,7 @@ const FINDINGS: Finding[] = [
       "In the best-known study, a new habit took a median of about 66 days, anywhere from 18 to 254, and missing a day now and then didn't set it back.",
     strength: 'modest',
     why: 'a small study, not yet repeated',
-    inLockIn: 'The sky never shows a broken streak, and nothing here promises a habit in 21 days.',
+    inSeiza: 'The sky never shows a broken streak, and nothing here promises a habit in 21 days.',
     source: {
       cite: 'Lally et al., 2010, European Journal of Social Psychology',
       href: 'https://doi.org/10.1002/ejsp.674',
@@ -122,7 +122,7 @@ const FINDINGS: Finding[] = [
     detail: 'Students who forgave themselves for putting off studying put it off less before the next exam.',
     strength: 'modest',
     why: 'correlational',
-    inLockIn: 'A session that ends early just ends: no scolding, and nothing lost beyond that session.',
+    inSeiza: 'A session that ends early just ends: no scolding, and nothing lost beyond that session.',
     source: {
       cite: 'Wohl, Pychyl & Bennett, 2010, Personality and Individual Differences',
       href: 'https://doi.org/10.1016/j.paid.2010.01.029',
@@ -134,7 +134,7 @@ const FINDINGS: Finding[] = [
       "The hard part is usually starting, and a pull that comes from a moment of boredom tends to pass once you're back into the work. This is the two-minute rule from Atomic Habits; it hasn't been tested as such.",
     strength: 'reasoning',
     why: 'not tested',
-    inLockIn: "The quiet timer, a short timer you're free to run past, and the redirect page's five minutes.",
+    inSeiza: "The quiet timer, a short timer you're free to run past, and the redirect page's five minutes.",
     source: { cite: 'James Clear, Atomic Habits (2018)' },
   },
   {
@@ -142,7 +142,7 @@ const FINDINGS: Finding[] = [
     detail: 'Motivation from your own reasons lasts; pressure and control from outside wear it down.',
     strength: 'strong',
     why: 'a large body of work',
-    inLockIn: 'Lock In only acts on what you set up, never nudges, and every default can be changed.',
+    inSeiza: 'Seiza only acts on what you set up, never nudges, and every default can be changed.',
     source: {
       cite: 'Ryan & Deci, 2000, self-determination theory, American Psychologist',
       href: 'https://doi.org/10.1037/0003-066X.55.1.68',
@@ -155,9 +155,9 @@ const FINDINGS: Finding[] = [
   <div class="site-page reading">
     <section id="top" class="page-head" data-name="Top">
       <p class="kicker mono reveal"><b>✦</b> · Why it works</p>
-      <h1 class="reveal" style="--d: 80ms">The research behind Lock In</h1>
+      <h1 class="reveal" style="--d: 80ms">The research behind Seiza</h1>
       <p class="lede reveal" style="--d: 160ms">
-        Lock In should help because of research that has held up, not because it sounds like it should. Here's what each
+        Seiza should help because of research that has held up, not because it sounds like it should. Here's what each
         feature rests on, how strong the evidence is, and what's been left out because it didn't hold up.
       </p>
       <dl class="key reveal" style="--d: 240ms">
@@ -177,7 +177,7 @@ const FINDINGS: Finding[] = [
     </section>
 
     <section id="findings" data-name="Findings">
-      <p class="kicker mono reveal"><b>01</b> · What Lock In does, and why</p>
+      <p class="kicker mono reveal"><b>01</b> · What Seiza does, and why</p>
       <h2 class="reveal" style="--d: 80ms">Each feature, and what it rests on</h2>
       <ol class="findings">
         <li
@@ -191,7 +191,7 @@ const FINDINGS: Finding[] = [
           </p>
           <h3>{{ finding.title }}</h3>
           <p>{{ finding.detail }}</p>
-          <p class="in-lock-in"><span class="mono">In Lock In</span> {{ finding.inLockIn }}</p>
+          <p class="in-seiza"><span class="mono">In Seiza</span> {{ finding.inSeiza }}</p>
           <p class="cite mono">
             <a v-if="finding.source.href" :href="finding.source.href">{{ finding.source.cite }} ↗</a>
             <template v-else>{{ finding.source.cite }}</template>
@@ -205,15 +205,14 @@ const FINDINGS: Finding[] = [
       <h2 class="reveal" style="--d: 80ms">Good ideas that don't belong here</h2>
       <ul class="plain">
         <li class="reveal" style="--d: 120ms">
-          <strong>Planning the week at a fresh start,</strong> like a Monday or a new month. Lock In isn't a planning
-          app.
+          <strong>Planning the week at a fresh start,</strong> like a Monday or a new month. Seiza isn't a planning app.
         </li>
         <li class="reveal" style="--d: 160ms">
           <strong>Break timers between sessions.</strong> Short breaks help more with tiredness than with getting things
           done, and they'd mean more settings.
         </li>
         <li class="reveal" style="--d: 200ms">
-          <strong>A separate rule for forgiving slips.</strong> Lock In already doesn't punish them.
+          <strong>A separate rule for forgiving slips.</strong> Seiza already doesn't punish them.
         </li>
         <li class="reveal" style="--d: 240ms">
           <strong>Habit goals,</strong> like earning a site by going for a run, are parked until they've been thought
@@ -247,7 +246,7 @@ const FINDINGS: Finding[] = [
 
     <section id="kept-out" data-name="Kept out">
       <p class="kicker mono reveal"><b>04</b> · What's kept out</p>
-      <h2 class="reveal" style="--d: 80ms">Things Lock In won't do</h2>
+      <h2 class="reveal" style="--d: 80ms">Things Seiza won't do</h2>
       <ul class="plain">
         <li class="reveal" style="--d: 120ms">
           <strong>Points, badges and leaderboards.</strong> Rewards you expect and can count can wear down your own
@@ -260,7 +259,7 @@ const FINDINGS: Finding[] = [
           one.
         </li>
         <li class="reveal" style="--d: 200ms">
-          <strong>Nudges and nagging.</strong> Lock In only acts on what you set up.
+          <strong>Nudges and nagging.</strong> Seiza only acts on what you set up.
         </li>
         <li class="reveal" style="--d: 240ms">
           <strong>The slot-machine pull.</strong> Surprises like comets and meteor showers come only from focusing,

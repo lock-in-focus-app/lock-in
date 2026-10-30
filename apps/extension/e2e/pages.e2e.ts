@@ -37,7 +37,7 @@ describe('page rules', () => {
   const youtube = (path: string) => new URL(path, urls.youtube).href;
   const reddit = (path: string) => new URL(path, urls.reddit).href;
 
-  /** Changes the page the way a single-page app does, then gives Lock In time to react. */
+  /** Changes the page the way a single-page app does, then gives Seiza time to react. */
   const pushPath = async (path: string, expectRedirect: boolean) => {
     await tab.evaluate((p) => history.pushState({}, '', p), path);
     // Staying put can only be checked by waiting a moment.

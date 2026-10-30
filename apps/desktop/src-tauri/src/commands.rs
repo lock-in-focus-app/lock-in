@@ -138,7 +138,7 @@ pub async fn blocker_status() -> BlockerStatus {
 }
 
 /// Installs or updates the blocker's helper. macOS asks for an administrator's password in its
-/// own dialog; Lock In never sees it.
+/// own dialog; Seiza never sees it.
 #[tauri::command]
 pub async fn install_blocker(app: AppHandle) -> Result<()> {
     #[cfg(target_os = "macos")]
@@ -189,7 +189,7 @@ pub async fn remove_blocker(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-/// The apps that can be added to a profile, leaving out Lock In itself. Reading them touches
+/// The apps that can be added to a profile, leaving out Seiza itself. Reading them touches
 /// the disk, so it runs off the main thread.
 #[tauri::command]
 pub async fn installed_apps() -> Vec<InstalledApp> {

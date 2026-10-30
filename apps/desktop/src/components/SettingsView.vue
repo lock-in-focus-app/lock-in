@@ -138,7 +138,7 @@ function bringIn(event: Event) {
   input.value = '';
   if (!file) return;
   void withBackup(async () => {
-    if (file.size > maxBackupBytes) throw 'that file is too big to be a Lock In backup';
+    if (file.size > maxBackupBytes) throw 'that file is too big to be a Seiza backup';
     backupNote.value = importSummary(await importBackup(await file.text()));
     emit('imported');
   });
@@ -234,9 +234,9 @@ const glowHelp = computed(() => {
           </button>
         </li>
       </ul>
-      <p v-else class="none">None yet. Browsers show up here once the Lock In extension links to this app.</p>
+      <p v-else class="none">None yet. Browsers show up here once the Seiza extension links to this app.</p>
       <p class="help">
-        During a session whose profile tames sites, if one of these runs without the extension, Lock In warns you.
+        During a session whose profile tames sites, if one of these runs without the extension, Seiza warns you.
         {{
           sessionRunning
             ? 'Browsers can be forgotten once this session ends.'
@@ -268,11 +268,11 @@ const glowHelp = computed(() => {
         <p class="help">
           For when you just want sites shut, with or without the extension. During a session, the profile's Restricted
           sites can't be reached from any browser or app, Safari included. Whole sites only: Tamed and Redirected sites,
-          page rules and Lock In's own pages still need the extension. Tabs already open can keep working for a minute.
+          page rules and Seiza's own pages still need the extension. Tabs already open can keep working for a minute.
         </p>
         <p class="help">
-          Turning it on installs a small helper, so macOS asks for your password once. It only edits Lock In's own lines
-          in the system's list of sites, and if Lock In stops checking in for five minutes, it unblocks everything by
+          Turning it on installs a small helper, so macOS asks for your password once. It only edits Seiza's own lines
+          in the system's list of sites, and if Seiza stops checking in for five minutes, it unblocks everything by
           itself.<template v-if="settings.blockWithoutExtension">
             During a Hard session this can't be turned off.</template
           >
@@ -333,7 +333,7 @@ const glowHelp = computed(() => {
           </button>
         </li>
       </ul>
-      <p v-else class="none">None yet. Lock In's own quotes take turns until you add some.</p>
+      <p v-else class="none">None yet. Seiza's own quotes take turns until you add some.</p>
       <form class="add-quote" @submit.prevent="addQuote">
         <!-- An input can't draw the frame's corner ticks itself, so a label around it does. -->
         <label class="card box">
@@ -359,8 +359,8 @@ const glowHelp = computed(() => {
       <p class="help">
         {{
           quotesFull
-            ? `That's the most quotes Lock In keeps (${maxOwnQuotes}). Remove one to add another.`
-            : "Mixed in with Lock In's own for the Sky's quote of the day, and picked more often."
+            ? `That's the most quotes Seiza keeps (${maxOwnQuotes}). Remove one to add another.`
+            : "Mixed in with Seiza's own for the Sky's quote of the day, and picked more often."
         }}
       </p>
     </section>
@@ -447,9 +447,9 @@ const glowHelp = computed(() => {
     </section>
 
     <button class="card done mono" type="button" @click="emit('close')">Done · Back to the sky</button>
-    <p class="colophon mono">Lock In · AGPL-3.0 · Stays on this computer</p>
+    <p class="colophon mono">Seiza · AGPL-3.0 · Stays on this computer</p>
     <p class="support">
-      <a class="mono" :href="supportUrl" @click.prevent="openUrl(supportUrl)">Support Lock In on Ko-fi ↗</a>
+      <a class="mono" :href="supportUrl" @click.prevent="openUrl(supportUrl)">Support Seiza on Ko-fi ↗</a>
     </p>
   </section>
 </template>

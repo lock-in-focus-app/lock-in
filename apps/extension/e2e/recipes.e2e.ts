@@ -21,7 +21,7 @@ describe('built-in recipes', () => {
   let tab: Page;
 
   /**
-   * Single-page apps change the path without loading a new page. Lock In keeps the path it
+   * Single-page apps change the path without loading a new page. Seiza keeps the path it
    * has applied on <html> while a site is tamed, so this waits until it has caught up.
    */
   const pushPath = async (path: string) => {

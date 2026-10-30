@@ -1,20 +1,20 @@
-# ✦ Lock In
+# ✦ Seiza
 
 A free, open-source focus app. Social media is light pollution: when you lock in, the noise fades and you can finally see the stars.
 
-![YouTube's video page before and after Lock In tames it: the recommendations and Shorts are gone, and the video and its comments stay.](.github/readme/tamed.png)
+![YouTube's video page before and after Seiza tames it: the recommendations and Shorts are gone, and the video and its comments stay.](.github/readme/tamed.png)
 
 > **Status:** 0.1.0, the first release. The desktop app for macOS and Linux is on [Releases](https://github.com/lock-in-focus-app/lock-in/releases/latest), and the browser extension is in review at the Chrome Web Store and Firefox Add-ons. See [PLAN.md](PLAN.md) for the roadmap.
 
 ## Tame, don't just block
 
-Most blockers treat a site as all or nothing. Lock In gives every site one of four levels, chosen per session profile:
+Most blockers treat a site as all or nothing. Seiza gives every site one of four levels, chosen per session profile:
 
 | Level | What happens |
 |---|---|
 | **Allowed** | Nothing changes. |
 | **Tamed** | The site still works, but the distracting parts are hidden: feeds, trending, suggested and promoted posts. Optionally grayscale. |
-| **Redirected** | Visits go to a calm Lock In page first: focus for five minutes, read your if-then plan, or open one of your own links. If you still need the site once the wait is up, take a few minutes on it. |
+| **Redirected** | Visits go to a calm Seiza page first: focus for five minutes, read your if-then plan, or open one of your own links. If you still need the site once the wait is up, take a few minutes on it. |
 | **Restricted** | Blocked, with no way through until the session ends. |
 
 **Page rules** give part of a site its own level, like redirecting YouTube Shorts while the rest of YouTube is tamed, or allowing `reddit.com/r/writing` while the rest of Reddit is redirected.
@@ -33,7 +33,7 @@ The extension works on its own. The desktop app adds:
 - **A weekly report**, and backups you can bring to another computer.
 - **Blocking without the extension** (macOS, turned on in Settings): restricted sites are shut for every browser and app during a session.
 
-Lock In has no accounts and no telemetry. Everything stays on your device. See [PRIVACY.md](PRIVACY.md).
+Seiza has no accounts and no telemetry. Everything stays on your device. See [PRIVACY.md](PRIVACY.md).
 
 ## Install
 
@@ -89,4 +89,4 @@ Before opening a pull request, run `pnpm format`, `pnpm lint` and `pnpm test`; C
 
 ## License
 
-[AGPL-3.0](LICENSE). You're free to use, study, change and share Lock In. If you run a modified version for other people, including as a hosted service, you must share your changes under the same license.
+[AGPL-3.0](LICENSE). You're free to use, study, change and share Seiza. If you run a modified version for other people, including as a hosted service, you must share your changes under the same license.

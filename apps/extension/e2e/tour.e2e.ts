@@ -57,7 +57,7 @@ describe('the tour for new users', () => {
       await expect.poll(() => tourTitle(page)).not.toBe(titles[titles.length - 1]);
       titles.push(await tourTitle(page));
     }
-    expect(titles).toEqual(['Profiles', 'Sites', 'The redirect page', 'The Lock In app']);
+    expect(titles).toEqual(['Profiles', 'Sites', 'The redirect page', 'The Seiza app']);
     expect(await page.$$eval('.tour button', (buttons) => buttons.map((b) => b.textContent!.trim()))).toEqual([
       '‹ Back',
       'Done',

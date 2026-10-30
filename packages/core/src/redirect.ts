@@ -53,7 +53,7 @@ function accessFor(level: SiteLevel, session: Session, recipeId: string, now: nu
 /** A declarativeNetRequest rule, before the extension fills in where redirects go. */
 export interface RedirectRule {
   regexFilter: string;
-  /** Send the visit to the Lock In page, or let it load even though a broader rule redirects it. */
+  /** Send the visit to the Seiza page, or let it load even though a broader rule redirects it. */
   action: 'redirect' | 'allow';
   /** Higher wins. Whole sites are 1; page rules rank above them, longer paths first. */
   priority: number;

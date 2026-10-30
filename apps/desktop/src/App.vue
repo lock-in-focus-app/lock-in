@@ -415,7 +415,7 @@ const tourSteps = computed<(TourStep & { view: View })[]>(() => {
       view: 'settings',
       target: 'browsers',
       title: 'Your browser',
-      text: 'Add the Lock In extension to your browser and it links to this app by itself, showing up here. Redirected sites then show a calm Lock In page instead, with a few minutes through if you need them. The tour is in Settings whenever you want it again.',
+      text: 'Add the Seiza extension to your browser and it links to this app by itself, showing up here. Redirected sites then show a calm Seiza page instead, with a few minutes through if you need them. The tour is in Settings whenever you want it again.',
     },
   ];
 });
@@ -464,7 +464,7 @@ async function run(action: () => Promise<void>) {
     <!-- Explore clears the header away too, so the sky is on its own. -->
     <header :class="{ away: exploring }" :inert="exploring">
       <div class="row">
-        <h1 class="mono"><span aria-hidden="true">✦ </span>Lock In</h1>
+        <h1 class="mono"><span aria-hidden="true">✦ </span>Seiza</h1>
         <span class="mono" title="Each session adds a star, and every focused minute earns stardust" data-tour="sky">
           Stars <b>{{ String(starCount).padStart(3, '0') }}</b> · Stardust <b>{{ totalStardust.toLocaleString() }}</b>
         </span>

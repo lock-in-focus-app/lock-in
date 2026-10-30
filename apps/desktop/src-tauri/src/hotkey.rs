@@ -50,7 +50,7 @@ impl fmt::Display for Problem {
             ("Alt", "Control, Shift and the Windows key")
         };
         match self {
-            Problem::Unreadable => f.write_str("that isn't a key Lock In can listen for"),
+            Problem::Unreadable => f.write_str("that isn't a key Seiza can listen for"),
             Problem::NeedsModifiers => write!(
                 f,
                 "a hotkey needs {alt}, or two of {two}, so it doesn't take a shortcut other apps use"

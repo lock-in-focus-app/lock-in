@@ -1,4 +1,4 @@
-//! Backups: everything the app keeps, in one JSON file that can be brought into Lock In on this
+//! Backups: everything the app keeps, in one JSON file that can be brought into Seiza on this
 //! computer or another one (PLAN §2). Importing adds to what's here and never takes anything
 //! away, so bringing in the same file twice changes nothing the second time.
 
@@ -22,7 +22,7 @@ use crate::sites::SiteSettings;
 /// What the first field of every backup says, so other JSON files are turned away.
 const KIND: &str = "backup";
 
-/// The backup format this app writes. A file with a higher version comes from a newer Lock In
+/// The backup format this app writes. A file with a higher version comes from a newer Seiza
 /// and might hold things this one would lose, so it isn't imported.
 pub const VERSION: u32 = 1;
 
@@ -136,10 +136,10 @@ impl Backup {
         }
     }
 
-    /// Reads a backup file, turning away anything that isn't one or that a newer Lock In made.
+    /// Reads a backup file, turning away anything that isn't one or that a newer Seiza made.
     pub fn read(json: &str) -> Result<Self> {
         if json.len() > MAX_BYTES {
-            return Err(Error::Backup("that file is too big to be a Lock In backup".into()));
+            return Err(Error::Backup("that file is too big to be a Seiza backup".into()));
         }
         let value: Value = serde_json::from_str(json).map_err(|_| not_a_backup())?;
         if value.get("lockIn").and_then(Value::as_str) != Some(KIND) {
@@ -149,7 +149,7 @@ impl Backup {
             Some(version) if version <= u64::from(VERSION) => {}
             Some(_) => {
                 return Err(Error::Backup(
-                    "that backup comes from a newer version of Lock In; update this one to bring it in".into(),
+                    "that backup comes from a newer version of Seiza; update this one to bring it in".into(),
                 ));
             }
             None => return Err(not_a_backup()),
@@ -159,10 +159,10 @@ impl Backup {
 }
 
 fn not_a_backup() -> Error {
-    Error::Backup("that file isn't a Lock In backup".into())
+    Error::Backup("that file isn't a Seiza backup".into())
 }
 
-/// Saves a backup in the Downloads folder (or the home folder, if there's none) as "Lock In
+/// Saves a backup in the Downloads folder (or the home folder, if there's none) as "Seiza
 /// backup 2026-10-29.json", numbering it if that's taken. Only the user can read it, since it
 /// holds what their satellites say. `day` is the local date, from the window.
 pub fn save(backup: &Backup, day: &str) -> Result<PathBuf> {
@@ -176,9 +176,9 @@ fn save_in(folder: &Path, backup: &Backup, day: &str) -> Result<PathBuf> {
     // The date goes into a file name, so it's only used if it's nothing but a date.
     let dated = day.len() == 10 && day.bytes().all(|b| b.is_ascii_digit() || b == b'-');
     let base = if dated {
-        format!("Lock In backup {day}")
+        format!("Seiza backup {day}")
     } else {
-        "Lock In backup".into()
+        "Seiza backup".into()
     };
     let json = serde_json::to_vec_pretty(backup)?;
     for number in 1..1000 {
@@ -213,11 +213,11 @@ mod tests {
     #[test]
     fn turns_away_files_that_arent_backups() {
         let message = |json: &str| Backup::read(json).unwrap_err().to_string();
-        assert_eq!(message("not json"), "that file isn't a Lock In backup");
-        assert_eq!(message(r#"{"profiles":[]}"#), "that file isn't a Lock In backup");
+        assert_eq!(message("not json"), "that file isn't a Seiza backup");
+        assert_eq!(message(r#"{"profiles":[]}"#), "that file isn't a Seiza backup");
         assert_eq!(
             message(r#"{"lockIn":"backup","version":"one"}"#),
-            "that file isn't a Lock In backup"
+            "that file isn't a Seiza backup"
         );
         assert!(message(r#"{"lockIn":"backup","version":2,"exportedAt":0}"#).contains("newer version"));
         assert!(message(r#"{"lockIn":"backup","version":1,"exportedAt":0,"profiles":[{}]}"#).contains("can't be read"));
@@ -242,9 +242,9 @@ mod tests {
         let second = save_in(&folder, &backup, "2026-10-29").unwrap();
         let undated = save_in(&folder, &backup, "../../etc").unwrap();
         let name = |path: &Path| path.file_name().unwrap().to_string_lossy().into_owned();
-        assert_eq!(name(&first), "Lock In backup 2026-10-29.json");
-        assert_eq!(name(&second), "Lock In backup 2026-10-29 2.json");
-        assert_eq!(undated, folder.join("Lock In backup.json"));
+        assert_eq!(name(&first), "Seiza backup 2026-10-29.json");
+        assert_eq!(name(&second), "Seiza backup 2026-10-29 2.json");
+        assert_eq!(undated, folder.join("Seiza backup.json"));
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;

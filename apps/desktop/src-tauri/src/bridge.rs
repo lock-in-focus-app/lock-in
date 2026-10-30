@@ -1,4 +1,4 @@
-// The bridge between a browser and the app. The browser starts Lock In's own executable
+// The bridge between a browser and the app. The browser starts Seiza's own executable
 // when the extension connects (Native Messaging), and talks to it over stdin and stdout:
 // each message is a 4-byte length, then that many bytes of JSON. This process passes the
 // messages on to the running app over its local socket, one JSON message per line, and

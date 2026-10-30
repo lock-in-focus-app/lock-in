@@ -13,7 +13,7 @@ import {
   type TestBrowser,
 } from './harness';
 
-// Sites people add themselves, by address. The browser would ask to let Lock In reach each one;
+// Sites people add themselves, by address. The browser would ask to let Seiza reach each one;
 // here the test build is already allowed to reach other.test and elsewhere.test, and not
 // unreached.test, which is what a site added in the desktop app looks like before it's allowed.
 
@@ -59,7 +59,7 @@ describe('sites people add', () => {
     await tab.goto(other);
     await startSession(control, starterProfiles[0]!.id);
 
-    // The content script runs on added sites once Lock In may reach them.
+    // The content script runs on added sites once Seiza may reach them.
     const overlay = () => tab.evaluate(() => document.querySelector('lock-in-pause')?.shadowRoot?.textContent ?? '');
     await expect.poll(overlay, { timeout: 10_000 }).toContain('other.test');
 
@@ -106,7 +106,7 @@ describe('sites people add', () => {
 
     const options = await t.browser.newPage();
     await options.goto(`chrome-extension://${t.extensionId}/options.html`);
-    await options.waitForFunction(() => document.body.innerText.includes("Lock In can't reach unreached.test yet"));
+    await options.waitForFunction(() => document.body.innerText.includes("Seiza can't reach unreached.test yet"));
     expect(await options.evaluate(() => document.body.innerText)).not.toContain("can't reach other.test");
 
     await options.click('button[aria-label="Remove unreached.test"]');

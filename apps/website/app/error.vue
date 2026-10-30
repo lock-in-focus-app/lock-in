@@ -4,7 +4,7 @@ import type { NuxtError } from '#app';
 const props = defineProps<{ error: NuxtError }>();
 const missing = computed(() => props.error.statusCode === 404);
 
-useSeoMeta({ title: () => (missing.value ? 'Not found · Lock In' : 'Something went wrong · Lock In') });
+useSeoMeta({ title: () => (missing.value ? 'Not found · Seiza' : 'Something went wrong · Seiza') });
 </script>
 
 <template>
@@ -23,7 +23,7 @@ useSeoMeta({ title: () => (missing.value ? 'Not found · Lock In' : 'Something w
           }}
         </p>
         <p class="reveal" style="--d: 240ms">
-          <a class="textlink" href="/" @click.prevent="clearError({ redirect: '/' })">Back to Lock In ›</a>
+          <a class="textlink" href="/" @click.prevent="clearError({ redirect: '/' })">Back to Seiza ›</a>
         </p>
       </section>
     </div>

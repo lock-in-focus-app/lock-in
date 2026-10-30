@@ -89,7 +89,7 @@ export async function launch({
     await mkdir(join(userDataDir, 'NativeMessagingHosts'));
     const manifest = {
       name: desktopHostName,
-      description: 'Fake Lock In app for tests',
+      description: 'Fake Seiza app for tests',
       path: nativeHost,
       type: 'stdio',
       allowed_origins: [`chrome-extension://${chromeExtensionId}/`],
