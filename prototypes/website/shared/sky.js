@@ -162,23 +162,29 @@
       return off;
     }
 
-    // A city along the bottom: buildings of random widths, taller towards the middle like a
-    // downtown, each with a grid of windows that light up in a random order as the haze thickens.
+    // A city along the bottom: low rooftops in the middle, where a page's bottom navigation
+    // sits, and towers rising towards the left and right edges. Each building has a grid of
+    // windows that light up in a random order as the haze thickens; the low middle stretch keeps
+    // fewer of them lit, so it doesn't outshine what's drawn over it.
     function skyline(rand) {
       const out = [];
-      const tallest = Math.max(60, h * 0.14);
+      const tallest = Math.max(48, h * 0.1);
+      const valley = Math.min(340, w * 0.46);
       let x = -8;
       while (x < w + 8) {
         const bw = 16 + rand() * 44;
-        const downtown = Math.max(0, 1 - Math.abs((x + bw / 2) / w - 0.55) * 1.6);
-        const bh = tallest * (0.2 + rand() * 0.35 + downtown * rand() * 0.6);
+        const fromMiddle = Math.abs(x + bw / 2 - w / 2);
+        // 0 in the low middle, rising to 1 by the edges.
+        const rise = Math.min(1, Math.max(0, (fromMiddle - valley) / Math.max(1, w / 2 - valley)));
+        const edge = fromMiddle < valley ? 0 : 0.35 + 0.65 * rise;
+        const bh = edge ? tallest * (0.35 + rand() * 0.3 + edge * rand() * 0.75) : tallest * (0.14 + rand() * 0.2);
         const windows = [];
         for (let wy = 6; wy < bh - 6; wy += 7) {
           for (let wx = 4; wx < bw - 5; wx += 6) {
             windows.push({ x: wx, y: wy, order: rand(), phase: rand() * Math.PI * 2, warm: rand() < 0.75 });
           }
         }
-        out.push({ x, w: bw, h: bh, windows, mast: bh > tallest * 0.62 && rand() < 0.7 });
+        out.push({ x, w: bw, h: bh, windows, lit: edge ? 1 : 0.45, mast: bh > tallest * 0.75 && rand() < 0.7 });
         x += bw + (rand() < 0.2 ? 2 + rand() * 10 : 0);
       }
       return out;
@@ -328,7 +334,7 @@
           for (const win of b.windows) {
             if (win.warm !== warm) continue;
             const drift = reduce ? 0 : 0.03 * Math.sin(time * 0.12 + win.phase);
-            if (win.order + drift < lit) ctx.fillRect(b.x + win.x, top + win.y, 2.5, 3);
+            if (win.order + drift < lit * b.lit) ctx.fillRect(b.x + win.x, top + win.y, 2.5, 3);
           }
         }
       }

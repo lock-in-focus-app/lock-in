@@ -324,6 +324,9 @@
         font-size: 10px;
         white-space: nowrap;
         pointer-events: auto;
+        text-shadow:
+          0 0 3px rgb(8 11 22 / 0.95),
+          0 0 10px rgb(8 11 22 / 0.8);
       }
 
       .readout.tl {
@@ -484,6 +487,8 @@
         height: 76px;
         transform: translateX(-50%);
         pointer-events: auto;
+        /* A dark edge round the lines and stars, so they stand out from the city's lights. */
+        filter: drop-shadow(0 0 2px rgb(8 11 22 / 0.95)) drop-shadow(0 0 6px rgb(8 11 22 / 0.6));
       }
 
       .navigator .seg {
