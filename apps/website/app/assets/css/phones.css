@@ -6,7 +6,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .wide-only {
+  .wide-only,
+  .readout.gloss {
     display: none;
   }
 }
@@ -31,18 +32,16 @@
     justify-items: center;
   }
 
-  .mark {
-    flex-direction: row;
-    gap: 8px;
+  .wordmark {
+    gap: 3px;
   }
 
-  .mark svg {
-    width: 22px;
-    height: 22px;
+  .wordmark .word {
+    font-size: 24px;
   }
 
-  .mark .brand {
-    padding-bottom: 3px;
+  .wordmark .kana {
+    font-size: 9px;
   }
 
   .navigator {
