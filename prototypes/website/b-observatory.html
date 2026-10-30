@@ -1,0 +1,2230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lock In · B · Observatory</title>
+    <link rel="stylesheet" href="shared/theme.css" />
+    <style>
+      /*
+       * B, Observatory: one framed screen, after the reference image. The frame, the nav, the
+       * corner readouts and the constellation navigator stay put; the sections scroll inside the
+       * frame, fading out at its top and bottom edges.
+       */
+      :root {
+        --m: 28px; /* the frame's inset from the window */
+        --top: 84px; /* the nav band inside the frame */
+        --bottom: 96px; /* the navigator band inside the frame */
+        --rose: #e8a5b0;
+        --frame-hazy: rgb(255 154 82 / 0.38);
+        --frame-clear: rgb(185 167 245 / 0.42);
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #sky {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -2;
+      }
+
+      /* Nebulae: big soft glows drifting slowly. Light pollution hides them; a clear sky shows them. */
+      .nebulae {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        pointer-events: none;
+        opacity: 0.18;
+        transition: opacity 2.4s var(--drift);
+      }
+
+      .locked .nebulae {
+        opacity: 1;
+      }
+
+      .nebulae i {
+        position: absolute;
+        width: 80vmax;
+        height: 52vmax;
+        border-radius: 50%;
+        background: radial-gradient(closest-side, var(--c), transparent);
+        animation: nebula var(--t) ease-in-out infinite alternate;
+        will-change: transform;
+      }
+
+      .nebulae i:nth-child(1) {
+        --c: rgb(120 92 150 / 0.34);
+        --t: 70s;
+        left: -20vmax;
+        top: 10vh;
+      }
+
+      .nebulae i:nth-child(2) {
+        --c: rgb(59 79 176 / 0.26);
+        --t: 90s;
+        right: -30vmax;
+        top: -18vmax;
+        animation-delay: -30s;
+      }
+
+      .nebulae i:nth-child(3) {
+        --c: rgb(232 165 176 / 0.14);
+        --t: 80s;
+        left: 20vw;
+        bottom: -30vmax;
+        animation-delay: -12s;
+      }
+
+      .nebulae i:nth-child(4) {
+        --c: rgb(245 200 107 / 0.07);
+        --t: 110s;
+        left: 35vw;
+        top: 5vh;
+        width: 50vmax;
+        height: 30vmax;
+        animation-delay: -50s;
+      }
+
+      @keyframes nebula {
+        from {
+          transform: translate(-4vmax, 0) rotate(-6deg) scale(1);
+        }
+        to {
+          transform: translate(5vmax, 3vmax) rotate(8deg) scale(1.12);
+        }
+      }
+
+      /* ── The frame ─────────────────────────────────────────────────────────────── */
+
+      .frame {
+        position: fixed;
+        inset: var(--m);
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      /* Two hairlines, sodium-orange and lavender, crossfading as you lock in. */
+      .frame .line {
+        position: absolute;
+        inset: 0;
+        border: 1px solid var(--frame-hazy);
+        transition: opacity 1.6s var(--drift);
+      }
+
+      .frame .line.clear {
+        border-color: var(--frame-clear);
+        opacity: 0;
+      }
+
+      .locked .frame .line.clear {
+        opacity: 1;
+      }
+
+      .locked .frame .line.hazy {
+        opacity: 0;
+      }
+
+      /* Bright corner ticks, as on the apps' frames but bigger. */
+      .frame .ticks {
+        position: absolute;
+        inset: -1px;
+        --t: var(--tick-bright);
+        background:
+          linear-gradient(var(--t), var(--t)) top left / 16px 1px no-repeat,
+          linear-gradient(var(--t), var(--t)) top left / 1px 16px no-repeat,
+          linear-gradient(var(--t), var(--t)) top right / 16px 1px no-repeat,
+          linear-gradient(var(--t), var(--t)) top right / 1px 16px no-repeat,
+          linear-gradient(var(--t), var(--t)) bottom left / 16px 1px no-repeat,
+          linear-gradient(var(--t), var(--t)) bottom left / 1px 16px no-repeat,
+          linear-gradient(var(--t), var(--t)) bottom right / 16px 1px no-repeat,
+          linear-gradient(var(--t), var(--t)) bottom right / 1px 16px no-repeat;
+      }
+
+      /* Readouts sit in the margin just outside the frame's corners. */
+      .readout {
+        position: absolute;
+        margin: 0;
+        font-size: 10px;
+        white-space: nowrap;
+        pointer-events: auto;
+      }
+
+      .readout.tl {
+        left: 0;
+        bottom: calc(100% + 7px);
+      }
+
+      .readout.tr {
+        right: 0;
+        bottom: calc(100% + 7px);
+      }
+
+      .readout.bl {
+        left: 0;
+        top: calc(100% + 7px);
+      }
+
+      .readout.br {
+        right: 0;
+        top: calc(100% + 5px);
+      }
+
+      .readout .state {
+        display: inline-block;
+        transition:
+          opacity 300ms,
+          transform 300ms var(--ease);
+      }
+
+      .readout .warn {
+        color: var(--sodium);
+      }
+
+      .locked .readout .warn {
+        color: var(--glint);
+      }
+
+      /* The frame's own Lock In switch, a readout you can press. */
+      .session {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0;
+        font: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        color: var(--faint);
+      }
+
+      .session:hover {
+        color: var(--dim);
+      }
+
+      .mini-track {
+        position: relative;
+        width: 24px;
+        height: 12px;
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+      }
+
+      .mini-track::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--sodium);
+        transition: transform 500ms var(--spring);
+      }
+
+      .locked .mini-track::after {
+        transform: translateX(12px);
+        background: var(--glow);
+        box-shadow: 0 0 6px var(--glow);
+      }
+
+      /* ── Top nav: links with dot separators and the mark in the middle ─────────── */
+
+      .topnav {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--top);
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        padding: 0 clamp(16px, 4vw, 64px);
+        pointer-events: auto;
+      }
+
+      .topnav ul {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .topnav li + li::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 4px;
+        margin-right: clamp(16px, 4vw, 56px);
+        border-radius: 50%;
+        background: var(--dim);
+        vertical-align: middle;
+        opacity: 0.7;
+      }
+
+      .topnav a {
+        font: 600 11px var(--mono);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: var(--dim);
+        transition: color 200ms;
+      }
+
+      .topnav a:hover {
+        color: var(--starlight);
+      }
+
+      .mark {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 0 clamp(16px, 4vw, 56px);
+        text-decoration: none;
+      }
+
+      .mark svg {
+        width: 34px;
+        height: 34px;
+        filter: drop-shadow(0 0 10px rgb(245 200 107 / 0.55));
+      }
+
+      .mark .brand {
+        font-size: 11px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid var(--glow);
+      }
+
+      /* ── The constellation navigator ───────────────────────────────────────────── */
+
+      .navigator {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        width: min(620px, calc(100% - 48px));
+        height: 76px;
+        transform: translateX(-50%);
+        pointer-events: auto;
+      }
+
+      .navigator .seg {
+        position: absolute;
+        height: 1px;
+        transform-origin: 0 50%;
+        background: rgb(220 228 255 / 0.12);
+      }
+
+      .navigator .seg b {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, var(--starlight), var(--glow));
+        transform-origin: 0 50%;
+        transform: scaleX(0);
+      }
+
+      .navigator button {
+        position: absolute;
+        width: 44px;
+        height: 44px;
+        margin: -22px 0 0 -22px;
+        padding: 0;
+        border-radius: 50%;
+      }
+
+      /* The star itself, faint until you reach its section. */
+      .navigator button i {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 9px;
+        height: 9px;
+        margin: -4.5px;
+        border-radius: 50%;
+        border: 1px solid var(--faint);
+        background: var(--sky);
+        transition:
+          transform 500ms var(--spring),
+          background-color 400ms,
+          border-color 400ms,
+          box-shadow 400ms;
+      }
+
+      .navigator button.reached i {
+        border-color: var(--starlight);
+        background: var(--starlight);
+      }
+
+      .navigator button[aria-current='true'] i {
+        transform: scale(1.35);
+        border-color: var(--glow);
+        background: var(--glow);
+        box-shadow:
+          0 0 10px var(--glow),
+          0 0 24px rgb(245 200 107 / 0.5);
+      }
+
+      .navigator button span {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font: 600 9.5px var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--faint);
+        white-space: nowrap;
+        transition: color 300ms;
+      }
+
+      .navigator button.up span {
+        bottom: 34px;
+      }
+
+      .navigator button.down span {
+        top: 34px;
+      }
+
+      .navigator button.reached span {
+        color: var(--dim);
+      }
+
+      .navigator button[aria-current='true'] span {
+        color: var(--glow);
+      }
+
+      /* ── The scrolling sections, inside the frame ──────────────────────────────── */
+
+      #scroller {
+        position: fixed;
+        top: calc(var(--m) + var(--top));
+        bottom: calc(var(--m) + var(--bottom));
+        left: calc(var(--m) + 1px);
+        right: calc(var(--m) + 1px);
+        z-index: 1;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scroll-snap-type: y proximity;
+        scrollbar-width: none;
+        mask-image: linear-gradient(transparent, #000 36px, #000 calc(100% - 36px), transparent);
+      }
+
+      #scroller::-webkit-scrollbar {
+        display: none;
+      }
+
+      section {
+        position: relative;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 40px clamp(16px, 6vw, 96px);
+        scroll-snap-align: start;
+      }
+
+      /* Text straight on the sky gets a soft dark shadow, so it reads over the haze too. */
+      .kicker,
+      h2,
+      .lede,
+      .source,
+      .rules,
+      .aside {
+        text-shadow: 0 1px 14px rgb(8 11 22 / 0.85);
+      }
+
+      .kicker {
+        margin: 0 0 14px;
+        color: var(--dim);
+      }
+
+      .kicker b {
+        color: var(--glow);
+      }
+
+      h2 {
+        margin: 0 0 16px;
+        font-weight: 400;
+        font-size: clamp(28px, 3.2vw, 44px);
+        line-height: 1.1;
+        letter-spacing: -0.015em;
+        max-width: 20ch;
+      }
+
+      .lede {
+        margin: 0 0 24px;
+        max-width: 58ch;
+        color: var(--dim);
+        font-size: clamp(16px, 1.4vw, 18px);
+      }
+
+      /* Section content rises in the first time you reach it. */
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 900ms var(--ease) var(--d, 0ms),
+          transform 900ms var(--ease) var(--d, 0ms);
+      }
+
+      .seen .reveal {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* ── Hero ──────────────────────────────────────────────────────────────────── */
+
+      .hero {
+        align-items: center;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .hero > :not(.noise) {
+        position: relative;
+        z-index: 1;
+      }
+
+      .eyebrow {
+        margin: 0;
+        font: 700 clamp(14px, 1.8vw, 22px) var(--sans);
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--starlight);
+      }
+
+      /* The wordmark: two copies with different gradients, the top one slowly fading in and out,
+         so the colors drift without animating anything but opacity. */
+      .wordmark {
+        position: relative;
+        margin: 0.02em 0 0.04em;
+        font: 800 min(14vw, 24vh) / 0.92 var(--sans);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding-left: 0.04em;
+        white-space: nowrap;
+        filter: drop-shadow(0 0 28px rgb(245 200 107 / 0.18));
+      }
+
+      /* Washed out by the haze, bright once you lock in. */
+      .dim {
+        opacity: 0.55;
+        transition: opacity 1.8s var(--drift);
+      }
+
+      .locked .dim {
+        opacity: 1;
+      }
+
+      .wordmark span {
+        display: block;
+        color: transparent;
+        -webkit-background-clip: text;
+        background-clip: text;
+        background-image: linear-gradient(
+          100deg,
+          var(--starlight) 5%,
+          var(--glow) 38%,
+          var(--rose) 66%,
+          var(--lavender) 95%
+        );
+      }
+
+      .wordmark span + span {
+        position: absolute;
+        inset: 0;
+        padding-left: inherit;
+        background-image: linear-gradient(
+          100deg,
+          var(--lavender) 5%,
+          var(--rose) 30%,
+          var(--glow) 60%,
+          var(--starlight) 95%
+        );
+        animation: drift-colors 14s ease-in-out infinite alternate;
+      }
+
+      @keyframes drift-colors {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .tagline {
+        align-self: center;
+        max-width: 40ch;
+        margin: 6px 0 28px;
+        color: var(--starlight);
+        font-size: clamp(16px, 1.6vw, 20px);
+        font-weight: 300;
+        line-height: 1.45;
+        text-shadow: 0 1px 12px rgb(8 11 22 / 0.9);
+      }
+
+      /* The big Lock In switch. */
+      .switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 22px 10px 12px;
+        border-radius: 999px;
+        border: 1px solid rgb(255 154 82 / 0.45);
+        background: rgb(8 11 22 / 0.72);
+        box-shadow: 0 0 30px rgb(255 154 82 / 0.18);
+        text-align: left;
+        transition:
+          border-color 800ms,
+          box-shadow 800ms,
+          transform 180ms var(--ease);
+      }
+
+      .switch:active {
+        transform: scale(0.98);
+      }
+
+      .locked .switch {
+        border-color: rgb(245 200 107 / 0.55);
+        box-shadow: 0 0 40px rgb(245 200 107 / 0.25);
+      }
+
+      .track {
+        position: relative;
+        flex: none;
+        width: 64px;
+        height: 34px;
+        border-radius: 17px;
+        background: rgb(255 154 82 / 0.16);
+        border: 1px solid rgb(255 154 82 / 0.5);
+        transition:
+          background-color 600ms,
+          border-color 600ms;
+      }
+
+      .track::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--sodium);
+        box-shadow: 0 0 14px rgb(255 154 82 / 0.7);
+        transition:
+          transform 700ms var(--spring),
+          background-color 600ms,
+          box-shadow 600ms;
+      }
+
+      .locked .track {
+        background: rgb(245 200 107 / 0.14);
+        border-color: rgb(245 200 107 / 0.6);
+      }
+
+      .locked .track::after {
+        transform: translateX(30px);
+        background: var(--glow);
+        box-shadow: 0 0 18px var(--glow);
+      }
+
+      .switch strong {
+        display: block;
+        font: 700 13px var(--mono);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .switch small {
+        display: block;
+        color: var(--dim);
+        font-size: 13px;
+      }
+
+      /* Distractions crowding the edges: original mock UI, saturated and jittery. Locking in
+         pushes them out past the edges, each in turn, with a little pull back first. */
+      .noise {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .n {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        transform: translate(-50%, -50%) scale(0.7);
+        opacity: 0;
+        transition:
+          transform 800ms var(--spring) calc(var(--lead, 400ms) + var(--i) * 55ms),
+          opacity 400ms calc(var(--lead, 400ms) + var(--i) * 55ms);
+      }
+
+      /* They pop in shortly after the page loads, and spring back in if you unlock. */
+      .ready .n {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+
+      .ready.locked .n {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.8) rotate(var(--r, 8deg));
+        transition:
+          transform 1100ms cubic-bezier(0.5, -0.45, 0.75, 0.2) calc(var(--i) * 45ms),
+          opacity 600ms ease-in calc(400ms + var(--i) * 45ms);
+      }
+
+      .jit {
+        animation: jitter var(--j, 0.9s) steps(2, jump-none) infinite;
+      }
+
+      @keyframes jitter {
+        0%,
+        100% {
+          transform: translate(0, 0) rotate(0);
+        }
+        25% {
+          transform: translate(1.5px, -1px) rotate(-0.6deg);
+        }
+        50% {
+          transform: translate(-1px, 1.5px) rotate(0.4deg);
+        }
+        75% {
+          transform: translate(1px, 1px) rotate(0.2deg);
+        }
+      }
+
+      .reel {
+        width: 82px;
+        height: 146px;
+        border-radius: 12px;
+        background:
+          radial-gradient(circle at 50% 46%, rgb(255 255 255 / 0.9) 0 9px, transparent 10px),
+          linear-gradient(160deg, #ff3d6e, #ff7a1a 60%, #ffdd00);
+        box-shadow: 0 0 34px rgb(255 61 110 / 0.5);
+        position: relative;
+      }
+
+      .reel::after {
+        content: '1.2M ▸';
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        font: 700 10px var(--sans);
+        color: #fff;
+      }
+
+      .reel.b {
+        background:
+          radial-gradient(circle at 50% 46%, rgb(255 255 255 / 0.9) 0 9px, transparent 10px),
+          linear-gradient(200deg, #19d3ff, #6b4bff 55%, #ff3d6e);
+        box-shadow: 0 0 34px rgb(25 211 255 / 0.45);
+      }
+
+      .post {
+        width: 200px;
+        padding: 12px;
+        border-radius: 12px;
+        background: #f7f3ff;
+        color: #1a1530;
+        font: 12px/1.35 var(--sans);
+        box-shadow: 0 0 30px rgb(255 255 255 / 0.25);
+      }
+
+      .post header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-weight: 700;
+      }
+
+      .post header::before {
+        content: '';
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ffdd00, #ff3d6e);
+      }
+
+      .post p {
+        margin: 0 0 8px;
+      }
+
+      .post footer {
+        color: #ff2b45;
+        font-weight: 700;
+      }
+
+      .badge {
+        display: grid;
+        place-items: center;
+        min-width: 34px;
+        height: 34px;
+        padding: 0 8px;
+        border-radius: 17px;
+        background: #ff2b45;
+        color: #fff;
+        font: 800 14px var(--sans);
+        box-shadow: 0 0 22px rgb(255 43 69 / 0.75);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        50% {
+          opacity: 0.7;
+          transform: scale(1.08);
+        }
+      }
+
+      .pill {
+        padding: 9px 14px;
+        border-radius: 999px;
+        background: #ffdd00;
+        color: #1a1530;
+        font: 800 12px var(--sans);
+        white-space: nowrap;
+        box-shadow: 0 0 26px rgb(255 221 0 / 0.45);
+      }
+
+      .pill.live {
+        background: #ff2b45;
+        color: #fff;
+        box-shadow: 0 0 26px rgb(255 43 69 / 0.5);
+      }
+
+      .pill.cyan {
+        background: #19d3ff;
+        box-shadow: 0 0 26px rgb(25 211 255 / 0.45);
+      }
+
+      .thumb {
+        width: 170px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #1a1530;
+        color: #fff;
+        font: 700 11px var(--sans);
+        box-shadow: 0 0 30px rgb(255 122 26 / 0.45);
+      }
+
+      .thumb div {
+        height: 92px;
+        background: linear-gradient(120deg, #ff7a1a, #ff3d6e 50%, #6b4bff);
+        position: relative;
+      }
+
+      .thumb div::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 62%;
+        height: 3px;
+        background: #ff2b45;
+      }
+
+      .thumb p {
+        margin: 0;
+        padding: 7px 9px;
+      }
+
+      /* ── Tame, don't block: the level picker and a mock video site ─────────────── */
+
+      .two {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: clamp(24px, 4vw, 64px);
+        align-items: center;
+      }
+
+      .levels {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        margin-bottom: 16px;
+        padding: 4px;
+      }
+
+      .levels button {
+        position: relative;
+        z-index: 1;
+        min-height: 40px;
+        padding: 0 6px;
+        border-radius: 2px;
+        font: 600 10.5px var(--mono);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--dim);
+        transition: color 300ms;
+      }
+
+      .levels button[aria-pressed='true'] {
+        color: #1a1408;
+      }
+
+      .levels .pill-bg {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        left: 4px;
+        width: calc((100% - 8px) / 4);
+        border-radius: 2px;
+        background: var(--glow);
+        box-shadow: 0 0 18px rgb(245 200 107 / 0.35);
+        transition: transform 450ms var(--spring);
+      }
+
+      .level-text {
+        min-height: 6.5em;
+        padding: 14px 18px;
+      }
+
+      .level-text h3 {
+        margin: 0 0 6px;
+        font: 600 12px var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--glow);
+      }
+
+      .level-text p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 15px;
+      }
+
+      .level-text .swap {
+        transition:
+          opacity 220ms,
+          transform 220ms var(--ease);
+      }
+
+      .level-text.out .swap {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+
+      .rules {
+        margin: 16px 0 0;
+        color: var(--dim);
+        font-size: 14px;
+        max-width: 52ch;
+      }
+
+      /* A made-up video site. */
+      .site {
+        overflow: hidden;
+        padding: 0;
+      }
+
+      .site .bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .site .bar i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgb(220 228 255 / 0.18);
+      }
+
+      .site .bar span {
+        margin-left: 8px;
+        font: 10px var(--mono);
+        color: var(--faint);
+      }
+
+      .site .page {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .player {
+        aspect-ratio: 16 / 9;
+        border-radius: 6px;
+        background:
+          radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.85) 0 12px, transparent 13px),
+          linear-gradient(135deg, #2b3566, #4a3a6e 60%, #6d4a6e);
+      }
+
+      .lines i {
+        display: block;
+        height: 7px;
+        margin-top: 8px;
+        border-radius: 4px;
+        background: rgb(220 228 255 / 0.16);
+      }
+
+      .lines i:nth-child(2) {
+        width: 70%;
+      }
+
+      .lines i:nth-child(3) {
+        width: 85%;
+        background: rgb(220 228 255 / 0.1);
+      }
+
+      .hideable {
+        position: relative;
+      }
+
+      .hideable > .stuff {
+        transition:
+          opacity 500ms var(--ease),
+          transform 500ms var(--ease);
+      }
+
+      .hideable > .ghost {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        border: 1px dashed rgb(220 228 255 / 0.18);
+        border-radius: 6px;
+        font: 9.5px var(--mono);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--faint);
+        opacity: 0;
+        transition: opacity 400ms var(--ease) 200ms;
+      }
+
+      [data-level='tamed'] .hideable > .stuff {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+
+      [data-level='tamed'] .hideable > .ghost {
+        opacity: 1;
+      }
+
+      .shorts {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .shorts i {
+        aspect-ratio: 9 / 14;
+        border-radius: 5px;
+        background: linear-gradient(160deg, #ff3d6e, #ff7a1a);
+      }
+
+      .shorts i:nth-child(2n) {
+        background: linear-gradient(200deg, #19d3ff, #6b4bff);
+      }
+
+      .upnext {
+        display: grid;
+        gap: 8px;
+      }
+
+      .upnext i {
+        display: block;
+        aspect-ratio: 16 / 9;
+        border-radius: 5px;
+        background: linear-gradient(120deg, #ff7a1a, #ff3d6e 60%, #6b4bff);
+      }
+
+      .upnext i:nth-child(2n) {
+        background: linear-gradient(120deg, #ffdd00, #ff7a1a);
+      }
+
+      .label {
+        font: 9.5px var(--mono);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--faint);
+        margin: 10px 0 0;
+      }
+
+      /* The redirected and restricted levels cover the page. */
+      .cover {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        align-content: center;
+        gap: 8px;
+        padding: 20px;
+        text-align: center;
+        background: radial-gradient(80% 60% at 50% 120%, rgb(120 92 150 / 0.3), transparent), rgb(9 12 26 / 0.97);
+        opacity: 0;
+        transform: scale(1.02);
+        pointer-events: none;
+        transition:
+          opacity 500ms var(--ease),
+          transform 500ms var(--ease);
+      }
+
+      [data-level='redirected'] .cover.redirect,
+      [data-level='restricted'] .cover.restrict {
+        opacity: 1;
+        transform: none;
+      }
+
+      .cover strong {
+        font-weight: 400;
+        font-size: 20px;
+      }
+
+      .cover p {
+        margin: 0;
+        max-width: 34ch;
+        color: var(--dim);
+        font-size: 13px;
+      }
+
+      /* ── The redirect page ──────────────────────────────────────────────────────── */
+
+      .pause-card {
+        padding: 28px;
+        max-width: 460px;
+        width: 100%;
+        justify-self: center;
+      }
+
+      .pause-card .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 22px;
+      }
+
+      .dest {
+        padding: 3px 8px;
+        border: 1px solid var(--line-strong);
+        border-radius: 2px;
+      }
+
+      .pause-card h3 {
+        margin: 0 0 6px;
+        font-weight: 400;
+        font-size: 24px;
+      }
+
+      .pause-card .sub {
+        margin: 0 0 18px;
+        color: var(--dim);
+        font-size: 14px;
+      }
+
+      .clock {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .clock .time {
+        font: 300 40px var(--mono);
+        letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .progress {
+        height: 2px;
+        margin-bottom: 22px;
+        background: rgb(220 228 255 / 0.1);
+        overflow: hidden;
+      }
+
+      .progress b {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, var(--glow), var(--rose));
+        transform-origin: 0 50%;
+        transition: transform 1s linear;
+      }
+
+      .plan {
+        margin: 0 0 16px;
+        padding: 12px 14px;
+        border-left: 1px solid var(--glow);
+        background: rgb(245 200 107 / 0.05);
+        font-size: 15px;
+      }
+
+      .plan .mono {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .links {
+        display: grid;
+        gap: 6px;
+        margin: 0 0 22px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .links li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        font-size: 14px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .actions .btn[disabled] {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .pause-note {
+        min-height: 1.5em;
+        margin: 12px 0 0;
+        color: var(--dim);
+        font-size: 14px;
+        transition: opacity 400ms;
+      }
+
+      .source {
+        margin: 22px 0 0;
+        max-width: 52ch;
+        color: var(--dim);
+        font-size: 13px;
+      }
+
+      .source b {
+        color: var(--dim);
+        font-weight: 500;
+      }
+
+      /* ── The night sky, in the app ──────────────────────────────────────────────── */
+
+      .orrery {
+        position: relative;
+        width: min(340px, 80vw);
+        aspect-ratio: 1;
+        justify-self: center;
+      }
+
+      .planet {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 42%;
+        aspect-ratio: 1;
+        transform: translate(-50%, -50%);
+      }
+
+      .planet .globe {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        overflow: hidden;
+        background: radial-gradient(circle at 34% 30%, #f7dcae, #d59a6a 38%, #7a4a5a 72%, #24182c);
+        box-shadow:
+          0 0 50px rgb(245 200 107 / 0.25),
+          inset -14px -10px 30px rgb(10 8 20 / 0.6);
+      }
+
+      /* Bands that turn slowly with the planet. */
+      .planet .globe::before {
+        content: '';
+        position: absolute;
+        inset: 0 -100% 0 0;
+        background: repeating-linear-gradient(
+          172deg,
+          rgb(255 240 220 / 0.1) 0 7px,
+          transparent 7px 13px,
+          rgb(90 40 60 / 0.16) 13px 17px,
+          transparent 17px 24px
+        );
+        animation: spin 40s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: translateX(-50%);
+        }
+      }
+
+      .ring {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 190%;
+        height: 44%;
+        margin: -22% 0 0 -95%;
+        border-radius: 50%;
+        border: 2px solid rgb(220 228 255 / 0.32);
+        box-shadow: 0 0 12px rgb(220 228 255 / 0.12);
+        transform: rotate(-18deg);
+      }
+
+      .ring.front {
+        clip-path: inset(50% 0 0 0);
+        z-index: 1;
+      }
+
+      .orbit {
+        position: absolute;
+        inset: 6%;
+        border-radius: 50%;
+        border: 1px dashed rgb(220 228 255 / 0.08);
+        animation: orbit var(--t) linear infinite;
+      }
+
+      .orbit::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: -4px;
+        width: var(--s, 7px);
+        height: var(--s, 7px);
+        border-radius: 50%;
+        background: var(--c, var(--glint));
+        box-shadow: 0 0 10px var(--c, var(--glint));
+      }
+
+      .orbit.moon {
+        --t: 24s;
+        --s: 10px;
+        --c: #c9c3d8;
+      }
+
+      .orbit.sat {
+        inset: -2%;
+        --t: 46s;
+        --s: 5px;
+        --c: var(--glow);
+        animation-direction: reverse;
+      }
+
+      @keyframes orbit {
+        to {
+          transform: rotate(1turn);
+        }
+      }
+
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .facts li {
+        padding: 16px 18px;
+      }
+
+      .facts h3 {
+        margin: 0 0 6px;
+        font: 600 11px var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--glow);
+      }
+
+      .facts p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 14.5px;
+      }
+
+      kbd {
+        padding: 1px 5px;
+        border: 1px solid var(--line-strong);
+        border-radius: 3px;
+        font: 12px var(--mono);
+        color: var(--starlight);
+      }
+
+      .aside {
+        margin: 16px 0 0;
+        color: var(--dim);
+        font-size: 14px;
+      }
+
+      /* ── Privacy ────────────────────────────────────────────────────────────────── */
+
+      .promises {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: 0 0 20px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .promises li {
+        padding: 18px 20px;
+      }
+
+      .promises strong {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      .promises p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 14.5px;
+      }
+
+      .textlink {
+        color: var(--glow);
+        text-decoration: none;
+        font: 600 11px var(--mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .textlink:hover {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+
+      /* ── Install ────────────────────────────────────────────────────────────────── */
+
+      .get {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .get > div {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 22px;
+      }
+
+      .get h3 {
+        margin: 0;
+        font-weight: 400;
+        font-size: 22px;
+      }
+
+      .get p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 14.5px;
+      }
+
+      .get .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 8px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1px dashed var(--line-strong);
+        border-radius: 4px;
+      }
+
+      .status::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--glow);
+        box-shadow: 0 0 6px var(--glow);
+        animation: breathe 3s ease-in-out infinite;
+      }
+
+      @keyframes breathe {
+        50% {
+          opacity: 0.35;
+        }
+      }
+
+      .fine {
+        color: var(--faint);
+        font-size: 13px;
+      }
+
+      .site-footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 22px;
+        align-items: center;
+        margin-top: 30px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .site-footer a {
+        color: var(--faint);
+        text-decoration: none;
+      }
+
+      .site-footer a:hover {
+        color: var(--starlight);
+      }
+
+      .site-footer .support {
+        margin-left: auto;
+      }
+
+      /* The mock-ups' back link, moved to the top margin so it's clear of the corner readouts. */
+      .proto-bar {
+        left: 50%;
+        top: 3px;
+        bottom: auto;
+        padding: 3px 8px;
+        transform: translateX(-50%);
+      }
+
+      /* ── Phones: a thin inset frame, no corner readouts, a compact navigator ────── */
+
+      @media (max-width: 900px) {
+        .two,
+        .promises,
+        .get {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .wide-only {
+          display: none;
+        }
+      }
+
+      @media (max-width: 700px) {
+        :root {
+          --m: 10px;
+          --top: 64px;
+          --bottom: 74px;
+        }
+
+        .topnav ul,
+        .readout.tl,
+        .readout.tr,
+        .readout.bl,
+        .readout.br {
+          display: none;
+        }
+
+        .topnav {
+          grid-template-columns: 1fr;
+          justify-items: center;
+        }
+
+        .mark {
+          flex-direction: row;
+          gap: 8px;
+        }
+
+        .mark svg {
+          width: 22px;
+          height: 22px;
+        }
+
+        .mark .brand {
+          padding-bottom: 3px;
+        }
+
+        .navigator {
+          bottom: 6px;
+          width: calc(100% - 24px);
+          height: 62px;
+        }
+
+        .navigator button span {
+          font-size: 8.5px;
+          letter-spacing: 0.1em;
+        }
+
+        .navigator button.up span {
+          bottom: 30px;
+        }
+
+        .navigator button.down span {
+          top: 30px;
+        }
+
+        section {
+          padding: 40px 18px;
+        }
+
+        .wordmark {
+          font-size: 14.5vw;
+        }
+
+        .noise {
+          opacity: 0.75;
+        }
+
+        .n {
+          scale: 0.72;
+        }
+
+        /* Out of the way of the tagline on a tall, narrow screen. */
+        .n.m-low {
+          top: 79%;
+        }
+
+        .n.m-high {
+          top: 26%;
+        }
+
+        .switch {
+          padding-right: 16px;
+        }
+
+        .levels button {
+          font-size: 9px;
+          letter-spacing: 0.04em;
+        }
+
+        .facts {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .site .page {
+          grid-template-columns: 1fr;
+        }
+
+        .site .upnext {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .site-footer .support {
+          margin-left: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .wordmark span + span {
+          opacity: 0.5;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <div class="nebulae" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+    <div class="frame">
+      <div class="line hazy"></div>
+      <div class="line clear"></div>
+      <div class="ticks"></div>
+
+      <p class="readout mono tl">Local <b id="clock">--:--</b></p>
+      <p class="readout mono tr">Seeing · <b class="warn state" id="seeing">Hazy</b></p>
+      <p class="readout mono bl">Sky · <b class="warn state" id="skystate">Light-polluted</b></p>
+      <p class="readout mono br">
+        <button class="session" role="switch" aria-checked="false" data-switch>
+          <span class="mini-track" aria-hidden="true"></span>
+          <span>Session · <b class="state" id="session">Off</b></span>
+        </button>
+      </p>
+
+      <nav class="topnav" aria-label="Sections">
+        <ul>
+          <li><a href="#tame">How it works</a></li>
+          <li><a href="#sky-section">The sky</a></li>
+        </ul>
+        <a class="mark" href="#top" aria-label="Lock In, back to the top">
+          <svg viewBox="28 28 72 72" aria-hidden="true">
+            <path d="M64 30 Q67.5 60.5 98 64 Q67.5 67.5 64 98 Q60.5 67.5 30 64 Q60.5 60.5 64 30 Z" fill="#f5c86b" />
+          </svg>
+          <span class="brand">Lock In</span>
+        </a>
+        <ul>
+          <li><a href="#privacy">Privacy</a></li>
+          <li><a href="#install">Install</a></li>
+        </ul>
+      </nav>
+
+      <nav class="navigator" aria-label="Sections, as a constellation"></nav>
+    </div>
+
+    <main id="scroller">
+      <section class="hero" id="top" data-name="Home">
+        <div class="noise" aria-hidden="true">
+          <div class="n" style="--x: 7%; --y: 18%; --i: 0; --r: -14deg">
+            <div class="jit reel" style="--j: 0.7s"></div>
+          </div>
+          <div class="n" style="--x: 15%; --y: 7%; --i: 1"><div class="jit badge" style="--j: 0.5s">99+</div></div>
+          <div class="n m-low" style="--x: 9%; --y: 54%; --i: 2">
+            <div class="jit post" style="--j: 1.1s">
+              <header>everyone_now</header>
+              <p>You won't believe what happened next. Thread</p>
+              <footer>♥ 48K · 3.1K replies</footer>
+            </div>
+          </div>
+          <div class="n" style="--x: 10%; --y: 88%; --i: 3">
+            <div class="jit pill" style="--j: 0.8s">Trending now</div>
+          </div>
+          <div class="n wide-only" style="--x: 24%; --y: 74%; --i: 4">
+            <div class="jit thumb" style="--j: 1.3s">
+              <div></div>
+              <p>Up next · Autoplay in 3</p>
+            </div>
+          </div>
+          <div class="n" style="--x: 92%; --y: 15%; --i: 5; --r: 12deg">
+            <div class="jit reel b" style="--j: 0.6s"></div>
+          </div>
+          <div class="n wide-only" style="--x: 80%; --y: 8%; --i: 6">
+            <div class="jit pill cyan" style="--j: 0.9s">Suggested for you</div>
+          </div>
+          <div class="n m-high" style="--x: 90%; --y: 55%; --i: 7">
+            <div class="jit post" style="--j: 1s">
+              <header>daily.drama</header>
+              <p>Everyone is talking about this. Are you?</p>
+              <footer>♥ 12K · Reposted</footer>
+            </div>
+          </div>
+          <div class="n" style="--x: 82%; --y: 36%; --i: 8"><div class="jit badge" style="--j: 0.45s">12</div></div>
+          <div class="n" style="--x: 86%; --y: 88%; --i: 9">
+            <div class="jit pill live" style="--j: 0.7s">● LIVE · New messages (7)</div>
+          </div>
+          <div class="n wide-only" style="--x: 64%; --y: 92%; --i: 10">
+            <div class="jit badge" style="--j: 0.55s">3</div>
+          </div>
+          <div class="n wide-only" style="--x: 74%; --y: 74%; --i: 11">
+            <div class="jit thumb" style="--j: 1.2s">
+              <div></div>
+              <p>Because you watched…</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="eyebrow reveal" style="--d: 0ms">A free, open-source focus app</p>
+        <div class="reveal" style="--d: 120ms">
+          <h1 class="wordmark dim" aria-label="Lock In">
+            <span aria-hidden="true">Lock In</span><span aria-hidden="true">Lock In</span>
+          </h1>
+        </div>
+        <p class="tagline reveal" style="--d: 240ms">
+          Social media is light pollution: when you lock in, the noise fades and you can finally see the stars.
+        </p>
+        <div class="reveal" style="--d: 360ms">
+          <button class="switch" role="switch" aria-checked="false" data-switch>
+            <span class="track" aria-hidden="true"></span>
+            <span>
+              <strong>Lock in</strong>
+              <small id="switch-note">Flip it. The sky is light-polluted.</small>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section id="tame" data-name="Tame">
+        <div class="two">
+          <div>
+            <p class="kicker mono reveal"><b>01</b> · Tame, don't just block</p>
+            <h2 class="reveal" style="--d: 80ms">Four levels, a profile for each kind of focus</h2>
+            <p class="lede reveal" style="--d: 160ms">
+              Most blockers treat a site as all or nothing. Lock In gives every site one of four levels, chosen per
+              session profile. Try them on this made-up video site.
+            </p>
+            <div class="levels hud reveal" style="--d: 240ms" role="group" aria-label="Level for this site">
+              <span class="pill-bg" aria-hidden="true"></span>
+              <button aria-pressed="true" data-level="allowed">Allowed</button>
+              <button aria-pressed="false" data-level="tamed">Tamed</button>
+              <button aria-pressed="false" data-level="redirected">Redirected</button>
+              <button aria-pressed="false" data-level="restricted">Restricted</button>
+            </div>
+            <div class="level-text hud reveal" style="--d: 300ms" aria-live="polite">
+              <div class="swap">
+                <h3 id="level-name">Allowed</h3>
+                <p id="level-desc">Nothing changes.</p>
+              </div>
+            </div>
+            <p class="rules reveal" style="--d: 360ms">
+              Page rules give part of a site its own level, like redirecting YouTube Shorts while the rest of YouTube is
+              tamed.
+            </p>
+          </div>
+
+          <div
+            class="site hud panel reveal"
+            style="--d: 200ms"
+            data-level="allowed"
+            aria-label="A made-up video site, showing the chosen level"
+            role="img"
+          >
+            <div class="bar"><i></i><i></i><i></i><span>video.example/watch</span></div>
+            <div class="page">
+              <div>
+                <div class="player"></div>
+                <div class="lines"><i></i><i></i><i></i></div>
+                <div class="hideable">
+                  <div class="stuff">
+                    <p class="label">Shorts</p>
+                    <div class="shorts"><i></i><i></i><i></i><i></i></div>
+                  </div>
+                  <div class="ghost">Hidden · Shorts</div>
+                </div>
+                <div class="lines"><i></i><i></i></div>
+              </div>
+              <div class="hideable">
+                <div class="stuff">
+                  <p class="label" style="margin-top: 0">Up next</p>
+                  <div class="upnext"><i></i><i></i><i></i></div>
+                </div>
+                <div class="ghost">Hidden · Up next</div>
+              </div>
+              <div class="cover redirect">
+                <span class="brand"><span>✦</span> Lock In</span>
+                <strong>Focus for five minutes first</strong>
+                <p>Then, if you still need video.example, take a few minutes on it.</p>
+              </div>
+              <div class="cover restrict">
+                <span class="brand"><span>✦</span> Lock In</span>
+                <strong>Restricted until the session ends</strong>
+                <p>No way through until then. It's back the moment your session is over.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pause" data-name="Pause">
+        <div class="two">
+          <div>
+            <p class="kicker mono reveal"><b>02</b> · The redirect page</p>
+            <h2 class="reveal" style="--d: 80ms">A pause before the scroll</h2>
+            <p class="lede reveal" style="--d: 160ms">
+              Visits to a redirected site go to a calm Lock In page first. Focus for five minutes, read your own if-then
+              plan, or open one of your links. If you still need the site once the wait is up, take a few minutes on it.
+              Or don't: <em>Not now</em> is always right there.
+            </p>
+            <p class="source reveal" style="--d: 240ms">
+              <b>Why a pause works.</b> In a six-week field study of a pause-before-opening app, people opened the apps
+              they chose 57% less. The easy way out mattered most; the wait helped too. (Grüning et al., 2023. One
+              study, so a modest finding.)
+            </p>
+          </div>
+
+          <div class="pause-card hud panel reveal" style="--d: 200ms">
+            <div class="top">
+              <span class="brand"><span>✦</span> Lock In</span>
+              <span class="dest mono">x.com/home</span>
+            </div>
+            <h3>Focus for five minutes first</h3>
+            <p class="sub">The countdown keeps going if you switch tabs.</p>
+            <div class="clock">
+              <span class="time" id="countdown">5:00</span>
+              <span class="mono">Writing · session</span>
+            </div>
+            <div class="progress"><b id="countbar"></b></div>
+            <p class="plan">
+              <span class="mono">Your if-then plan</span>
+              When I want to scroll, I'll write one paragraph first.
+            </p>
+            <ul class="links">
+              <li>My draft <span class="mono">docs.example.com</span></li>
+              <li>Reading list <span class="mono">example.com</span></li>
+            </ul>
+            <div class="actions">
+              <button class="btn ghost" id="not-now">Not now</button>
+              <button class="btn ghost" id="go" disabled>Open x.com in 5:00</button>
+            </div>
+            <p class="pause-note" id="pause-note" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sky-section" data-name="Sky">
+        <div class="two">
+          <div class="orrery reveal" aria-hidden="true">
+            <div class="orbit sat"></div>
+            <div class="planet">
+              <div class="ring"></div>
+              <div class="globe"></div>
+              <div class="ring front"></div>
+            </div>
+            <div class="orbit moon"></div>
+          </div>
+          <div>
+            <p class="kicker mono reveal"><b>03</b> · The desktop app</p>
+            <h2 class="reveal" style="--d: 80ms">A night sky that fills with your focus</h2>
+            <p class="lede reveal" style="--d: 160ms">
+              Outside a session, the app's sky is washed out by haze. When you lock in, it clears, and your new star
+              forms.
+            </p>
+            <ul class="facts">
+              <li class="hud reveal" style="--d: 200ms">
+                <h3>Stars</h3>
+                <p>Every session becomes a star in your profile's color. Longer sessions, bigger and brighter stars.</p>
+              </li>
+              <li class="hud reveal" style="--d: 260ms">
+                <h3>Constellations</h3>
+                <p>Each week's stars join into a constellation with a made-up name, which you can rename.</p>
+              </li>
+              <li class="hud reveal" style="--d: 320ms">
+                <h3>Planets</h3>
+                <p>Each month with focus grows a planet that takes shape as the hours add up. No two are alike.</p>
+              </li>
+              <li class="hud reveal" style="--d: 380ms">
+                <h3>Satellites</h3>
+                <p>
+                  A distracting thought goes into orbit with <kbd>Alt</kbd>+<kbd>P</kbd> from anywhere, and comes back
+                  when the session ends.
+                </p>
+              </li>
+            </ul>
+            <p class="aside reveal" style="--d: 440ms">
+              Missed days cost nothing: the sky never loses anything. Comets, meteor showers and auroras turn up now and
+              then, and nothing pops up to tell you.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy" data-name="Privacy">
+        <p class="kicker mono reveal"><b>04</b> · Private by design</p>
+        <h2 class="reveal" style="--d: 80ms">Nothing leaves your computer</h2>
+        <p class="lede reveal" style="--d: 160ms">
+          Lock In collects nothing. It has no accounts, no analytics, no ads, and no servers of its own.
+        </p>
+        <ul class="promises">
+          <li class="hud reveal" style="--d: 220ms">
+            <strong>Kept on your device</strong>
+            <p>Your profiles, sessions, history and sky stay in your browser and the app's data folder.</p>
+          </li>
+          <li class="hud reveal" style="--d: 280ms">
+            <strong>Linked locally</strong>
+            <p>
+              The extension and the app talk over your browser's Native Messaging, which never leaves your computer.
+            </p>
+          </li>
+          <li class="hud reveal" style="--d: 340ms">
+            <strong>No network at all</strong>
+            <p>Neither makes network requests. The source code is public, so you can check any of it.</p>
+          </li>
+        </ul>
+        <p class="reveal" style="--d: 400ms">
+          <a class="textlink" href="https://github.com/lock-in-focus-app/lock-in/blob/main/PRIVACY.md"
+            >Read the privacy policy ›</a
+          >
+        </p>
+      </section>
+
+      <section id="install" data-name="Install">
+        <p class="kicker mono reveal"><b>05</b> · Install</p>
+        <h2 class="reveal" style="--d: 80ms">Free, and yours to keep</h2>
+        <p class="lede reveal" style="--d: 160ms">
+          The app and the extension each work on their own. Install both and they link up by themselves.
+        </p>
+        <div class="get">
+          <div class="hud panel reveal" style="--d: 220ms">
+            <span class="mono">Desktop app · 0.1.0</span>
+            <h3>macOS and Linux</h3>
+            <p>A .dmg for macOS (Apple silicon and Intel), or a .deb or .AppImage for Linux.</p>
+            <p class="fine">
+              It isn't signed with a paid Apple account, so macOS asks once: open it, click Done, then System Settings ›
+              Privacy &amp; Security › Open Anyway.
+            </p>
+            <div class="row">
+              <a class="btn primary" href="https://github.com/lock-in-focus-app/lock-in/releases/latest"
+                >Download the app</a
+              >
+            </div>
+          </div>
+          <div class="hud panel reveal" style="--d: 300ms">
+            <span class="mono">Browser extension · 0.1.0</span>
+            <h3>Chrome and Firefox</h3>
+            <p>Also Brave, Edge, Arc and Zen. Tames, redirects and restricts sites during your sessions.</p>
+            <p class="fine">In review at both stores. Until it's listed, you can build it from the source.</p>
+            <div class="row">
+              <span class="status mono">Chrome Web Store · In review</span>
+              <span class="status mono">Firefox Add-ons · In review</span>
+            </div>
+          </div>
+        </div>
+        <footer class="site-footer mono reveal" style="--d: 360ms">
+          <a href="https://github.com/lock-in-focus-app/lock-in">GitHub</a>
+          <span>AGPL-3.0</span>
+          <a href="https://github.com/lock-in-focus-app/lock-in/blob/main/PRIVACY.md">Privacy</a>
+          <a class="support" href="https://ko-fi.com/sortelone">Support Lock In</a>
+        </footer>
+      </section>
+    </main>
+
+    <a class="proto-bar" href="./">‹ Mock-ups</a>
+
+    <script src="shared/sky.js"></script>
+    <script>
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const narrow = () => innerWidth < 700;
+      const scroller = document.getElementById('scroller');
+      const sections = [...scroller.querySelectorAll('section')];
+
+      // The constellation sits up and to the right, or across the top on a phone.
+      const placement = () => (narrow() ? { cx: 0.5, cy: 0.14, cs: 0.55 } : { cx: 0.76, cy: 0.2, cs: 0.28 });
+      const sky = LockSky(document.getElementById('sky'), {
+        haze: 1,
+        milky: 0,
+        constellation: 0,
+        seed: 5,
+        ...placement(),
+      });
+
+      // ── Locking in ─────────────────────────────────────────────────────────────
+      const switches = [...document.querySelectorAll('[data-switch]')];
+      const text = (id, value) => (document.getElementById(id).textContent = value);
+      let lockedAt = 0;
+
+      // Where each distraction flies to: straight out from the middle, past the edge.
+      function aimNoise() {
+        const hero = sections[0].getBoundingClientRect();
+        const far = Math.max(hero.width, hero.height) * 0.75;
+        for (const n of document.querySelectorAll('.n')) {
+          const x = parseFloat(n.style.getPropertyValue('--x')) / 100 - 0.5;
+          const y = parseFloat(n.style.getPropertyValue('--y')) / 100 - 0.5;
+          const len = Math.hypot(x, y) || 1;
+          n.style.setProperty('--dx', `${((x / len) * far).toFixed(0)}px`);
+          n.style.setProperty('--dy', `${((y / len) * far).toFixed(0)}px`);
+        }
+      }
+
+      function setLocked(on) {
+        document.body.classList.toggle('locked', on);
+        document.body.style.setProperty('--lead', '0ms');
+        for (const s of switches) s.setAttribute('aria-checked', String(on));
+        sky.set(on ? { haze: 0, constellation: 1, milky: 1 } : { haze: 1, constellation: 0, milky: 0 });
+        text('seeing', on ? 'Clear' : 'Hazy');
+        text('skystate', on ? 'Dark' : 'Light-polluted');
+        text('switch-note', on ? 'The noise is gone. Clear skies.' : 'Flip it. The sky is light-polluted.');
+        lockedAt = on ? Date.now() : 0;
+        tick();
+      }
+
+      for (const s of switches) {
+        s.addEventListener('click', () => setLocked(s.getAttribute('aria-checked') !== 'true'));
+      }
+
+      // The corner readouts: local time, and how long you've been locked in.
+      const pad = (n) => String(n).padStart(2, '0');
+      function tick() {
+        const now = new Date();
+        text('clock', `${pad(now.getHours())}:${pad(now.getMinutes())}`);
+        if (lockedAt) {
+          const s = Math.floor((Date.now() - lockedAt) / 1000);
+          text('session', `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`);
+        } else {
+          text('session', 'Off');
+        }
+      }
+      setInterval(tick, 1000);
+      tick();
+
+      // ── The constellation navigator ────────────────────────────────────────────
+      const navigator = document.querySelector('.navigator');
+      const heights = [0.66, 0.36, 0.7, 0.32, 0.64, 0.38];
+      const stars = sections.map((section, i) => {
+        const button = document.createElement('button');
+        button.className = heights[i] < 0.5 ? 'up' : 'down';
+        button.innerHTML = `<i></i><span>${section.dataset.name}</span>`;
+        button.addEventListener('click', () => go(i));
+        return button;
+      });
+      const segs = stars.slice(1).map(() => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.innerHTML = '<b></b>';
+        return seg;
+      });
+      navigator.append(...segs, ...stars);
+
+      function layoutNavigator() {
+        const w = navigator.clientWidth;
+        const h = navigator.clientHeight;
+        const pad = 26;
+        const points = stars.map((_, i) => [pad + (i / (stars.length - 1)) * (w - pad * 2), heights[i] * h]);
+        stars.forEach((star, i) => {
+          star.style.left = `${points[i][0]}px`;
+          star.style.top = `${points[i][1]}px`;
+        });
+        segs.forEach((seg, i) => {
+          const [x1, y1] = points[i];
+          const [x2, y2] = points[i + 1];
+          seg.style.left = `${x1}px`;
+          seg.style.top = `${y1}px`;
+          seg.style.width = `${Math.hypot(x2 - x1, y2 - y1)}px`;
+          seg.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)`;
+        });
+      }
+
+      function go(i) {
+        scroller.scrollTo({ top: sections[i].offsetTop, behavior: reduce ? 'auto' : 'smooth' });
+      }
+
+      for (const a of document.querySelectorAll('a[href^="#"]')) {
+        a.addEventListener('click', (e) => {
+          const i = sections.findIndex((s) => `#${s.id}` === a.getAttribute('href'));
+          if (i < 0) return;
+          e.preventDefault();
+          go(i);
+        });
+      }
+
+      // As you scroll, each line draws toward the next star, and the stars light up as you reach
+      // their sections. The sky and the nebulae drift a little slower than the page.
+      const nebulae = document.querySelector('.nebulae');
+      let queued = false;
+      function onScroll() {
+        queued = false;
+        const top = scroller.scrollTop;
+        const view = scroller.clientHeight;
+        const atEnd = top + view >= scroller.scrollHeight - 4;
+        const tops = sections.map((s) => s.offsetTop);
+        const at = top + view * 0.4;
+        let active = 0;
+        tops.forEach((t, i) => {
+          if (at >= t) active = i;
+        });
+        if (atEnd) active = sections.length - 1;
+        stars.forEach((star, i) => {
+          star.classList.toggle('reached', i <= active);
+          star.setAttribute('aria-current', String(i === active));
+        });
+        segs.forEach((seg, i) => {
+          const p = atEnd || i < active ? 1 : Math.min(1, Math.max(0, (at - tops[i]) / (tops[i + 1] - tops[i])));
+          seg.firstChild.style.transform = `scaleX(${p})`;
+        });
+        if (!reduce) {
+          sky.set({ shift: top * 0.25 });
+          nebulae.style.transform = `translateY(${(-top * 0.06).toFixed(1)}px)`;
+        }
+      }
+      scroller.addEventListener('scroll', () => {
+        if (!queued) {
+          queued = true;
+          requestAnimationFrame(onScroll);
+        }
+      });
+
+      // Wheel over the frame's bands still scrolls the sections.
+      addEventListener(
+        'wheel',
+        (e) => {
+          if (!scroller.contains(e.target)) scroller.scrollBy({ top: e.deltaY });
+        },
+        { passive: true },
+      );
+
+      // Each section's content rises in the first time you reach it.
+      const seen = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.classList.add('seen');
+            seen.unobserve(entry.target);
+            if (entry.target.id === 'pause') startCountdown();
+          }
+        },
+        { root: scroller, threshold: 0.25 },
+      );
+      sections.forEach((s) => seen.observe(s));
+
+      // ── The level picker ───────────────────────────────────────────────────────
+      const levels = {
+        allowed: ['Allowed', 'Nothing changes.'],
+        tamed: [
+          'Tamed',
+          'The site still works, but the distracting parts are hidden: feeds, trending, suggested and promoted posts. Optionally grayscale.',
+        ],
+        redirected: [
+          'Redirected',
+          'Visits go to a calm Lock In page first: focus for five minutes, read your if-then plan, or open one of your own links.',
+        ],
+        restricted: ['Restricted', 'Blocked, with no way through until the session ends.'],
+      };
+      const site = document.querySelector('.site');
+      const levelText = document.querySelector('.level-text');
+      const pill = document.querySelector('.levels .pill-bg');
+      const levelButtons = [...document.querySelectorAll('.levels button')];
+      levelButtons.forEach((button, i) => {
+        button.addEventListener('click', () => {
+          const level = button.dataset.level;
+          for (const b of levelButtons) b.setAttribute('aria-pressed', String(b === button));
+          pill.style.transform = `translateX(${i * 100}%)`;
+          site.dataset.level = level;
+          levelText.classList.add('out');
+          setTimeout(
+            () => {
+              text('level-name', levels[level][0]);
+              text('level-desc', levels[level][1]);
+              levelText.classList.remove('out');
+            },
+            reduce ? 0 : 220,
+          );
+        });
+      });
+
+      // ── The redirect page's five minutes ───────────────────────────────────────
+      let countdownStarted = false;
+      function startCountdown() {
+        if (countdownStarted) return;
+        countdownStarted = true;
+        const total = 300;
+        const started = Date.now();
+        const bar = document.getElementById('countbar');
+        const go = document.getElementById('go');
+        const step = () => {
+          const left = Math.max(0, total - Math.floor((Date.now() - started) / 1000));
+          const label = `${Math.floor(left / 60)}:${pad(left % 60)}`;
+          text('countdown', label);
+          bar.style.transform = `scaleX(${left / total})`;
+          go.textContent = left ? `Open x.com in ${label}` : 'Take a few minutes on x.com';
+          go.disabled = left > 0;
+          if (left) setTimeout(step, 1000);
+        };
+        step();
+      }
+      document.getElementById('not-now').addEventListener('click', () => {
+        text('pause-note', 'Back to what you were doing. On the real page, this closes the tab.');
+      });
+
+      // ── Layout ─────────────────────────────────────────────────────────────────
+      function layout() {
+        sky.set(placement());
+        layoutNavigator();
+        aimNoise();
+        onScroll();
+      }
+      new ResizeObserver(layout).observe(document.body);
+      layout();
+      // The hero rises in on load.
+      requestAnimationFrame(() => {
+        sections[0].classList.add('seen');
+        document.body.classList.add('ready');
+      });
+    </script>
+  </body>
+</html>

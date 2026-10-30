@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lock In · Website mock-ups</title>
+    <link rel="stylesheet" href="shared/theme.css" />
+    <style>
+      canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+      }
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 64px 24px 96px;
+      }
+      h1 {
+        margin: 18px 0 8px;
+        font-weight: 400;
+        font-size: clamp(28px, 4vw, 40px);
+        letter-spacing: -0.01em;
+      }
+      .lede {
+        max-width: 60ch;
+        margin: 0 0 40px;
+        color: var(--dim);
+      }
+      ol {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      li a {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        height: 100%;
+        padding: 24px;
+        text-decoration: none;
+        transition: transform 400ms var(--ease);
+      }
+      li a:hover {
+        transform: translateY(-3px);
+        --t: var(--tick-bright);
+      }
+      li a:hover::before {
+        border-color: var(--line-strong);
+      }
+      h2 {
+        margin: 0;
+        font-weight: 500;
+        font-size: 20px;
+      }
+      li p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 15px;
+      }
+      .open {
+        margin-top: auto;
+        padding-top: 8px;
+        color: var(--glow);
+      }
+      footer {
+        margin-top: 40px;
+        color: var(--faint);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <main>
+      <div class="brand"><span>✦</span> Lock In</div>
+      <h1>Website mock-ups</h1>
+      <p class="lede">
+        Three takes, and a fourth that mixes them, on the site from PLAN §10: a light-polluted sky full of distractions
+        that clears when you lock in. Same colors, frames and copy in each; they differ in layout and motion. They
+        aren't the site yet, just something to react to. Each one respects reduced motion.
+      </p>
+      <ol>
+        <li>
+          <a class="hud" href="a-the-switch.html">
+            <span class="mono">A</span>
+            <h2>The switch</h2>
+            <p>
+              PLAN §10 as written. A big Lock In switch in the middle of a noisy, glowing sky. Flip it and the
+              distractions spring away, the orange drains out and a constellation draws itself. Below, a calm scroll
+              where every section shows distracted, then focused.
+            </p>
+            <span class="mono open">Open ›</span>
+          </a>
+        </li>
+        <li>
+          <a class="hud" href="b-observatory.html">
+            <span class="mono">B</span>
+            <h2>Observatory</h2>
+            <p>
+              After your reference image. One framed screen with a huge glowing wordmark over drifting nebulae and
+              readouts in the corners. A constellation along the bottom is the navigation: each section is a star that
+              lights up as you reach it.
+            </p>
+            <span class="mono open">Open ›</span>
+          </a>
+        </li>
+        <li>
+          <a class="hud" href="c-drift.html">
+            <span class="mono">C</span>
+            <h2>Drift</h2>
+            <p>
+              Scrolling flies you forward through floating feeds and notifications, which puff out as you pass, into a
+              clear sky. Then the real screens float on glass cards that tilt under the pointer, with a try-it-yourself
+              demo of the four levels.
+            </p>
+            <span class="mono open">Open ›</span>
+          </a>
+        </li>
+        <li>
+          <a class="hud" href="d-together.html">
+            <span class="mono">D · The three together</span>
+            <h2>Together</h2>
+            <p>
+              B's frame, corner readouts and constellation navigation, with A's headline over B's distractions. C's
+              four-levels demo and install cards, glass that tilts under the pointer on every card, and A's fade-in.
+              Scrolling past the hero locks in.
+            </p>
+            <span class="mono open">Open ›</span>
+          </a>
+        </li>
+      </ol>
+      <footer>Made from the Open Design skills' motion and craft rules, in plain HTML, CSS and a canvas.</footer>
+    </main>
+    <script src="shared/sky.js"></script>
+    <script>
+      const sky = LockSky(document.getElementById('sky'), { haze: 0.7, milky: 1, cy: 0.18, cs: 0.3 });
+      setTimeout(() => sky.set({ haze: 0, constellation: 1 }), 300);
+    </script>
+  </body>
+</html>
