@@ -1,0 +1,251 @@
+/*
+ * The website mock-ups' shared look, taken from the apps' theme.css: the night-sky colors, the
+ * Observatory HUD's hairline frames with corner ticks, small mono readouts, and the two motion
+ * curves. Each mock-up adds its own layout on top.
+ */
+:root {
+  --sky: #0b1020;
+  --starlight: #f3f0e6;
+  --dim: #a9b1cc;
+  --faint: #7c84a3;
+  --glow: #f5c86b;
+  --glint: #dce4ff;
+  --line: rgb(220 228 255 / 0.1);
+  --line-strong: rgb(220 228 255 / 0.22);
+  --tick: color-mix(in srgb, var(--glint) 55%, transparent);
+  --tick-bright: color-mix(in srgb, var(--glint) 85%, transparent);
+  /* Star colors of the starter profiles, and the dusk glow at the bottom of the sky. */
+  --deep: #cfe0ff;
+  --lavender: #b9a7f5;
+  --dusk: rgb(120 92 150);
+  /* Light pollution: the sodium-lamp orange of a city sky, for the distracted states only. */
+  --sodium: #ff9a52;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --drift: cubic-bezier(0.45, 0, 0.2, 1);
+  --spring: linear(
+    0,
+    0.006,
+    0.025 2.8%,
+    0.101 6.1%,
+    0.539 18.9%,
+    0.721 25.3%,
+    0.849 31.5%,
+    0.937 38.1%,
+    0.968 41.8%,
+    0.991 45.7%,
+    1.006 50.1%,
+    1.015 55%,
+    1.017 63.9%,
+    1.001
+  );
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--sky);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The sky's canvas sits behind the body, so the body has no background of its own. */
+body {
+  margin: 0;
+  color: var(--starlight);
+  font: 16px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 1px solid var(--glow);
+  outline-offset: 3px;
+}
+
+/* The ✦ Lock In wordmark. */
+.brand {
+  font: 600 13px var(--mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand span {
+  color: var(--glow);
+}
+
+/* A small uppercase monospace readout, with the figures in it brighter. */
+.mono {
+  font: 11px/1.5 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.mono b {
+  color: var(--dim);
+  font-weight: 500;
+}
+
+/*
+ * A frame over the night sky, like an instrument's readout: a hairline border with bright corner
+ * ticks, drawn on a layer behind the content, over a dark tint (never a blur).
+ */
+.hud {
+  --t: var(--tick);
+  position: relative;
+  z-index: 0;
+  border-radius: 4px;
+}
+
+.hud::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(var(--t), var(--t)) top left / 9px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) top left / 1px 9px no-repeat,
+    linear-gradient(var(--t), var(--t)) top right / 9px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) top right / 1px 9px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom left / 9px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom left / 1px 9px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom right / 9px 1px no-repeat,
+    linear-gradient(var(--t), var(--t)) bottom right / 1px 9px no-repeat,
+    rgb(8 11 22 / 0.72);
+  transition:
+    border-color 400ms,
+    background-color 400ms;
+}
+
+/* The darker frame long reading sits in, with a glassy sheen and a lit top edge. */
+.hud.panel::before {
+  background-color: rgb(8 11 22 / 0.84);
+  box-shadow:
+    inset 0 1px 0 rgb(220 228 255 / 0.12),
+    inset 0 0 32px rgb(220 228 255 / 0.03),
+    0 12px 32px rgb(0 0 0 / 0.3);
+}
+
+.hud.panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgb(220 228 255 / 0.06), transparent 160px),
+    linear-gradient(115deg, transparent 30%, rgb(220 228 255 / 0.025) 42%, transparent 54%);
+}
+
+/* Buttons that say what they do. The main one glows gold; the others are hairline frames. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 4px;
+  font: 600 12px var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform 180ms var(--ease),
+    box-shadow 400ms var(--ease),
+    background-color 400ms,
+    border-color 400ms;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.btn.primary {
+  background: var(--glow);
+  color: #1a1408;
+  box-shadow:
+    0 0 0 1px rgb(245 200 107 / 0.4),
+    0 0 24px rgb(245 200 107 / 0.25);
+}
+
+.btn.primary:hover {
+  box-shadow:
+    0 0 0 1px rgb(245 200 107 / 0.6),
+    0 0 40px rgb(245 200 107 / 0.45);
+}
+
+.btn.ghost {
+  border: 1px solid var(--line-strong);
+  color: var(--starlight);
+  background: rgb(8 11 22 / 0.5);
+}
+
+.btn.ghost:hover {
+  border-color: rgb(220 228 255 / 0.4);
+  background: rgb(20 26 48 / 0.7);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The prototypes' own bar, back to the index. Not part of the designs. */
+.proto-bar {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 100;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgb(4 6 13 / 0.8);
+  font: 10px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-decoration: none;
+}
+
+.proto-bar:hover {
+  color: var(--starlight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
