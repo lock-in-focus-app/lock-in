@@ -168,7 +168,7 @@
     // fewer of them lit, so it doesn't outshine what's drawn over it.
     function skyline(rand) {
       const out = [];
-      const tallest = Math.max(48, h * 0.1);
+      const tallest = Math.max(36, h * 0.075);
       const valley = Math.min(340, w * 0.46);
       let x = -8;
       while (x < w + 8) {
