@@ -91,7 +91,13 @@ const point = (recipeId: string, toggleId?: string) => {
   <dl class="card legend">
     <div v-for="level in siteLevels" :key="level.id">
       <dt>{{ level.label }}</dt>
-      <dd>{{ level.id === 'tamed' ? `${level.detail} You pick what's hidden under each site.` : level.detail }}</dd>
+      <dd>
+        {{
+          level.id === 'tamed'
+            ? `${level.detail} You pick what's hidden under each site, or on the page itself from Lock In's popup. With no session running, a site can be tamed all the time, below.`
+            : level.detail
+        }}
+      </dd>
     </div>
   </dl>
   <p v-if="locked" class="help small">While this Hard session runs, sites can only get stricter.</p>
@@ -113,7 +119,7 @@ const point = (recipeId: string, toggleId?: string) => {
         </span>
         <LevelPicker
           :site-name="recipe.name"
-          :can-tame="recipe.toggles.length > 0"
+          :can-tame="recipe.toggles.length > 0 || !!ownSiteDomain(recipe.id)"
           :model-value="findRule(profile, recipe.id)?.level ?? 'allowed'"
           @update:model-value="setLevel(recipe, $event)"
         />

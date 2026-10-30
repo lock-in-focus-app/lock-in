@@ -141,7 +141,8 @@ function start(profile: Profile) {
 
 <style>
 body {
-  width: 300px;
+  /* Browsers allow up to 800px. A little over the usual 300px leaves room for the level switch. */
+  width: 360px;
   min-height: 0;
 }
 </style>

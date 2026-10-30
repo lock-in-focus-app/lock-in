@@ -1,10 +1,10 @@
 import { findRecipe } from './recipe';
-import type { Profile, SiteLevel, SiteRecipe, SiteRule } from './types';
+import type { Profile, SiteLevel, SiteRecipe, SiteRule, SiteSettings } from './types';
 
 // Sites people add themselves, beyond the built-in recipes: any site, by its address. Each is
 // kept in the profile like any other site, with the address in its id ("site:example.com"), so
-// it syncs to the desktop app as it is. With no recipe there's nothing to hide, so they're only
-// ever allowed, redirected or restricted.
+// it syncs to the desktop app as it is. With no recipe, taming one hides only the parts of its
+// page picked with the extension's element picker.
 
 const ownSitePrefix = 'site:';
 
@@ -54,24 +54,33 @@ export function ownSitePattern(domain: string): string {
   return `*://*.${domain}/*`;
 }
 
-/** A site someone added, as a recipe with nothing to hide, so it works everywhere recipes do. */
+/**
+ * A site someone added, as a recipe with no toggles, so it works everywhere recipes do. Taming it
+ * hides the parts of its page picked with the element picker.
+ */
 export function ownSiteRecipe(domain: string): SiteRecipe {
   return { id: ownSiteId(domain), name: domain, matches: [ownSitePattern(domain)], toggles: [] };
 }
 
 /**
  * Every site the profiles know about: the built-in recipes first, so a site that has one always
- * uses it, then each site added to any profile, once. The longest addresses come first, so
- * "news.example.com" is found before "example.com".
+ * uses it, then each site added to any profile or tamed all the time, once. The longest
+ * addresses come first, so "news.example.com" is found before "example.com".
  */
-export function siteRecipes(builtIn: readonly SiteRecipe[], profiles: readonly Profile[]): SiteRecipe[] {
+export function siteRecipes(
+  builtIn: readonly SiteRecipe[],
+  profiles: readonly Profile[],
+  siteSettings: readonly SiteSettings[] = [],
+): SiteRecipe[] {
+  const ids = [
+    ...profiles.flatMap((profile) => profile.sites.map((site) => site.recipeId)),
+    ...siteSettings.map((site) => site.recipeId),
+  ];
   const domains = new Set(
-    profiles.flatMap((profile) =>
-      profile.sites.flatMap((site) => {
-        const domain = ownSiteDomain(site.recipeId);
-        return domain && siteDomain(domain) === domain ? [domain] : [];
-      }),
-    ),
+    ids.flatMap((id) => {
+      const domain = ownSiteDomain(id);
+      return domain && siteDomain(domain) === domain ? [domain] : [];
+    }),
   );
   const own = [...domains].sort((a, b) => b.length - a.length).map(ownSiteRecipe);
   return [...builtIn, ...own];

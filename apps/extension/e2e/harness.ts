@@ -10,6 +10,7 @@ import {
   type PageWait,
   type Profile,
   type Session,
+  type SiteSettings,
 } from '@lock-in/core';
 import puppeteer, { type Browser, type Extension, type Page } from 'puppeteer';
 
@@ -138,7 +139,8 @@ export interface Stored {
   profiles?: Profile[];
   gateVisits?: GateVisit[];
   pageWaits?: Record<string, PageWait>;
-  syncedAt?: { profiles: number; activeSession: number };
+  siteSettings?: SiteSettings[];
+  syncedAt?: { profiles: number; activeSession: number; siteSettings?: number };
   tourOffered?: boolean;
 }
 
@@ -276,6 +278,7 @@ async function serveFixtures(): Promise<Server> {
     'www.facebook.test': await fixture('facebook'),
     'www.linkedin.test': await fixture('linkedin'),
     'www.pinterest.test': await fixture('pinterest'),
+    'picker.test': await fixture('picker'),
   };
   const server = createServer((req, res) => {
     const host = req.headers.host?.split(':')[0] ?? '';

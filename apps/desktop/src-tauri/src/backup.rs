@@ -17,6 +17,7 @@ use crate::quotes::OwnQuote;
 use crate::satellites::SatelliteState;
 use crate::session::{GateVisit, Profile, SessionRecord};
 use crate::settings::Settings;
+use crate::sites::SiteSettings;
 
 /// What the first field of every backup says, so other JSON files are turned away.
 const KIND: &str = "backup";
@@ -43,6 +44,9 @@ pub struct Backup {
     pub settings: Option<Settings>,
     #[serde(default)]
     pub own_quotes: Vec<OwnQuote>,
+    /// What's set for sites outside any profile in the extension: hidden parts, taming all the time.
+    #[serde(default)]
+    pub site_settings: Vec<SiteSettings>,
     /// The night sky's secret, so the same log draws the same sky on another computer.
     #[serde(default)]
     pub sky: Option<SkyState>,
@@ -126,6 +130,7 @@ impl Backup {
             profiles: vec![],
             settings: None,
             own_quotes: vec![],
+            site_settings: vec![],
             sky: None,
             history: History::default(),
         }

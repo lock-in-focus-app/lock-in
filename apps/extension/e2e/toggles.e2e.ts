@@ -45,8 +45,10 @@ describe('popup toggles', () => {
   afterAll(() => t?.close());
 
   describe('without a session', () => {
-    it('shows the site and a profile picker', async () => {
+    it('opens on No session, and shows a profile picker for sessions', async () => {
       expect(await text(popup)).toContain('ON THIS SITE · REDDIT');
+      expect(await switches(popup)).toEqual({ 'Tame Reddit all the time': false });
+      await popup.click('.when button.session');
       expect(await popup.$('select')).not.toBeNull();
     });
 

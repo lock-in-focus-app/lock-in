@@ -1,6 +1,6 @@
 // A cover over a tab on a redirected site that's still open after its pass ran out, or
 // that was open before the session started, and over any open tab on a restricted site. It lives in a shadow root so the
-// site's styles can't change it.
+// site's styles can't change it (shadowHost.ts).
 
 const css = `
 :host {
@@ -14,10 +14,7 @@ const css = `
   --t: color-mix(in srgb, #dce4ff 55%, transparent);
   --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
   all: initial;
-  position: fixed;
-  inset: 0;
-  z-index: 2147483647;
-  display: grid;
+  /* Its place over the page is pinned by shadowHost(), as a grid. */
   place-items: center;
   /* A dark tint rather than a blur, so a busy page underneath doesn't cost anything. */
   background:
@@ -100,8 +97,7 @@ const copy = {
 
 /** Covers the page and pauses any media. Returns a function that removes the cover. */
 export function showPauseOverlay(options: PauseOverlayOptions): () => void {
-  const host = document.createElement('lock-in-pause');
-  const root = host.attachShadow({ mode: 'open' });
+  const { host, root } = shadowHost('lock-in-pause', 'grid');
 
   const style = document.createElement('style');
   style.textContent = css;

@@ -4,6 +4,10 @@
   <head>
     <title>Fake Reddit</title>
     <style>
+      /* Like the real Reddit, which hides custom elements until they're registered. */
+      :not(:defined) {
+        visibility: hidden;
+      }
       body {
         font: 16px sans-serif;
         background: #fff;

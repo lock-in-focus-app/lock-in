@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>A site of your own</title>
+    <style>
+      /* Like Reddit, which hides custom elements until they're registered. */
+      :not(:defined) {
+        visibility: hidden;
+      }
+      main {
+        min-height: 100vh;
+      }
+    </style>
+  </head>
+  <!-- A site added by address, for the element picker: a sidebar with a heading, a link that
+       mustn't be followed while picking, and repeated cards with generated class names. -->
+  <body>
+    <nav id="top-nav">
+      <a id="away" href="/elsewhere">Elsewhere</a>
+      <site-search id="search"></site-search>
+    </nav>
+    <main>
+      <aside class="trending">
+        <h2>Trending now</h2>
+        <p>Things everyone is reading</p>
+      </aside>
+      <section class="css-1dbjc4n">
+        <div class="card r-1awozwy">One</div>
+        <div class="card r-1awozwy" id="second">Two</div>
+        <div class="card r-1awozwy">Three</div>
+      </section>
+    </main>
+    <script>
+      // Like Reddit's search bar: a web component with its words in its own shadow root.
+      customElements.define(
+        'site-search',
+        class extends HTMLElement {
+          connectedCallback() {
+            this.attachShadow({ mode: 'open' }).innerHTML = '<input placeholder="Search the site" />';
+          }
+        },
+      );
+    </script>
+  </body>
+</html>

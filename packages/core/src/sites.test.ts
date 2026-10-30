@@ -66,6 +66,9 @@ describe('own sites', () => {
     expect(recipes.map((r) => r.id)).toEqual(['reddit', 'site:news.example.com', 'site:example.com']);
     expect(findRecipe(recipes, 'https://news.example.com/')?.id).toBe('site:news.example.com');
     expect(findRecipe(recipes, 'https://www.example.com/a')?.id).toBe('site:example.com');
+    // A site tamed all the time is known even if no profile has it.
+    const always = siteRecipes([reddit], [], [{ recipeId: 'site:calm.org', allTheTime: true }]);
+    expect(always.map((r) => r.id)).toEqual(['reddit', 'site:calm.org']);
   });
 
   it('redirects an added site like any other', () => {

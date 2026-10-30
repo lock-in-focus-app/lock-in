@@ -28,7 +28,25 @@ export type * from './generated/TimerEnd';
 export type * from './generated/TimerSettings';
 export { backupDay, importSummary, maxBackupBytes } from './backup';
 export { matchesPattern, matchPatternToRegex, parseHttpUrl } from './match';
-export { buildRecipeCss, cssForPage, findRecipe, isSafeSelector, pagePathAttribute, resolveToggles } from './recipe';
+export {
+  allTheTimeToggles,
+  buildRecipeCss,
+  cssForPage,
+  findRecipe,
+  isSafeSelector,
+  pagePathAttribute,
+  resolveToggles,
+} from './recipe';
+export {
+  maxHiddenLabelLength,
+  maxHiddenParts,
+  maxSelectorLength,
+  siteSettingsFor,
+  withAllTheTime,
+  withAllTheTimeToggle,
+  withHiddenPart,
+  withHiddenPartRemoved,
+} from './siteSettings';
 export {
   findRule,
   maxProfileNameLength,

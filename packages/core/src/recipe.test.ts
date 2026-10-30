@@ -85,6 +85,15 @@ describe('buildRecipeCss', () => {
   it('returns an empty string when nothing is enabled', () => {
     expect(buildRecipeCss(recipe, {})).toBe('');
   });
+
+  it('hides picked parts too, dropping unsafe ones', () => {
+    const css = buildRecipeCss(recipe, {}, [
+      { selector: 'aside.trending', label: 'Trending' },
+      { selector: '} body {', label: 'Bad' },
+    ]);
+    expect(css).toContain('aside.trending');
+    expect(css).not.toContain('body');
+  });
 });
 
 describe('cssForPage', () => {
@@ -92,6 +101,32 @@ describe('cssForPage', () => {
 
   it('returns nothing without an active session', () => {
     expect(cssForPage({ url: page, session: null, profiles: [profileWith('tamed')], recipes: [recipe] })).toBe('');
+  });
+
+  it('tames a site all the time with no session, with its own toggles', () => {
+    const always = (allTheTime: boolean) => [{ recipeId: 'example', allTheTime, toggles: { grayscale: true } }];
+    const outside = cssForPage({
+      url: page,
+      session: null,
+      profiles: [],
+      recipes: [recipe],
+      siteSettings: always(true),
+    });
+    expect(outside).toContain('#feed');
+    expect(outside).toContain('grayscale(1)');
+    expect(cssForPage({ url: page, session: null, profiles: [], recipes: [recipe], siteSettings: always(false) })).toBe(
+      '',
+    );
+    // During a session, the session's profile decides.
+    expect(
+      cssForPage({
+        url: page,
+        session,
+        profiles: [profileWith('allowed')],
+        recipes: [recipe],
+        siteSettings: always(true),
+      }),
+    ).toBe('');
   });
 
   it('tames a matching site in a tamed profile', () => {
@@ -103,6 +138,36 @@ describe('cssForPage', () => {
     });
     expect(css).toContain('#feed');
     expect(css).toContain('grayscale(1)');
+  });
+
+  it("hides the site's picked parts in a session and all the time", () => {
+    const hidden = [{ selector: 'aside.trending', label: 'Trending' }];
+    const options = { url: page, recipes: [recipe] };
+    expect(
+      cssForPage({
+        ...options,
+        session,
+        profiles: [profileWith('tamed')],
+        siteSettings: [{ recipeId: 'example', hidden }],
+      }),
+    ).toContain('aside.trending');
+    expect(
+      cssForPage({
+        ...options,
+        session: null,
+        profiles: [],
+        siteSettings: [{ recipeId: 'example', hidden, allTheTime: true }],
+      }),
+    ).toContain('aside.trending');
+    // Not while the site isn't tamed.
+    expect(
+      cssForPage({
+        ...options,
+        session,
+        profiles: [profileWith('allowed')],
+        siteSettings: [{ recipeId: 'example', hidden }],
+      }),
+    ).toBe('');
   });
 
   it('applies session overrides on top of the profile', () => {

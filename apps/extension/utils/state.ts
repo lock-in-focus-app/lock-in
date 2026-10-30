@@ -1,4 +1,11 @@
-import { starterProfiles, type GateVisit, type PageWait, type Profile, type Session } from '@lock-in/core';
+import {
+  starterProfiles,
+  type GateVisit,
+  type PageWait,
+  type Profile,
+  type Session,
+  type SiteSettings,
+} from '@lock-in/core';
 
 /** The running session, shared by the popup and every content script. */
 export const activeSession = storage.defineItem<Session | null>('local:activeSession', {
@@ -8,6 +15,14 @@ export const activeSession = storage.defineItem<Session | null>('local:activeSes
 /** The user's profiles. Until they edit anything, these are the starter profiles. */
 export const profiles = storage.defineItem<Profile[]>('local:profiles', {
   fallback: starterProfiles,
+});
+
+/**
+ * What's set for sites outside any profile: parts of their pages picked to hide, and taming all
+ * the time, even with no session running.
+ */
+export const siteSettings = storage.defineItem<SiteSettings[]>('local:siteSettings', {
+  fallback: [],
 });
 
 /** Trips to redirected sites, for the attempt counter and the "why?" answers. */
@@ -24,12 +39,14 @@ export const pageWaits = storage.defineItem<Record<string, PageWait>>('local:pag
 });
 
 /**
- * When the profiles and the session last changed, for the desktop app link. The newest change
- * wins, whether it was made here, in the app, or in another browser.
+ * When the profiles, the session and the site settings last changed, for the desktop app link.
+ * The newest change wins, whether it was made here, in the app, or in another browser. Saved
+ * before site settings existed, it has no time for them, which counts as never changed.
  */
-export const syncedAt = storage.defineItem<{ profiles: number; activeSession: number }>('local:syncedAt', {
-  fallback: { profiles: 0, activeSession: 0 },
-});
+export const syncedAt = storage.defineItem<{ profiles: number; activeSession: number; siteSettings?: number }>(
+  'local:syncedAt',
+  { fallback: { profiles: 0, activeSession: 0, siteSettings: 0 } },
+);
 
 /** Whether the tour for new users has been offered (taken or turned down), so the popup offers it once. */
 export const tourOffered = storage.defineItem<boolean>('local:tourOffered', {
