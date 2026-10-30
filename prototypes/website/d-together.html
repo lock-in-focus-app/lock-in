@@ -102,6 +102,175 @@
         }
       }
 
+      /* Planets and satellites, nearer than the stars, so they move a little more as you scroll.
+         The haze nearly hides them; a clear sky shows them. Satellites are steady points gliding
+         across the sky, as real ones do. */
+      .bodies {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        pointer-events: none;
+        opacity: 0.22;
+        transition: opacity 2.4s var(--drift);
+      }
+
+      .locked .bodies {
+        opacity: 1;
+      }
+
+      /* Past the hero they step back a little, so they don't compete with the text over them. */
+      .locked.past-hero .bodies {
+        opacity: 0.5;
+      }
+
+      .world {
+        position: absolute;
+        width: var(--size);
+        height: var(--size);
+        rotate: var(--tilt, -16deg);
+      }
+
+      .world .ball {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        overflow: hidden;
+        background: var(--base);
+        box-shadow: 0 0 calc(var(--size) * 0.4) var(--halo);
+      }
+
+      .world .bands {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 200%;
+        height: 100%;
+        background: var(--bands);
+        opacity: 0.75;
+        animation: world-turn var(--spin, 60s) linear infinite;
+      }
+
+      /* Night side: a shadow over the lower left, the sun up and to the right. */
+      .world .ball::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        box-shadow: inset calc(var(--size) * -0.2) calc(var(--size) * 0.14) calc(var(--size) * 0.28) rgb(6 8 22 / 0.88);
+      }
+
+      @keyframes world-turn {
+        to {
+          transform: translateX(-50%);
+        }
+      }
+
+      .world .w-ring {
+        position: absolute;
+        left: -48%;
+        right: -48%;
+        top: 50%;
+        height: 34%;
+        margin-top: -17%;
+        border-radius: 50%;
+        border: calc(var(--size) * 0.03) solid rgb(245 200 107 / 0.5);
+        box-shadow:
+          0 0 14px rgb(245 200 107 / 0.2),
+          inset 0 0 0 calc(var(--size) * 0.025) rgb(232 165 176 / 0.18);
+      }
+
+      /* The back half of the ring goes behind the planet, the front half over it. */
+      .world .w-ring.back {
+        z-index: -1;
+      }
+
+      .world .w-ring.front {
+        clip-path: inset(50% 0 0 0);
+      }
+
+      .world.big {
+        --size: clamp(90px, 11vw, 150px);
+        --base: #6d5aa8;
+        --halo: rgb(185 167 245 / 0.28);
+        --bands: repeating-linear-gradient(6deg, #b9a7f5 0 7%, #7d68c0 7% 12%, #e3d9ff 12% 15%, #5d4a9c 15% 23%);
+        left: -1vw;
+        top: 66vh;
+      }
+
+      .world.small {
+        --size: clamp(30px, 3.4vw, 46px);
+        --base: #5b8fb0;
+        --halo: rgb(207 224 255 / 0.25);
+        --bands: repeating-linear-gradient(-4deg, #cfe0ff 0 10%, #7fb0cf 10% 18%, #9cc4dd 18% 30%);
+        --spin: 40s;
+        --tilt: 10deg;
+        right: 5vw;
+        top: 44vh;
+      }
+
+      /* A moon going round the big planet: a flattened circle, so it passes in front and behind. */
+      .world .moons {
+        position: absolute;
+        inset: -60%;
+        transform: scaleY(0.3);
+      }
+
+      .world .moons i {
+        position: absolute;
+        inset: 0;
+        animation: moon-orbit 34s linear infinite;
+      }
+
+      .world .moons i::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: -4px;
+        width: 8px;
+        height: 8px;
+        margin-left: -4px;
+        border-radius: 50%;
+        background: #d9d3c4;
+        box-shadow: inset -2px -2px 3px rgb(6 8 22 / 0.7);
+        transform: scaleY(3.3);
+      }
+
+      @keyframes moon-orbit {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .sky-sat {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 2.5px;
+        height: 2.5px;
+        border-radius: 50%;
+        background: var(--starlight);
+        box-shadow: 0 0 6px rgb(220 228 255 / 0.9);
+        animation:
+          cross var(--t) linear infinite var(--d),
+          glint 5s ease-in-out infinite var(--d);
+      }
+
+      @keyframes cross {
+        from {
+          transform: translate(-4vw, var(--y0));
+        }
+        to {
+          transform: translate(104vw, var(--y1));
+        }
+      }
+
+      @keyframes glint {
+        50% {
+          opacity: 0.45;
+        }
+      }
+
       /* ── The frame ─────────────────────────────────────────────────────────────── */
 
       .frame {
@@ -528,8 +697,11 @@
         white-space: nowrap;
       }
 
+      /* Room below the line for the descenders, which the gradient's text clip would cut off. */
       .glare > span {
         grid-area: 1 / 1;
+        padding-bottom: 0.16em;
+        margin-bottom: -0.16em;
         transition: opacity 1.6s var(--drift);
       }
 
@@ -693,21 +865,30 @@
         opacity: 0;
         transition:
           transform 800ms var(--spring) calc(var(--lead, 400ms) + var(--i) * 55ms),
-          opacity 400ms calc(var(--lead, 400ms) + var(--i) * 55ms);
+          opacity 400ms calc(var(--lead, 400ms) + var(--i) * 55ms),
+          filter 600ms calc(var(--lead, 400ms) + var(--i) * 55ms);
       }
 
-      /* They pop in shortly after the page loads, and spring back in if you unlock. */
+      /* They pop in shortly after the page loads, and come back if you unlock. */
       .ready .n {
         opacity: 1;
         transform: translate(-50%, -50%);
       }
 
+      /* Locking in: they stop jittering, then fade into nothing where they are, one after another,
+         blurring and drifting up a little as they go. */
       .ready.locked .n {
         opacity: 0;
-        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.8) rotate(var(--r, 8deg));
+        filter: blur(12px);
+        transform: translate(-50%, calc(-50% - 18px)) scale(0.94);
         transition:
-          transform 1100ms cubic-bezier(0.5, -0.45, 0.75, 0.2) calc(var(--i) * 45ms),
-          opacity 600ms ease-in calc(400ms + var(--i) * 45ms);
+          transform 2200ms var(--drift) calc(150ms + var(--i) * 110ms),
+          opacity 1800ms var(--drift) calc(150ms + var(--i) * 110ms),
+          filter 1800ms var(--drift) calc(150ms + var(--i) * 110ms);
+      }
+
+      .locked .n * {
+        animation-play-state: paused;
       }
 
       .jit {
@@ -1670,6 +1851,249 @@
         font-size: 14px;
       }
 
+      /* ── Satellites ─────────────────────────────────────────────────────────────── */
+
+      .sat-facts {
+        grid-template-columns: minmax(0, 1fr);
+        margin-bottom: 18px;
+      }
+
+      .launcher {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 22px;
+      }
+
+      .launcher-top {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 6px 16px;
+      }
+
+      #sat-session {
+        color: var(--glow);
+      }
+
+      .ended #sat-session {
+        color: var(--faint);
+      }
+
+      /* The orbit: a glowing star for the session, a faint path round it, and the satellites,
+         placed each frame by the script. */
+      .orbit-stage {
+        position: relative;
+        height: 210px;
+        transition: opacity 600ms;
+      }
+
+      .orbit-path {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: min(78%, 360px);
+        aspect-ratio: 2.6;
+        border: 1px dashed rgb(220 228 255 / 0.16);
+        border-radius: 50%;
+        transform: translate(-50%, -50%) rotate(-8deg);
+      }
+
+      .sun {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 14px;
+        height: 14px;
+        margin: -7px;
+        border-radius: 50%;
+        background: var(--glow);
+        box-shadow:
+          0 0 18px 4px rgb(245 200 107 / 0.55),
+          0 0 60px 16px rgb(245 200 107 / 0.18);
+        animation: breathe-sun 4s ease-in-out infinite;
+      }
+
+      @keyframes breathe-sun {
+        50% {
+          box-shadow:
+            0 0 22px 6px rgb(245 200 107 / 0.65),
+            0 0 70px 20px rgb(245 200 107 / 0.22);
+        }
+      }
+
+      .satellite {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 7px;
+        height: 7px;
+        margin: -3.5px;
+        border-radius: 50%;
+        background: var(--c, var(--deep));
+        box-shadow: 0 0 10px var(--c, var(--deep));
+        will-change: transform, opacity;
+      }
+
+      /* Its little solar panels. */
+      .satellite::before,
+      .satellite::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        width: 6px;
+        height: 3px;
+        border-radius: 1px;
+        background: rgb(220 228 255 / 0.55);
+      }
+
+      .satellite::before {
+        right: 8px;
+      }
+
+      .satellite::after {
+        left: 8px;
+      }
+
+      .orbit-count {
+        margin: -6px 0 0;
+        text-align: center;
+      }
+
+      .launch {
+        display: flex;
+        gap: 8px;
+      }
+
+      .launch input {
+        flex: 1;
+        min-width: 0;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 4px;
+        background: rgb(4 6 14 / 0.7);
+        color: var(--starlight);
+        font: inherit;
+        font-size: 14.5px;
+      }
+
+      .launch input::placeholder {
+        color: var(--faint);
+      }
+
+      .launch input:focus-visible {
+        outline: none;
+        border-color: rgb(245 200 107 / 0.6);
+        box-shadow: 0 0 0 3px rgb(245 200 107 / 0.12);
+      }
+
+      .launch-hint {
+        margin: -4px 0 0;
+      }
+
+      kbd {
+        padding: 0 4px;
+        border: 1px solid var(--line-strong);
+        border-radius: 3px;
+        font: 0.85em var(--mono);
+        color: var(--dim);
+      }
+
+      /* After the session: what came back, as a checklist. */
+      .came-back[hidden] {
+        display: none;
+      }
+
+      .came-title {
+        margin: 0 0 8px;
+        font-size: 17px;
+      }
+
+      .came-back ul {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .came-back li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: rgb(4 6 14 / 0.5);
+        opacity: 0;
+        transform: translateY(-14px) scale(0.98);
+        transition:
+          opacity 700ms var(--ease) var(--d, 0ms),
+          transform 900ms var(--ease) var(--d, 0ms);
+      }
+
+      .came-back li.landed {
+        opacity: 1;
+        transform: none;
+      }
+
+      .came-back li.gone {
+        opacity: 0;
+        transform: translateX(16px);
+        transition-delay: 0ms;
+      }
+
+      .came-back li span {
+        flex: 1 1 160px;
+        transition: color 400ms;
+      }
+
+      .came-back li.done span {
+        color: var(--faint);
+        text-decoration: line-through;
+      }
+
+      .came-back li .what {
+        flex: none;
+        color: var(--glow);
+      }
+
+      .came-back .acts {
+        display: flex;
+        gap: 6px;
+      }
+
+      .came-back .acts button {
+        padding: 4px 8px;
+        border: 1px solid var(--line-strong);
+        border-radius: 3px;
+        font: 600 10px var(--mono);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--dim);
+        transition:
+          color 200ms,
+          border-color 200ms;
+      }
+
+      .came-back .acts button:hover {
+        color: var(--starlight);
+        border-color: rgb(220 228 255 / 0.4);
+      }
+
+      .session-end {
+        align-self: flex-start;
+      }
+
+      .ended .orbit-stage,
+      .ended .orbit-count,
+      .ended .launch,
+      .ended .launch-hint {
+        display: none;
+      }
+
       /* ── Privacy ────────────────────────────────────────────────────────────────── */
 
       .promises {
@@ -1912,6 +2336,20 @@
   <body>
     <canvas id="sky" aria-hidden="true"></canvas>
     <div class="nebulae" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="bodies" aria-hidden="true">
+      <div class="world big">
+        <span class="w-ring back"></span>
+        <span class="ball"><span class="bands"></span></span>
+        <span class="w-ring front"></span>
+        <span class="moons"><i></i></span>
+      </div>
+      <div class="world small">
+        <span class="ball"><span class="bands"></span></span>
+      </div>
+      <i class="sky-sat" style="--t: 75s; --d: -20s; --y0: 22vh; --y1: 6vh"></i>
+      <i class="sky-sat" style="--t: 110s; --d: -70s; --y0: 48vh; --y1: 30vh"></i>
+      <i class="sky-sat" style="--t: 90s; --d: -5s; --y0: 80vh; --y1: 58vh"></i>
+    </div>
 
     <div class="frame">
       <div class="line hazy"></div>
@@ -2227,11 +2665,8 @@
                 <p>Each month with focus grows a planet that takes shape as the hours add up. No two are alike.</p>
               </li>
               <li class="hud glass reveal" style="--d: 380ms">
-                <h3>Satellites</h3>
-                <p>
-                  A distracting thought goes into orbit with <kbd>Alt</kbd>+<kbd>P</kbd> from anywhere, and comes back
-                  when the session ends.
-                </p>
+                <h3>Moons</h3>
+                <p>Days with focus in a row earn moons around the month's planet. A missed day never takes one away.</p>
               </li>
             </ul>
             <p class="aside reveal" style="--d: 440ms">
@@ -2242,8 +2677,72 @@
         </div>
       </section>
 
+      <section id="satellites" data-name="Satellites">
+        <div class="two">
+          <div>
+            <p class="kicker mono reveal"><b>04</b> · Satellites · thoughts for later</p>
+            <h2 class="reveal" style="--d: 80ms">Launch the thought. Keep the focus.</h2>
+            <p class="lede reveal" style="--d: 160ms">
+              Mid-focus thoughts like "I should check this real quick" turn into distractions. Press
+              <kbd>Alt</kbd>+<kbd>P</kbd> (<kbd>Option</kbd>+<kbd>P</kbd> on a Mac) from anywhere, type it, and press
+              Return. It goes into orbit, and you're straight back where you were.
+            </p>
+            <ul class="facts sat-facts">
+              <li class="hud glass reveal" style="--d: 220ms">
+                <h3>Out of sight</h3>
+                <p>During a session you only see how many are in orbit, not what they say.</p>
+              </li>
+              <li class="hud glass reveal" style="--d: 280ms">
+                <h3>Back when you're done</h3>
+                <p>Nothing pops up. When the session ends, they wait for you: "3 satellites came back."</p>
+              </li>
+              <li class="hud glass reveal" style="--d: 340ms">
+                <h3>A quick checklist</h3>
+                <p>Tick each one Done, Snooze it into orbit again, make it a Task, or Delete it.</p>
+              </li>
+            </ul>
+            <p class="source reveal" style="--d: 400ms">
+              <b>Why it works.</b> Writing down a plan for an unfinished task stops it from pulling at your attention.
+              (Masicampo &amp; Baumeister, 2011. A set of lab studies, so a modest finding.)
+            </p>
+          </div>
+
+          <div class="launcher hud glass reveal" style="--d: 200ms" id="launcher">
+            <div class="launcher-top">
+              <span class="mono">Satellites · thoughts for later</span>
+              <span class="mono" id="sat-session">Deep Work · in a session</span>
+            </div>
+
+            <div class="orbit-stage" id="orbit-stage" aria-hidden="true">
+              <div class="orbit-path"></div>
+              <div class="sun"></div>
+            </div>
+            <p class="orbit-count mono" id="orbit-count" aria-live="polite">3 in orbit</p>
+
+            <form class="launch" id="launch-form">
+              <label class="visually-hidden" for="thought">A distracting thought</label>
+              <input
+                id="thought"
+                maxlength="80"
+                autocomplete="off"
+                placeholder="Distracting thought? Launch it — it'll come back after your session."
+              />
+              <button class="btn primary" type="submit">Launch</button>
+            </form>
+            <p class="launch-hint mono"><kbd>Alt</kbd>+<kbd>P</kbd> opens this box from any app.</p>
+
+            <div class="came-back" id="came-back" hidden>
+              <p class="came-title" id="came-title">3 satellites came back</p>
+              <ul id="came-list"></ul>
+            </div>
+
+            <button class="btn ghost session-end" type="button" id="sat-toggle">End the session ›</button>
+          </div>
+        </div>
+      </section>
+
       <section id="privacy" data-name="Privacy">
-        <p class="kicker mono reveal"><b>04</b> · Private by design</p>
+        <p class="kicker mono reveal"><b>05</b> · Private by design</p>
         <h2 class="reveal" style="--d: 80ms">Nothing leaves your computer</h2>
         <p class="lede reveal" style="--d: 160ms">
           Lock In collects nothing. It has no accounts, no analytics, no ads, and no servers of its own.
@@ -2272,7 +2771,7 @@
       </section>
 
       <section id="install" data-name="Install">
-        <p class="kicker mono reveal"><b>05</b> · Install</p>
+        <p class="kicker mono reveal"><b>06</b> · Install</p>
         <h2 class="reveal" style="--d: 80ms">Free, and yours to keep.</h2>
         <div class="install">
           <div class="hud glass reveal" style="--d: 220ms">
@@ -2338,19 +2837,6 @@
       const text = (id, value) => (document.getElementById(id).textContent = value);
       let lockedAt = 0;
 
-      // Where each distraction flies to: straight out from the middle, past the edge.
-      function aimNoise() {
-        const hero = sections[0].getBoundingClientRect();
-        const far = Math.max(hero.width, hero.height) * 0.75;
-        for (const n of document.querySelectorAll('.n')) {
-          const x = parseFloat(n.style.getPropertyValue('--x')) / 100 - 0.5;
-          const y = parseFloat(n.style.getPropertyValue('--y')) / 100 - 0.5;
-          const len = Math.hypot(x, y) || 1;
-          n.style.setProperty('--dx', `${((x / len) * far).toFixed(0)}px`);
-          n.style.setProperty('--dy', `${((y / len) * far).toFixed(0)}px`);
-        }
-      }
-
       function setLocked(on) {
         document.body.classList.toggle('locked', on);
         document.body.style.setProperty('--lead', '0ms');
@@ -2397,7 +2883,7 @@
 
       // ── The constellation navigator ────────────────────────────────────────────
       const navigator = document.querySelector('.navigator');
-      const heights = [0.66, 0.36, 0.7, 0.32, 0.64, 0.38];
+      const heights = [0.66, 0.36, 0.7, 0.32, 0.64, 0.38, 0.62];
       const stars = sections.map((section, i) => {
         const button = document.createElement('button');
         button.className = heights[i] < 0.5 ? 'up' : 'down';
@@ -2448,6 +2934,7 @@
       // As you scroll, each line draws toward the next star, and the stars light up as you reach
       // their sections. The sky and the nebulae drift a little slower than the page.
       const nebulae = document.querySelector('.nebulae');
+      const bodies = document.querySelector('.bodies');
       let queued = false;
       function onScroll() {
         queued = false;
@@ -2470,6 +2957,7 @@
           seg.firstChild.style.transform = `scaleX(${p})`;
         });
         // Scrolling on past the hero locks in too (as in A), so the rest sits under a clear sky.
+        document.body.classList.toggle('past-hero', top > view * 0.6);
         if (autoLock && top > view * 0.45) {
           autoLock = false;
           if (!isLocked()) setLocked(true);
@@ -2477,6 +2965,7 @@
         if (!reduce) {
           sky.set({ shift: top * 0.25 });
           nebulae.style.transform = `translateY(${(-Math.min(top * 0.06, innerHeight * 0.35)).toFixed(1)}px)`;
+          bodies.style.transform = `translateY(${(-top * 0.1).toFixed(1)}px)`;
         }
       }
       scroller.addEventListener('scroll', () => {
@@ -2613,6 +3102,142 @@
         .forEach((button) => button.addEventListener('click', () => setLevel(button.dataset.level)));
       setLevel('allowed');
 
+      // ── Satellites ────────────────────────────────────────────────────────────
+      // Thoughts go round the session's star on a tilted ellipse, nearer ones brighter. A launched
+      // one lifts off from the box and joins them; ending the session brings them all back down as a
+      // checklist. Placed by script each frame, only while the section is on screen.
+      const launcher = document.getElementById('launcher');
+      const stage = document.getElementById('orbit-stage');
+      const countText = document.getElementById('orbit-count');
+      const form = document.getElementById('launch-form');
+      const field = document.getElementById('thought');
+      const cameBack = document.getElementById('came-back');
+      const cameList = document.getElementById('came-list');
+      const satToggle = document.getElementById('sat-toggle');
+      const COLORS = ['var(--deep)', 'var(--glow)', 'var(--lavender)', '#9fe3c9'];
+      const STARTING = ['Reply to Sam about Friday', 'Look up that bookshelf video', 'Book the dentist'];
+      let satellites = [];
+      let orbiting = false;
+
+      function addSatellite(textValue, lift) {
+        const el = document.createElement('i');
+        el.className = 'satellite';
+        el.style.setProperty('--c', COLORS[satellites.length % COLORS.length]);
+        stage.append(el);
+        satellites.push({
+          text: textValue,
+          el,
+          angle: satellites.length * 2.1 + 0.6,
+          speed: 0.22 + (satellites.length % 3) * 0.05,
+          lift: lift ? 0 : 1,
+        });
+        countText.textContent = `${satellites.length} in orbit`;
+      }
+
+      function placeSatellites(dt) {
+        const w = stage.clientWidth;
+        const h = stage.clientHeight;
+        const rx = Math.min(w * 0.39, 180);
+        const ry = rx / 2.6;
+        const tilt = (-8 * Math.PI) / 180;
+        for (const sat of satellites) {
+          if (!reduce) sat.angle += sat.speed * dt;
+          sat.lift = Math.min(1, sat.lift + dt / 1.4);
+          const ex = Math.cos(sat.angle) * rx;
+          const ey = Math.sin(sat.angle) * ry;
+          let x = w / 2 + ex * Math.cos(tilt) - ey * Math.sin(tilt);
+          let y = h / 2 + ex * Math.sin(tilt) + ey * Math.cos(tilt);
+          // Lifting off: from the launch box below the stage, curving up into the orbit.
+          const k = 1 - (1 - sat.lift) ** 3;
+          x = w / 2 + (x - w / 2) * k;
+          y = h + 40 + (y - h - 40) * k;
+          const near = (Math.sin(sat.angle) + 1) / 2;
+          sat.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${(0.75 + near * 0.4).toFixed(2)})`;
+          sat.el.style.opacity = (0.45 + near * 0.55) * Math.min(1, sat.lift * 2);
+          // Behind the star on the far side of the orbit.
+          sat.el.style.zIndex = near > 0.5 ? 2 : 0;
+        }
+      }
+
+      let lastSat = 0;
+      function orbitFrame(now) {
+        if (!orbiting) return;
+        placeSatellites(lastSat ? Math.min(0.05, (now - lastSat) / 1000) : 0);
+        lastSat = now;
+        requestAnimationFrame(orbitFrame);
+      }
+
+      new IntersectionObserver(
+        ([entry]) => {
+          orbiting = entry.isIntersecting && !reduce;
+          lastSat = 0;
+          placeSatellites(0);
+          if (orbiting) requestAnimationFrame(orbitFrame);
+        },
+        { root: scroller },
+      ).observe(launcher);
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const value = field.value.trim();
+        if (!value) return;
+        addSatellite(value, true);
+        field.value = '';
+        if (reduce) placeSatellites(0);
+      });
+
+      function endSession() {
+        launcher.classList.add('ended');
+        document.getElementById('sat-session').textContent = 'Session ended';
+        document.getElementById('came-title').textContent =
+          satellites.length === 1 ? '1 satellite came back' : `${satellites.length} satellites came back`;
+        cameList.replaceChildren(
+          ...satellites.map((sat, i) => {
+            const li = document.createElement('li');
+            li.style.setProperty('--d', `${i * 120}ms`);
+            const label = document.createElement('span');
+            label.textContent = sat.text;
+            const what = document.createElement('span');
+            what.className = 'what mono';
+            const acts = document.createElement('span');
+            acts.className = 'acts';
+            for (const [name, does] of [
+              ['Done', () => li.classList.toggle('done')],
+              ['Snooze', () => (what.textContent = 'Back in orbit')],
+              ['Task', () => (what.textContent = 'On your tasks')],
+              ['Delete', () => li.classList.add('gone')],
+            ]) {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.textContent = name;
+              b.addEventListener('click', does);
+              acts.append(b);
+            }
+            li.append(label, what, acts);
+            return li;
+          }),
+        );
+        cameBack.hidden = false;
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => cameList.querySelectorAll('li').forEach((li) => li.classList.add('landed'))),
+        );
+        satToggle.textContent = 'Start a new session ›';
+      }
+
+      function startSession() {
+        launcher.classList.remove('ended');
+        document.getElementById('sat-session').textContent = 'Deep Work · in a session';
+        cameBack.hidden = true;
+        satellites.forEach((sat) => sat.el.remove());
+        satellites = [];
+        STARTING.forEach((t) => addSatellite(t, false));
+        placeSatellites(0);
+        satToggle.textContent = 'End the session ›';
+      }
+
+      satToggle.addEventListener('click', () => (launcher.classList.contains('ended') ? startSession() : endSession()));
+      STARTING.forEach((t) => addSatellite(t, false));
+
       // ── The redirect page's five minutes ───────────────────────────────────────
       let countdownStarted = false;
       function startCountdown() {
@@ -2641,7 +3266,6 @@
       function layout() {
         sky.set(placement());
         layoutNavigator();
-        aimNoise();
         onScroll();
       }
       new ResizeObserver(layout).observe(document.body);
