@@ -50,16 +50,9 @@ const locked = computed(
   () => session.value?.profileId === props.profile.id && endLock(session.value, Date.now()) === 'hard',
 );
 
-// A tamed site can stay tamed when no session is running, the way one profile tames it.
+// A tamed site can stay tamed all the time, with no session running, the way one profile tames it.
 const allProfiles = useStorageItem(profiles);
-function outsideNote(recipe: SiteRecipe) {
-  const by = tamedOutsideSessionsBy(allProfiles.value ?? [], recipe.id);
-  if (by?.id === props.profile.id) {
-    return `${recipe.name} is tamed like this with no session running too, and any profile's session still uses its own settings.`;
-  }
-  if (by) return `${by.name} keeps ${recipe.name} tamed outside sessions now. Turning this on moves it here.`;
-  return `Off, ${recipe.name} is only tamed during a session.`;
-}
+const outsideBy = (recipe: SiteRecipe) => tamedOutsideSessionsBy(allProfiles.value ?? [], recipe.id);
 
 // Adding a site by its address. One that's built in is already listed.
 const draft = ref('');
@@ -144,11 +137,11 @@ const point = (recipeId: string, toggleId?: string) => {
       <PageRules :profile="profile" :recipe="recipe" />
       <div v-if="findRule(profile, recipe.id)?.level === 'tamed'" class="outside">
         <ToggleSwitch
-          :label="`Keep ${recipe.name} tamed outside sessions`"
-          :model-value="tamedOutsideSessionsBy(allProfiles ?? [], recipe.id)?.id === profile.id"
+          :label="`Tame ${recipe.name} all the time`"
+          :model-value="outsideBy(recipe)?.id === profile.id"
           @update:model-value="setTamedOutsideSessions(profile.id, recipe.id, $event)"
         />
-        <p class="help small">{{ outsideNote(recipe) }}</p>
+        <p class="help small">{{ allTheTimeNote(recipe.name, profile, outsideBy(recipe)) }}</p>
       </div>
       <HiddenParts :profile="profile" :recipe="recipe" :locked="locked" />
       <div v-if="showsToggles(recipe.id)" class="toggles">

@@ -80,15 +80,10 @@ const levelDetail = computed(() => {
   return siteLevels.find((l) => l.id === level)?.detail;
 });
 
-// A tamed site can stay tamed when no session is running, the way one profile tames it, so changes
-// here show on the page straight away.
+// A tamed site can stay tamed all the time, with no session running, the way one profile tames it,
+// so changes here show on the page straight away.
 const outsideBy = computed(() => tamedOutsideSessionsBy(props.profiles, props.recipe.id));
-const outsideNote = computed(() => {
-  const by = outsideBy.value;
-  if (!by) return '';
-  if (by.id === profile.value?.id) return 'Tamed like this with no session running too.';
-  return `${by.name} keeps ${props.recipe.name} tamed outside sessions now. Turning this on moves it here.`;
-});
+const allTheTime = computed(() => !!profile.value && outsideBy.value?.id === profile.value.id);
 
 // The element picker hides parts of the page while the site is tamed. It runs on the page itself,
 // through the content script, which a tab opened before Lock In could reach the site doesn't have
@@ -151,14 +146,14 @@ function set(toggleId: string, value: boolean) {
       @update:model-value="setLevel"
     />
     <p v-if="!session && profile" class="note detail">{{ levelDetail }}</p>
-    <template v-if="!session && profile && rule?.level === 'tamed'">
+    <template v-if="profile && rule?.level === 'tamed'">
       <ToggleSwitch
         class="outside"
-        label="Keep it tamed outside sessions"
-        :model-value="outsideBy?.id === profile.id"
+        :label="`Tame ${recipe.name} all the time`"
+        :model-value="allTheTime"
         @update:model-value="setTamedOutsideSessions(profile.id, recipe.id, $event)"
       />
-      <p v-if="outsideNote" class="note">{{ outsideNote }}</p>
+      <p class="note all-the-time">{{ allTheTimeNote(recipe.name, profile, outsideBy) }}</p>
     </template>
 
     <p v-if="pageRule" class="note">
@@ -212,11 +207,7 @@ function set(toggleId: string, value: boolean) {
       </button>
     </p>
     <p v-else-if="!session" class="footer">
-      <span>
-        Applies whenever {{ profile?.name }} is running{{
-          outsideBy && outsideBy.id === profile?.id ? ', and outside sessions' : ''
-        }}
-      </span>
+      <span>{{ allTheTime ? 'Applies all the time' : `Applies whenever ${profile?.name} is running` }}</span>
     </p>
     <p v-else-if="canKeepAway" class="footer">
       <span>Either one is saved to {{ profile?.name }}, for later sessions too</span>
@@ -298,6 +289,13 @@ select {
 .keep-away .key {
   flex: 1;
   padding: 7px 8px;
+}
+
+/* Set apart from the site's own toggles below it. */
+.all-the-time {
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
 }
 
 /* Opens the element picker on the page, under the toggles. */

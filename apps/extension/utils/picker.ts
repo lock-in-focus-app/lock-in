@@ -43,9 +43,9 @@ const css = `
   right: 16px;
   bottom: 16px;
   box-sizing: border-box;
-  width: min(320px, calc(100vw - 32px));
+  width: min(340px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
-  overflow: auto;
+  overflow: hidden auto;
   padding: 14px 14px 12px;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -93,9 +93,9 @@ button.lit {
 button.lit:hover { border-color: var(--glow); color: var(--glow); }
 button:focus-visible { outline: 1px solid #cfe0ff; outline-offset: 2px; }
 .list { margin: 12px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--line); }
-ul { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+ul { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
 li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--starlight); }
+li > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--starlight); }
 li.shown > span:first-child { color: var(--faint); text-decoration: line-through; }
 li.note { display: block; margin: -2px 0 2px; }
 .keys { display: flex; flex: none; gap: 4px; }

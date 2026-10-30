@@ -173,7 +173,7 @@ describe('the element picker', () => {
     await tab.close();
   });
 
-  it('keeps a site tamed outside sessions', async () => {
+  it('tames a site all the time', async () => {
     const tab = await t.browser.newPage();
     await tab.goto(site);
     expect(await shown(tab, '#second')).toBe(true);
@@ -194,8 +194,10 @@ describe('the element picker', () => {
     // Settings says so, and turns it off again.
     const options = await t.browser.newPage();
     await options.goto(`chrome-extension://${t.extensionId}/options.html`);
-    await options.waitForFunction(() => document.body.innerText.includes('tamed like this with no session running'));
-    await options.click('::-p-text(Keep picker.test tamed outside sessions)');
+    await options.waitForFunction(() =>
+      document.body.innerText.includes('looks like this even with no session running'),
+    );
+    await options.click('::-p-text(Tame picker.test all the time)');
     await expect.poll(async () => (await rule(profileId))?.outsideSessions).toBeUndefined();
     await expect.poll(() => shown(tab, '#second')).toBe(true);
     await options.close();

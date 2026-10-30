@@ -83,7 +83,7 @@ function add() {
             + {{ pageCount(recipe.id) }} page {{ pageCount(recipe.id) === 1 ? 'rule' : 'rules' }}
           </span>
           <span v-if="ruleFor(recipe.id)?.level === 'tamed' && ruleFor(recipe.id)?.outsideSessions" class="pages mono">
-            + outside sessions
+            + all the time
           </span>
           <span v-if="hiddenCount(recipe.id)" class="pages mono">
             + {{ hiddenCount(recipe.id) }} hidden {{ hiddenCount(recipe.id) === 1 ? 'part' : 'parts' }}
@@ -126,7 +126,7 @@ function add() {
       These apply in the browser, through Lock In's extension, while this profile runs. Added sites start out
       redirected, and the browser asks once to let Lock In reach each one. What Tamed hides, and page rules, are set in
       the extension's settings. To hide part of a page, open the site and choose Hide parts of this page in the
-      extension's popup. A tamed site can also stay tamed outside sessions, set there too.
+      extension's popup. A tamed site can also be tamed all the time, even with no session running, set there too.
     </p>
   </div>
 </template>
