@@ -15,7 +15,7 @@ pnpm dev:website
 ## How it fits together
 
 - `app/layouts/default.vue`: everything around the pages: the canvas sky, the frame and its corner readouts, the constellation navigator, and the scroller the sections sit in. Each section with a `data-name` becomes a star on the navigator.
-- `app/utils/sky.js`: the canvas sky (stars, the Milky Way, the week's constellation, shooting stars, and light pollution as a sunset glow or city lights).
+- `app/utils/sky.js`: the canvas sky (stars, the Milky Way, the week's constellation, shooting stars, and light pollution as a sunset-like glow).
 - `app/composables/useLock.ts`: whether you're locked in, shared by the hero's switch, the session readout and the sky. Scrolling past the hero, or opening a reading page, locks in once by itself.
 - `app/components/home/`: the home page's sections. Their demos (the four levels, the redirect page's countdown, satellites) are made up and run in the page only.
 - `app/assets/css/`: the styles, in cascade order (see `nuxt.config.ts`).

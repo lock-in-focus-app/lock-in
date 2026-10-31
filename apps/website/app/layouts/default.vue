@@ -7,7 +7,6 @@ import { createSky } from '~/utils/sky';
 const route = useRoute();
 const nuxtApp = useNuxtApp();
 const { locked, lockOnce } = useLock();
-const { look, restoreLook } = useLook();
 
 const canvas = ref<HTMLCanvasElement>();
 const scroller = ref<HTMLElement>();
@@ -38,7 +37,6 @@ watch(locked, (on) => {
   document.body.style.setProperty('--lead', '0ms');
   sky?.set(skyFor(on));
 });
-watch(look, (next) => sky?.set({ city: next === 'city' ? 1 : 0 }));
 
 // ── The constellation navigator ─────────────────────────────────────────────
 
@@ -73,6 +71,8 @@ function go(i: number, smooth = true) {
 // As you scroll, each line draws toward the next star, and the stars light up as you reach their
 // sections. The sky drifts a little slower than the page.
 let queued = false;
+// The section the navigator shows as current, so its stars change only when that does.
+let shownActive = -1;
 function onScroll() {
   queued = false;
   const el = scroller.value;
@@ -87,10 +87,13 @@ function onScroll() {
     if (at >= t) active = i;
   });
   if (atEnd) active = sections.length - 1;
-  starEls().forEach((star, i) => {
-    star.classList.toggle('reached', i <= active);
-    star.setAttribute('aria-current', String(i === active));
-  });
+  if (active !== shownActive) {
+    shownActive = active;
+    starEls().forEach((star, i) => {
+      star.classList.toggle('reached', i <= active);
+      star.setAttribute('aria-current', String(i === active));
+    });
+  }
   segEls().forEach((seg, i) => {
     const p = atEnd || i < active ? 1 : Math.min(1, Math.max(0, (at - tops[i]!) / (tops[i + 1]! - tops[i]!)));
     (seg.firstElementChild as HTMLElement).style.transform = `scaleX(${p})`;
@@ -169,6 +172,8 @@ async function preparePage() {
   const el = scroller.value;
   if (!el) return;
   sections = [...el.querySelectorAll<HTMLElement>('section[data-name]')];
+  // A new page has new navigator stars to light.
+  shownActive = -1;
   names.value = sections.map((s) => s.dataset.name ?? '');
 
   seen?.disconnect();
@@ -233,11 +238,9 @@ let stopPageHook: (() => void) | undefined;
 
 onMounted(() => {
   reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  restoreLook();
   sky = createSky(canvas.value!, {
     ...skyFor(locked.value),
     seed: 5,
-    city: look.value === 'city' ? 1 : 0,
     ...placement(),
   });
   document.body.classList.toggle('locked', locked.value);
@@ -284,6 +287,4 @@ onBeforeUnmount(() => {
   <main id="scroller" ref="scroller" @scroll.passive="queueScroll">
     <slot />
   </main>
-
-  <LookSwitch />
 </template>

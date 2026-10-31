@@ -19,13 +19,15 @@
 }
 
 /* Only the hero fills the frame; the other sections are as tall as their content, with a
-   modest gap between them. */
+   modest gap between them. On a wide screen the side padding grows so the content stays at most
+   --content wide and centered, or the demos would grow taller than the frame. */
 section {
+  --content: 1200px;
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(48px, 9vh, 80px) clamp(16px, 6vw, 96px);
+  padding: clamp(48px, 9vh, 80px) max(clamp(16px, 6vw, 96px), (100% - var(--content)) / 2);
 }
 
 /* The page ends right after the footer. */
@@ -97,30 +99,28 @@ h2 {
   font-size: clamp(16px, 1.4vw, 18px);
 }
 
-/* Section content drifts in the first time you reach it, and headings come into focus. */
+/* Section content drifts in the first time you reach it, and headings come into focus, their
+   letters settling closer together. That's a slight stretch rather than letter-spacing, which
+   would lay the heading out again on every frame and make the first scroll stutter. */
 .reveal {
   opacity: 0;
   transform: translateY(22px);
   transition:
     opacity 900ms var(--ease) var(--d, 0ms),
     transform 1100ms var(--ease) var(--d, 0ms),
-    filter 1100ms var(--ease) var(--d, 0ms),
-    letter-spacing 1100ms var(--ease) var(--d, 0ms);
+    filter 1100ms var(--ease) var(--d, 0ms);
 }
 
 h2.reveal {
   filter: blur(8px);
-  letter-spacing: 0.01em;
+  transform: translateY(22px) scaleX(1.025);
+  transform-origin: left;
 }
 
 .seen .reveal {
   opacity: 1;
   transform: none;
   filter: none;
-}
-
-.seen h2.reveal {
-  letter-spacing: -0.015em;
 }
 
 /* ── Layout shared by the sections ───────────────────────────────────────────── */
